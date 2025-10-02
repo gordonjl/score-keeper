@@ -16,16 +16,6 @@ export type PlayerNameMap = {
   teamB: string
 }
 
-export const serveAnnouncement = (ctx: Context): string => {
-  const { server, score, players } = ctx
-  const a = toScoreWords(score.A)
-  const b = toScoreWords(score.B)
-  const scorePhrase = score.A === score.B ? `${a} All` : `${a}–${b}`
-  const who = players[rowKey(server.team, server.player)] || `${server.team}${server.player}`
-  const side = server.side === 'R' ? 'Right' : 'Left'
-  return `${scorePhrase}, ${who} to Serve from the ${side}`
-}
-
 export type Score = {
   A: number
   B: number
@@ -75,6 +65,7 @@ export type Events =
     }
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'CLICK_ROW'; row: RowKey }
+  | { type: 'LET' }
   | { type: 'UNDO' }
   | { type: 'RESET' }
 
@@ -150,28 +141,16 @@ const toScoreWords = (n: number) => {
   return words[n] ?? String(n)
 }
 
-const refereeCall = (
-  ctx: Context,
-  nextServer: Server,
-  score: Score,
-): string => {
-  const serverScore = score[nextServer.team]
-  const receiverScore = score[otherTeam(nextServer.team)]
-  const scoreStr = `${toScoreWords(serverScore)}–${toScoreWords(receiverScore)}`
-  const secondHand = nextServer.handIndex === 1 ? ' Second hand.' : ''
-  const handOut = ctx.server.team !== nextServer.team ? ' Hand-out.' : ''
+export const serveAnnouncement = (ctx: Context): string => {
+  const { server, score, players } = ctx
+  const a = toScoreWords(score.A)
+  const b = toScoreWords(score.B)
+  const scorePhrase = score.A === score.B ? `${a} All` : `${a}–${b}`
   const who =
-    ctx.players[rowKey(nextServer.team, nextServer.player)] ||
-    `${nextServer.team}${nextServer.player}`
-  const side = nextServer.side === 'R' ? 'Right' : 'Left'
-
-  const gameBall =
-    Math.max(score.A, score.B) === ctx.maxPoints - 1 ? ' Game ball.' : ''
-
-  return `${scoreStr}.${secondHand}${handOut} ${who} to serve. ${side} side.${gameBall}`.replace(
-    /\s+/g,
-    ' ',
-  )
+    players[rowKey(server.team, server.player)] ||
+    `${server.team}${server.player}`
+  const side = server.side === 'R' ? 'Right' : 'Left'
+  return `${scorePhrase}, ${who} to Serve from the ${side}`
 }
 
 // ===== Machine =====
@@ -336,7 +315,7 @@ export const squashMachine = setup({
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBaCA9mgEYA2cAxAKoByAIgPIDaADALqKgAOBsAlgBc+BAHacQAD0QAWAEwAaEAE9EAZmkB2AHQBGDQE4AbIfX7VsjTv0Bfa4tSYc+ImUoAlAKIBlDwBVWHEggPPxCouJSCHKKKggArDqqWgAcyRZpOjqG+tJGtvboWHiEJOSwWnwQ5BQ+vlQACgD6vh4AggCyXgHiIYLCYkGRsoZxWgaGyXFxqiwsOiyTMTL6LForhrKbyfoaySwb+SAORc6lcFoATmAYEEo1vq1uvo0A4h0e3UG9YQOgkXHSUZxWTqRK5bKqHRLKIrNb7Tayba7eGHY5OEqucp8ET1UgYO5uVoAGSJAE1GgB1Bg0T7cXh9cKDRBxExjFiQ8zbOIaaSLZSIRKrXL6HaWWSJHQWWSowrolxlCo4vF3ADCRIAkiqANKNNwMCm04L0n4RRAaEFaFgAwy7c06PaS6FZHRaRGGaSqfR6Hb6ZIaGWOYry84AY2wYBDAGsKIbvv1TfFAVpgaDTBCofyEMlpFphb6FslPVMzAGThiFWGI9GmDpAnTQvGmYmgSDpGCjGYM7FZNM4RthsYWNJcqpbHYQCICBA4OI0UGzvAvsbG39ELhDND16W5QuKlUwD1l4zVwh7bJXUZksZ9HFUlYTNCEjnVGldiKVqpjHFt-PMZdrrch4NsekgyKo2jciwiLZvMr4PpmT5aC+6TvuyX4-qcf7Yri+JAQyvygQgPLaHI3KTJ6kyGFY0LDOeGhFtyvqpDa0rjnOmEVuGUZ4SaTYeuekHQW2CwWPBsRmFoGy5G+LAii+N4YeW5xQBgAC2YAMAAbmAFw8SuhHmsklrWra4oOgombJC6eY3lkUwJMkY7WEAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBaCA9mgEYA2cAxAKoByAIgPIDaADALqKgAOBsAlgBc+BAHacQAD0QBmAOwA6AIwsArABYAbAA5ZKgDQgAnjI0r5LAJxzTAJhU6tFlhoC+Lg6kw58RMpQBKAKIAyoEAKqwcSCA8-EKi4lIIuBqK5po6+kaIKorS8tJaNkWyug4Wim4e6Fh4hCTksPJ8EOQUoWFUAAoA+mGBAIIAssGR4rGCwmLRSTYa+bIW2roGxghqWlryThpzKnblzlUgnrU+DXDyAE5gGBCG7WED-mE9AOLDgWPRE-HToEl1Pl9tI1HIsmsNlsdnsDrJHEd3Ccat56n4mnwRF1SBgHv4BgAZAkATR6AHUGDRvtxeJMEjMcvN5LIWNJFHZVog8ix5CpjqdUb5Gs0sTiHgBhAkASXFAGkev4GGTqTFaX9EogtIoFKyYRDEDYbAoNIsWUb7PCdvyUXUhZdMdjcRQCeEVb8phqEA55FppDZWez9etdttlNrFCoWIdXEiBbaLk0AMbYMCJgDWFDdao9DIQQN5NlB4M5XrUvOtXnj6PkydTGaYiiiNLiOYBOTBBaLK2yCDsaRhtgtCJjSJEBAgcHEcfO6PG2fpbeSygs6WWQZSFbOaOFLXIc5bC8kXK0PJsS0yJdyNgKRRKZUtlVjNpnwpudzWzbp-yP62kZhULJshyPZXjexRGvejiPtUlYvvaoq4vuX6erIahlmodjwoGJZyGkEa7IO0aboKCY1im6ZIequZgjyAEBsBayFiuxTsoRlqIjBW52k0UAYAAtmADAAG5gFclGtj+shzOY6hriWWrlm4LhAA */
   id: 'squash-doubles',
   initial: 'idle',
   context: () => ({
@@ -351,13 +330,13 @@ export const squashMachine = setup({
     score: { A: 0, B: 0 },
     server: { team: 'A', player: 1, side: 'R', handIndex: 0 as const },
     maxPoints: 15,
-    winBy: 0,
+    winBy: 1,
     grid: initialGrid(),
     firstHandUsed: false,
     history: [],
   }),
   on: {
-    UNDO: { actions: 'undoOnce', target: '.inPlay' },
+    UNDO: { actions: 'undoOnce', target: 'inPlay' },
     RESET: { target: 'idle' },
   },
   states: {
@@ -408,6 +387,7 @@ export const squashMachine = setup({
             { type: 'clickRow', params: ({ event: { row } }) => ({ row }) },
           ],
         },
+        LET: {},
       },
     },
     check: {
@@ -420,25 +400,4 @@ export const squashMachine = setup({
   },
 })
 
-// ===== Derived helpers for UI =====
-export function getCurrentColumn(ctx: Context) {
-  return colForTeamServe(ctx, ctx.server.team)
-}
-
-export function getServerRowKey(ctx: Context): RowKey {
-  return rowKey(ctx.server.team, ctx.server.player)
-}
-
-export function getNextLogicalRowKey(ctx: Context): RowKey {
-  const { server } = ctx
-  if (server.handIndex === 0)
-    return rowKey(server.team, server.player === 1 ? 2 : 1)
-  // hand-out would go to other team top row
-  const t = otherTeam(server.team)
-  return rowKey(t, 1)
-}
-
-export function makeRefereeCall(ctx: Context): string {
-  // This computes the call for the upcoming serve (after the last mutation)
-  return refereeCall(ctx, ctx.server, ctx.score)
-}
+// (Intentionally no exported selectors here. Use SquashMachineContext.useSelector in custom hooks.)

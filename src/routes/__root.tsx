@@ -11,7 +11,7 @@ import Header from '../components/Header'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import appCss from '../styles.css?url'
-
+import { SquashMachineContext } from '../contexts/SquashMachineContext'
 import type { QueryClient } from '@tanstack/react-query'
 
 interface MyRouterContext {
@@ -48,22 +48,41 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          // Set DaisyUI theme to system preference and react to changes
+          dangerouslySetInnerHTML={{
+            __html: `
+            (function(){
+              if (typeof window === 'undefined') return;
+              var mq = window.matchMedia('(prefers-color-scheme: dark)');
+              var apply = function(e){
+                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+              };
+              apply(mq);
+              if (mq.addEventListener) { mq.addEventListener('change', apply); }
+              else if (mq.addListener) { mq.addListener(apply); }
+            })();
+          `,
+          }}
+        />
       </head>
       <body>
-        <Header />
-        {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-left',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            TanStackQueryDevtools,
-          ]}
-        />
+        <SquashMachineContext.Provider>
+          <Header />
+          {children}
+          <TanStackDevtools
+            config={{
+              position: 'bottom-left',
+            }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+              TanStackQueryDevtools,
+            ]}
+          />
+        </SquashMachineContext.Provider>
         <Scripts />
       </body>
     </html>
