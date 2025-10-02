@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   HeadContent,
   Scripts,
@@ -5,7 +6,6 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
-
 import Header from '../components/Header'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
@@ -44,27 +44,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // Apply theme after hydration to avoid mismatch
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = (e: MediaQueryListEvent | MediaQueryList) => {
+      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light')
+    }
+    apply(mq)
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
-        <script
-          // Set DaisyUI theme to system preference and react to changes
-          dangerouslySetInnerHTML={{
-            __html: `
-            (function(){
-              if (typeof window === 'undefined') return;
-              var mq = window.matchMedia('(prefers-color-scheme: dark)');
-              var apply = function(e){
-                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-              };
-              apply(mq);
-              if (mq.addEventListener) { mq.addEventListener('change', apply); }
-              else if (mq.addListener) { mq.addListener(apply); }
-            })();
-          `,
-          }}
-        />
       </head>
       <body>
         <SquashMachineContext.Provider>

@@ -93,7 +93,7 @@ function SetupRoute() {
         maxPoints: parsed.maxPoints,
         winBy: 1, // strictly win-by-1
       })
-      navigate({ to: '/' })
+      navigate({ to: '/game' })
     },
   })
 
@@ -109,71 +109,83 @@ function SetupRoute() {
       >
         <fieldset className="card bg-base-100 shadow p-4">
           <legend className="card-title mb-2">Teams</legend>
-          <label className="form-control w-full mb-2">
-            <span className="label-text">Team A</span>
-            <input
-              className="input input-bordered"
-              value={form.state.values.teamA}
-              onChange={(e) =>
-                form.setFieldValue('teamA', e.currentTarget.value)
-              }
-            />
-          </label>
-          <label className="form-control w-full">
-            <span className="label-text">Team B</span>
-            <input
-              className="input input-bordered"
-              value={form.state.values.teamB}
-              onChange={(e) =>
-                form.setFieldValue('teamB', e.currentTarget.value)
-              }
-            />
-          </label>
+          <form.Field name="teamA">
+            {(field) => (
+              <label className="form-control w-full mb-2">
+                <span className="label-text">Team A</span>
+                <input
+                  className="input input-bordered"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.currentTarget.value)}
+                />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="teamB">
+            {(field) => (
+              <label className="form-control w-full">
+                <span className="label-text">Team B</span>
+                <input
+                  className="input input-bordered"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.currentTarget.value)}
+                />
+              </label>
+            )}
+          </form.Field>
         </fieldset>
 
         <fieldset className="card bg-base-100 shadow p-4">
           <legend className="card-title mb-2">Players</legend>
           <div className="grid grid-cols-2 gap-2">
-            <label className="form-control">
-              <span className="label-text">A1</span>
-              <input
-                className="input input-bordered"
-                value={form.state.values.A1}
-                onChange={(e) =>
-                  form.setFieldValue('A1', e.currentTarget.value)
-                }
-              />
-            </label>
-            <label className="form-control">
-              <span className="label-text">A2</span>
-              <input
-                className="input input-bordered"
-                value={form.state.values.A2}
-                onChange={(e) =>
-                  form.setFieldValue('A2', e.currentTarget.value)
-                }
-              />
-            </label>
-            <label className="form-control">
-              <span className="label-text">B1</span>
-              <input
-                className="input input-bordered"
-                value={form.state.values.B1}
-                onChange={(e) =>
-                  form.setFieldValue('B1', e.currentTarget.value)
-                }
-              />
-            </label>
-            <label className="form-control">
-              <span className="label-text">B2</span>
-              <input
-                className="input input-bordered"
-                value={form.state.values.B2}
-                onChange={(e) =>
-                  form.setFieldValue('B2', e.currentTarget.value)
-                }
-              />
-            </label>
+            <form.Field name="A1">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">A1</span>
+                  <input
+                    className="input input-bordered"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.currentTarget.value)}
+                  />
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="A2">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">A2</span>
+                  <input
+                    className="input input-bordered"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.currentTarget.value)}
+                  />
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="B1">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">B1</span>
+                  <input
+                    className="input input-bordered"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.currentTarget.value)}
+                  />
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="B2">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">B2</span>
+                  <input
+                    className="input input-bordered"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.currentTarget.value)}
+                  />
+                </label>
+              )}
+            </form.Field>
           </div>
         </fieldset>
 
@@ -228,17 +240,19 @@ function SetupRoute() {
                 <option value="L">Left</option>
               </select>
             </label>
-            <label className="form-control">
-              <span className="label-text">Max Points</span>
-              <input
-                className="input input-bordered"
-                inputMode="numeric"
-                value={form.state.values.maxPoints}
-                onChange={(e) =>
-                  form.setFieldValue('maxPoints', e.currentTarget.value)
-                }
-              />
-            </label>
+            <form.Field name="maxPoints">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">Max Points</span>
+                  <input
+                    className="input input-bordered"
+                    inputMode="numeric"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.currentTarget.value)}
+                  />
+                </label>
+              )}
+            </form.Field>
           </div>
         </fieldset>
 
