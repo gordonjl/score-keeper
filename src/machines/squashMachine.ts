@@ -1,0 +1,444 @@
+import { assign, setup } from 'xstate'
+
+// ===== Types =====
+export type Team = 'A' | 'B'
+export type PlayerRow = 1 | 2
+export type Side = 'R' | 'L'
+export type RowKey = 'A1' | 'A2' | 'B1' | 'B2'
+export type Cell = '' | 'R' | 'L' | 'R/' | 'L/' | 'X' | '/'
+
+export type PlayerNameMap = {
+  A1: string
+  A2: string
+  B1: string
+  B2: string
+  teamA: string
+  teamB: string
+}
+
+export const serveAnnouncement = (ctx: Context): string => {
+  const { server, score, players } = ctx
+  const a = toScoreWords(score.A)
+  const b = toScoreWords(score.B)
+  const scorePhrase = score.A === score.B ? `${a} All` : `${a}–${b}`
+  const who = players[rowKey(server.team, server.player)] || `${server.team}${server.player}`
+  const side = server.side === 'R' ? 'Right' : 'Left'
+  return `${scorePhrase}, ${who} to Serve from the ${side}`
+}
+
+export type Score = {
+  A: number
+  B: number
+}
+
+export type Server = {
+  team: Team
+  player: PlayerRow
+  side: Side
+  handIndex: 0 | 1 // 0 = first hand in a team hand, 1 = second hand
+}
+
+export type ActivityGrid = {
+  A1: Array<Cell>
+  A2: Array<Cell>
+  B1: Array<Cell>
+  B2: Array<Cell>
+  A: Array<Cell> // merged team row for X marks
+  B: Array<Cell>
+}
+
+export type Snapshot = {
+  score: Score
+  server: Server
+  grid: ActivityGrid
+  firstHandUsed: boolean
+}
+
+export type Context = {
+  players: PlayerNameMap
+  score: Score
+  server: Server
+  maxPoints: number
+  winBy: number
+  grid: ActivityGrid
+  firstHandUsed: boolean // relevant only at 0–0 for the initial serving team
+  history: Array<Snapshot>
+}
+
+export type Events =
+  | { type: 'SETUP_TEAMS'; players: PlayerNameMap }
+  | {
+      type: 'START_GAME'
+      firstServer: { team: Team; player: PlayerRow; side: Side }
+      maxPoints?: number
+      winBy?: number
+    }
+  | { type: 'RALLY_WON'; winner: Team }
+  | { type: 'CLICK_ROW'; row: RowKey }
+  | { type: 'UNDO' }
+  | { type: 'RESET' }
+
+// ===== Helpers =====
+export const otherTeam = (t: Team): Team => (t === 'A' ? 'B' : 'A')
+export const flip = (s: Side): Side => (s === 'R' ? 'L' : 'R')
+export const rowKey = (team: Team, player: PlayerRow): RowKey =>
+  `${team}${player}` as RowKey
+
+const makeEmptyCols = (n = 30): Array<Cell> =>
+  Array.from({ length: n }, () => '')
+
+const initialGrid = (cols = 30): ActivityGrid => ({
+  A1: makeEmptyCols(cols),
+  A2: makeEmptyCols(cols),
+  B1: makeEmptyCols(cols),
+  B2: makeEmptyCols(cols),
+  A: makeEmptyCols(cols),
+  B: makeEmptyCols(cols),
+})
+
+const colForTeamServe = (ctx: Context, team: Team) => ctx.score[team]
+
+const writeCell = (
+  grid: ActivityGrid,
+  key: RowKey | 'A' | 'B',
+  col: number,
+  value: Cell,
+): ActivityGrid => {
+  const next: ActivityGrid = {
+    A1: [...grid.A1],
+    A2: [...grid.A2],
+    B1: [...grid.B1],
+    B2: [...grid.B2],
+    A: [...grid.A],
+    B: [...grid.B],
+  }
+  next[key as keyof ActivityGrid][col] = value
+  return next
+}
+
+const popSnapshot = (ctx: Context): Partial<Context> => {
+  const prev = ctx.history.at(-1)
+  if (!prev) return {}
+  return {
+    score: prev.score,
+    server: prev.server,
+    grid: prev.grid,
+    firstHandUsed: prev.firstHandUsed,
+    history: ctx.history.slice(0, -1),
+  }
+}
+
+const toScoreWords = (n: number) => {
+  const words = [
+    'Love',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+  ]
+  return words[n] ?? String(n)
+}
+
+const refereeCall = (
+  ctx: Context,
+  nextServer: Server,
+  score: Score,
+): string => {
+  const serverScore = score[nextServer.team]
+  const receiverScore = score[otherTeam(nextServer.team)]
+  const scoreStr = `${toScoreWords(serverScore)}–${toScoreWords(receiverScore)}`
+  const secondHand = nextServer.handIndex === 1 ? ' Second hand.' : ''
+  const handOut = ctx.server.team !== nextServer.team ? ' Hand-out.' : ''
+  const who =
+    ctx.players[rowKey(nextServer.team, nextServer.player)] ||
+    `${nextServer.team}${nextServer.player}`
+  const side = nextServer.side === 'R' ? 'Right' : 'Left'
+
+  const gameBall =
+    Math.max(score.A, score.B) === ctx.maxPoints - 1 ? ' Game ball.' : ''
+
+  return `${scoreStr}.${secondHand}${handOut} ${who} to serve. ${side} side.${gameBall}`.replace(
+    /\s+/g,
+    ' ',
+  )
+}
+
+// ===== Machine =====
+export const squashMachine = setup({
+  types: {
+    context: {} as Context,
+    events: {} as Events,
+  },
+  actions: {
+    assignTeams: assign((_, { players }: { players: PlayerNameMap }) => ({
+      players,
+    })),
+
+    startGame: assign(
+      (
+        { context },
+        params: {
+          firstServer: { team: Team; player: PlayerRow; side: Side }
+          maxPoints?: number
+          winBy?: number
+        },
+      ) => ({
+        score: { A: 0, B: 0 },
+        server: {
+          team: params.firstServer.team,
+          player: params.firstServer.player,
+          side: params.firstServer.side,
+          handIndex: 0 as const,
+        },
+        maxPoints: params.maxPoints ?? context.maxPoints,
+        winBy: params.winBy ?? context.winBy,
+        grid: initialGrid(),
+        firstHandUsed: false,
+        history: [],
+      }),
+    ),
+
+    snapshot: assign(({ context }) => ({
+      history: [
+        ...context.history,
+        {
+          score: { ...context.score },
+          server: { ...context.server },
+          grid: JSON.parse(JSON.stringify(context.grid)) as ActivityGrid,
+          firstHandUsed: context.firstHandUsed,
+        },
+      ],
+    })),
+
+    // Pre-fill R/L in the current server row at the current column.
+    // Disallowed if clicking any other row.
+    clickRow: assign(({ context }, { row }: { row: RowKey }) => {
+      const currentRow = rowKey(context.server.team, context.server.player)
+      if (row !== currentRow) return {}
+      const col = colForTeamServe(context, context.server.team)
+      const value: Cell = context.server.side
+      const nextGrid = writeCell(context.grid, currentRow, col, value)
+      return { grid: nextGrid }
+    }),
+
+    rallyWon: assign(({ context }, { winner }: { winner: Team }) => {
+      const cur = context.server
+      // Column where this serve is recorded
+      const col = colForTeamServe(context, cur.team)
+      const grid0 = context.grid
+
+      // If server is serving this rally, write R/L or R//L/ accordingly
+      if (winner === cur.team) {
+        // Serving team won → write R/L in server row at current column
+        const v: Cell = cur.side
+        const grid = writeCell(grid0, rowKey(cur.team, cur.player), col, v)
+        // Increment server team score
+        const nextScore: Score = {
+          ...context.score,
+          [winner]: context.score[winner] + 1,
+        }
+        // Next server is same player, flip side
+        const nextServer: Server = { ...cur, side: flip(cur.side) }
+        return { score: nextScore, server: nextServer, grid }
+      } else {
+        // Receiving team won
+        // Mark R/ or L/ for the server row at current column
+        const v: Cell = (cur.side + '/') as Cell
+        const grid1 = writeCell(grid0, rowKey(cur.team, cur.player), col, v)
+
+        // First-hand exception at 0–0 for the very first server
+        const isStartOfGame = context.score.A === 0 && context.score.B === 0
+        if (isStartOfGame && !context.firstHandUsed) {
+          // Partner did not serve → mark '/' in partner row at col 0 per convention
+          const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+          const grid = writeCell(grid1, partnerRow, 0, '/')
+          const nextScore: Score = {
+            ...context.score,
+            [winner]: context.score[winner] + 1,
+          }
+          // Hand-out to other team
+          const t = otherTeam(cur.team)
+          const nextServer: Server = {
+            team: t,
+            player: 1,
+            side: 'R',
+            handIndex: 0,
+          }
+          return {
+            score: nextScore,
+            server: nextServer,
+            grid,
+            firstHandUsed: true,
+          }
+        }
+
+        // Not start-of-game exception
+        const nextScore: Score = {
+          ...context.score,
+          [winner]: context.score[winner] + 1,
+        }
+
+        if (cur.handIndex === 0) {
+          // Partner still to serve (second hand)
+          // Write X on winner team at their new column
+          const xCol = nextScore[winner]
+          const grid = writeCell(grid1, winner, xCol, 'X')
+          const partner: Server = {
+            team: cur.team,
+            player: cur.player === 1 ? 2 : 1,
+            side: flip(cur.side),
+            handIndex: 1,
+          }
+          return {
+            score: nextScore,
+            server: partner,
+            grid,
+            firstHandUsed: true,
+          }
+        } else {
+          // Second hand lost → hand-out to other team
+          const t = otherTeam(cur.team)
+          const nextServer: Server = {
+            team: t,
+            player: 1,
+            side: 'R',
+            handIndex: 0,
+          }
+          return {
+            score: nextScore,
+            server: nextServer,
+            grid: grid1,
+            firstHandUsed: true,
+          }
+        }
+      }
+    }),
+
+    undoOnce: assign(({ context }) => popSnapshot(context)),
+  },
+  guards: {
+    gameEnded: ({ context }) => {
+      const { A, B } = context.score
+      const target = context.maxPoints
+      if (A < target && B < target) return false
+      return Math.abs(A - B) >= context.winBy
+    },
+  },
+}).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBaCA9mgEYA2cAxAKoByAIgPIDaADALqKgAOBsAlgBc+BAHacQAD0QAWAEwAaEAE9EAZmkB2AHQBGDQE4AbIfX7VsjTv0Bfa4tSYc+ImUoAlAKIBlDwBVWHEggPPxCouJSCHKKKggArDqqWgAcyRZpOjqG+tJGtvboWHiEJOSwWnwQ5BQ+vlQACgD6vh4AggCyXgHiIYLCYkGRsoZxWgaGyXFxqiwsOiyTMTL6LForhrKbyfoaySwb+SAORc6lcFoATmAYEEo1vq1uvo0A4h0e3UG9YQOgkXHSUZxWTqRK5bKqHRLKIrNb7Tayba7eGHY5OEqucp8ET1UgYO5uVoAGSJAE1GgB1Bg0T7cXh9cKDRBxExjFiQ8zbOIaaSLZSIRKrXL6HaWWSJHQWWSowrolxlCo4vF3ADCRIAkiqANKNNwMCm04L0n4RRAaEFaFgAwy7c06PaS6FZHRaRGGaSqfR6Hb6ZIaGWOYry84AY2wYBDAGsKIbvv1TfFAVpgaDTBCofyEMlpFphb6FslPVMzAGThiFWGI9GmDpAnTQvGmYmgSDpGCjGYM7FZNM4RthsYWNJcqpbHYQCICBA4OI0UGzvAvsbG39ELhDND16W5QuKlUwD1l4zVwh7bJXUZksZ9HFUlYTNCEjnVGldiKVqpjHFt-PMZdrrch4NsekgyKo2jciwiLZvMr4PpmT5aC+6TvuyX4-qcf7Yri+JAQyvygQgPLaHI3KTJ6kyGFY0LDOeGhFtyvqpDa0rjnOmEVuGUZ4SaTYeuekHQW2CwWPBsRmFoGy5G+LAii+N4YeW5xQBgAC2YAMAAbmAFw8SuhHmsklrWra4oOgombJC6eY3lkUwJMkY7WEAA */
+  id: 'squash-doubles',
+  initial: 'idle',
+  context: () => ({
+    players: {
+      A1: 'A1',
+      A2: 'A2',
+      B1: 'B1',
+      B2: 'B2',
+      teamA: 'Team A',
+      teamB: 'Team B',
+    },
+    score: { A: 0, B: 0 },
+    server: { team: 'A', player: 1, side: 'R', handIndex: 0 as const },
+    maxPoints: 15,
+    winBy: 0,
+    grid: initialGrid(),
+    firstHandUsed: false,
+    history: [],
+  }),
+  on: {
+    UNDO: { actions: 'undoOnce', target: '.inPlay' },
+    RESET: { target: 'idle' },
+  },
+  states: {
+    idle: {
+      on: {
+        SETUP_TEAMS: {
+          actions: [
+            {
+              type: 'assignTeams',
+              params: ({ event: { players } }) => ({ players }),
+            },
+          ],
+          target: 'ready',
+        },
+      },
+    },
+    ready: {
+      on: {
+        START_GAME: {
+          actions: [
+            {
+              type: 'startGame',
+              params: ({ event: { firstServer, maxPoints, winBy } }) => ({
+                firstServer,
+                maxPoints,
+                winBy,
+              }),
+            },
+          ],
+          target: 'inPlay',
+        },
+      },
+    },
+    inPlay: {
+      on: {
+        RALLY_WON: {
+          actions: [
+            'snapshot',
+            {
+              type: 'rallyWon',
+              params: ({ event: { winner } }) => ({ winner }),
+            },
+          ],
+          target: 'check',
+        },
+        CLICK_ROW: {
+          actions: [
+            { type: 'clickRow', params: ({ event: { row } }) => ({ row }) },
+          ],
+        },
+      },
+    },
+    check: {
+      always: [
+        { guard: 'gameEnded', target: 'gameOver' },
+        { target: 'inPlay' },
+      ],
+    },
+    gameOver: { type: 'final' },
+  },
+})
+
+// ===== Derived helpers for UI =====
+export function getCurrentColumn(ctx: Context) {
+  return colForTeamServe(ctx, ctx.server.team)
+}
+
+export function getServerRowKey(ctx: Context): RowKey {
+  return rowKey(ctx.server.team, ctx.server.player)
+}
+
+export function getNextLogicalRowKey(ctx: Context): RowKey {
+  const { server } = ctx
+  if (server.handIndex === 0)
+    return rowKey(server.team, server.player === 1 ? 2 : 1)
+  // hand-out would go to other team top row
+  const t = otherTeam(server.team)
+  return rowKey(t, 1)
+}
+
+export function makeRefereeCall(ctx: Context): string {
+  // This computes the call for the upcoming serve (after the last mutation)
+  return refereeCall(ctx, ctx.server, ctx.score)
+}
