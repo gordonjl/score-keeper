@@ -336,8 +336,8 @@ export const squashMachine = setup({
     history: [],
   }),
   on: {
-    UNDO: { actions: 'undoOnce', target: 'inPlay' },
-    RESET: { target: 'idle' },
+    UNDO: { actions: 'undoOnce', target: '.inPlay' },
+    RESET: { target: '.idle' },
   },
   states: {
     idle: {

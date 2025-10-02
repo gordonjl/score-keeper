@@ -1,6 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import * as S from 'effect/Schema'
+import { Schema as S } from 'effect'
+import { useState } from 'react'
 import { SquashMachineContext } from '../contexts/SquashMachineContext'
 
 // Effect Schema for setup form (no Zod)
@@ -14,13 +15,17 @@ const FirstServerSchema = S.Struct({
   side: Side,
 })
 
+// Trim is a transformer schema that removes whitespace from both ends
+// We compose it with a minLength filter to ensure non-empty strings
+const NonEmptyTrimmedString = S.Trim.pipe(S.minLength(1))
+
 const SetupSchema = S.Struct({
-  teamA: S.String.pipe(S.trim, S.minLength(1)),
-  teamB: S.String.pipe(S.trim, S.minLength(1)),
-  A1: S.String.pipe(S.trim, S.minLength(1)),
-  A2: S.String.pipe(S.trim, S.minLength(1)),
-  B1: S.String.pipe(S.trim, S.minLength(1)),
-  B2: S.String.pipe(S.trim, S.minLength(1)),
+  teamA: NonEmptyTrimmedString,
+  teamB: NonEmptyTrimmedString,
+  A1: NonEmptyTrimmedString,
+  A2: NonEmptyTrimmedString,
+  B1: NonEmptyTrimmedString,
+  B2: NonEmptyTrimmedString,
   firstServer: FirstServerSchema,
   maxPoints: S.NumberFromString.pipe(S.int(), S.greaterThanOrEqualTo(1)),
 })
@@ -33,6 +38,8 @@ function SetupRoute() {
   const actorRef = SquashMachineContext.useActorRef()
   const navigate = useNavigate()
 
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const form = useForm({
     defaultValues: {
       teamA: '',
@@ -42,13 +49,13 @@ function SetupRoute() {
       B1: '',
       B2: '',
       firstServer: {
-        team: 'A' as const,
-        player: 1 as const,
-        side: 'R' as const,
+        team: 'A' as 'A' | 'B',
+        player: 1 as 1 | 2,
+        side: 'R' as 'R' | 'L',
       },
       maxPoints: '15',
     },
-    onSubmit: async ({ value, formApi }) => {
+    onSubmit: ({ value }) => {
       // Build unknown payload to validate
       const payload = {
         teamA: value.teamA,
@@ -58,15 +65,17 @@ function SetupRoute() {
         B1: value.B1,
         B2: value.B2,
         firstServer: value.firstServer,
-        maxPoints: String(value.maxPoints ?? '15'),
+        maxPoints: value.maxPoints,
       }
-      const decode = S.decodeUnknown(SetupSchema)
-      const result = decode(payload)
-      if (result._tag === 'Left') {
-        formApi.setError('root', 'Invalid form. Please check required fields.')
+      // Use decodeUnknownSync for synchronous validation
+      let parsed: S.Schema.Type<typeof SetupSchema>
+      try {
+        parsed = S.decodeUnknownSync(SetupSchema)(payload)
+      } catch (error) {
+        setSubmitError('Invalid form. Please check required fields.')
         return
       }
-      const parsed = result.right
+      setSubmitError(null)
       actorRef.send({
         type: 'SETUP_TEAMS',
         players: {
@@ -84,7 +93,7 @@ function SetupRoute() {
         maxPoints: parsed.maxPoints,
         winBy: 1, // strictly win-by-1
       })
-      navigate({ to: '/game' })
+      navigate({ to: '/' })
     },
   })
 
@@ -233,10 +242,8 @@ function SetupRoute() {
           </div>
         </fieldset>
 
-        {form.state.errors.root ? (
-          <div className="alert alert-error md:col-span-2">
-            {String(form.state.errors.root)}
-          </div>
+        {submitError ? (
+          <div className="alert alert-error md:col-span-2">{submitError}</div>
         ) : null}
 
         <div className="md:col-span-2 flex gap-2 justify-end">
