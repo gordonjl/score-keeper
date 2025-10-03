@@ -159,14 +159,18 @@ function GameRoute() {
           onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam })}
           disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
-          {players[topTeam]} Won Rally
+          {firstServingTeam === 'A' 
+            ? `${players.A1} & ${players.A2}` 
+            : `${players.B1} & ${players.B2}`} Won Rally
         </button>
         <button
           className="btn btn-primary flex-1"
           onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam === 'A' ? 'B' : 'A' })}
           disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
-          {players[bottomTeam]} Won Rally
+          {firstServingTeam === 'A' 
+            ? `${players.B1} & ${players.B2}` 
+            : `${players.A1} & ${players.A2}`} Won Rally
         </button>
       </div>
 

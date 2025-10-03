@@ -153,60 +153,64 @@ function SetupRoute() {
         </fieldset>
 
         <fieldset className="card bg-base-100 shadow p-4 md:col-span-2">
-          <legend className="card-title mb-2">Start</legend>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <form.Field name="firstServer.team">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">Team</span>
-                  <select
-                    className="select select-bordered"
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.currentTarget.value as 'A' | 'B')
-                      // Reset player to 1 when team changes
-                      form.setFieldValue('firstServer.player', 1)
+          <legend className="card-title mb-2">Who serves first?</legend>
+          <form.Subscribe selector={(state) => ({ A1: state.values.A1, A2: state.values.A2, B1: state.values.B1, B2: state.values.B2, firstServer: state.values.firstServer })}>
+            {({ A1, A2, B1, B2, firstServer }) => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Team A Players */}
+                <label className="label cursor-pointer flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
+                  <span className="label-text font-semibold">{A1 || 'A1'}</span>
+                  <input
+                    type="radio"
+                    name="firstServer"
+                    className="radio radio-primary"
+                    checked={firstServer.team === 'A' && firstServer.player === 1}
+                    onChange={() => {
+                      form.setFieldValue('firstServer', { team: 'A' as const, player: 1 as const })
                     }}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                  </select>
+                  />
                 </label>
-              )}
-            </form.Field>
-            <form.Field name="firstServer.player">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">First Server</span>
-                  <select
-                    className="select select-bordered"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(Number(e.currentTarget.value) as 1 | 2)}
-                  >
-                    {form.state.values.firstServer.team === 'A' ? (
-                      <>
-                        <option value={1}>
-                          {form.state.values.A1 || 'A1'}
-                        </option>
-                        <option value={2}>
-                          {form.state.values.A2 || 'A2'}
-                        </option>
-                      </>
-                    ) : (
-                      <>
-                        <option value={1}>
-                          {form.state.values.B1 || 'B1'}
-                        </option>
-                        <option value={2}>
-                          {form.state.values.B2 || 'B2'}
-                        </option>
-                      </>
-                    )}
-                  </select>
+                <label className="label cursor-pointer flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
+                  <span className="label-text font-semibold">{A2 || 'A2'}</span>
+                  <input
+                    type="radio"
+                    name="firstServer"
+                    className="radio radio-primary"
+                    checked={firstServer.team === 'A' && firstServer.player === 2}
+                    onChange={() => {
+                      form.setFieldValue('firstServer', { team: 'A' as const, player: 2 as const })
+                    }}
+                  />
                 </label>
-              )}
-            </form.Field>
-          </div>
+                
+                {/* Team B Players */}
+                <label className="label cursor-pointer flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
+                  <span className="label-text font-semibold">{B1 || 'B1'}</span>
+                  <input
+                    type="radio"
+                    name="firstServer"
+                    className="radio radio-primary"
+                    checked={firstServer.team === 'B' && firstServer.player === 1}
+                    onChange={() => {
+                      form.setFieldValue('firstServer', { team: 'B' as const, player: 1 as const })
+                    }}
+                  />
+                </label>
+                <label className="label cursor-pointer flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
+                  <span className="label-text font-semibold">{B2 || 'B2'}</span>
+                  <input
+                    type="radio"
+                    name="firstServer"
+                    className="radio radio-primary"
+                    checked={firstServer.team === 'B' && firstServer.player === 2}
+                    onChange={() => {
+                      form.setFieldValue('firstServer', { team: 'B' as const, player: 2 as const })
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+          </form.Subscribe>
         </fieldset>
 
         {submitError ? (
