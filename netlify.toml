@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm install && pnpm exec vite build"
+  command = "pnpm build"
   publish = "dist"
 [dev]
   command = "vite dev"
