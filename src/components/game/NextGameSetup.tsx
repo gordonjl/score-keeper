@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Team = 'A' | 'B'
 type Side = 'R' | 'L'
@@ -46,6 +46,12 @@ export const NextGameSetup = ({
   // Track which player serves first on hand-in for each team (for this game)
   const [teamAFirstServer, setTeamAFirstServer] = useState<1 | 2>(1)
   const [teamBFirstServer, setTeamBFirstServer] = useState<1 | 2>(1)
+
+  // Update serving team when lastWinner changes
+  useEffect(() => {
+    const newDefaultTeam: Team = isFirstGame ? 'A' : lastWinner
+    setFirstServingTeam(newDefaultTeam)
+  }, [lastWinner, isFirstGame])
 
   const handleStartGame = () => {
     // Reorder players based on who serves first on hand-in
