@@ -260,7 +260,12 @@ export const squashMachine = setup({
         const nextServer: Server = { ...cur, side: flip(cur.side) }
         // Pre-write the next serve R/L
         const nextCol = nextScore[cur.team]
-        grid = writeCell(grid, rowKey(cur.team, cur.player), nextCol, nextServer.side)
+        grid = writeCell(
+          grid,
+          rowKey(cur.team, cur.player),
+          nextCol,
+          nextServer.side,
+        )
         return { score: nextScore, server: nextServer, grid }
       } else {
         // Receiving team won
@@ -339,7 +344,12 @@ export const squashMachine = setup({
           }
           // Pre-write R/L for the partner
           const nextCol = context.score[cur.team]
-          grid = writeCell(grid, rowKey(partner.team, partner.player), nextCol, partner.side)
+          grid = writeCell(
+            grid,
+            rowKey(partner.team, partner.player),
+            nextCol,
+            partner.side,
+          )
           return {
             score: nextScore,
             server: partner,

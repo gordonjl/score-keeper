@@ -14,6 +14,7 @@ import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchSummary } from '../components/game/MatchSummary'
 import { NextGameSetup } from '../components/game/NextGameSetup'
+import { MatchProgress } from '../components/game/MatchProgress'
 
 export const Route = createFileRoute('/_match/game')({
   component: GameRouteWrapper,
@@ -55,6 +56,7 @@ function GameRoute({
   const navigate = useNavigate()
   const matchActorRef = MatchMachineContext.useActorRef()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
+  const [matchStartTime] = useState(Date.now())
 
   // Use custom hook to get all game state
   const {
@@ -85,104 +87,146 @@ function GameRoute({
   const bottomScore = firstServingTeam === 'A' ? scoreB : scoreA
   const winnerTeam = scoreA > scoreB ? players.teamA : players.teamB
 
+  // Calculate games won
+  const gamesWonA = matchGames.filter((g) => g.winner === 'A').length
+  const gamesWonB = matchGames.filter((g) => g.winner === 'B').length
+  const currentGameNumber = matchGames.length + 1
+
   return (
-    <div className="p-4 max-w-full mx-auto">
-      <ScoreHeader
-        topTeam={topTeam}
-        bottomTeam={bottomTeam}
-        topScore={topScore}
-        bottomScore={bottomScore}
-        players={players}
-      />
+    <div className="flex flex-col lg:flex-row gap-4 p-4 max-w-full mx-auto">
+      {/* Match Progress Sidebar - Desktop */}
+      <div className="hidden lg:block lg:w-80 flex-shrink-0">
+        <MatchProgress
+          games={matchGames}
+          currentGameNumber={currentGameNumber}
+          players={matchPlayers}
+          matchStartTime={matchStartTime}
+          isGameInProgress={!isGameOver}
+        />
+      </div>
 
-      <ServeAnnouncement announcement={announcement} />
+      {/* Main Game Area */}
+      <div className="flex-1 min-w-0">
+        <ScoreHeader
+          topTeam={topTeam}
+          bottomTeam={bottomTeam}
+          topScore={topScore}
+          bottomScore={bottomScore}
+          players={players}
+          currentGameNumber={currentGameNumber}
+          gamesWonA={gamesWonA}
+          gamesWonB={gamesWonB}
+        />
 
-      <ScoreGrid
-        rows={rows}
-        players={players}
-        grid={grid}
-        serverRowKey={serverRowKey}
-        scoreA={scoreA}
-        scoreB={scoreB}
-        serverTeam={server.team}
-        handIndex={server.handIndex}
-        isGameOver={isGameOver}
-        onToggleServeSide={() => gameActor.send({ type: 'TOGGLE_SERVE_SIDE' })}
-      />
+        <ServeAnnouncement announcement={announcement} />
 
-      <RallyButtons
-        firstServingTeam={firstServingTeam}
-        players={players}
-        isDisabled={isGameOver || isAwaitingConfirmation}
-        onRallyWon={(winner) => gameActor.send({ type: 'RALLY_WON', winner })}
-      />
-
-      <ActionButtons
-        canLet={!isGameOver && !isIdle && !isAwaitingConfirmation}
-        canUndo={history.length > 0}
-        onLet={() => gameActor.send({ type: 'LET' })}
-        onUndo={() => gameActor.send({ type: 'UNDO' })}
-      />
-
-      {isAwaitingConfirmation && !showNextGameSetup && (
-        <GameOverConfirmation
-          winnerTeam={winnerTeam}
+        <ScoreGrid
+          rows={rows}
+          players={players}
+          grid={grid}
+          serverRowKey={serverRowKey}
           scoreA={scoreA}
           scoreB={scoreB}
-          onCancel={() => gameActor.send({ type: 'UNDO' })}
-          onConfirm={() => {
-            gameActor.send({ type: 'CONFIRM_GAME_OVER' })
-            const finalScore = { A: scoreA, B: scoreB }
-            const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-            matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
-          }}
-          onNextGame={() => {
-            setShowNextGameSetup(true)
-          }}
+          serverTeam={server.team}
+          handIndex={server.handIndex}
+          isGameOver={isGameOver}
+          onToggleServeSide={() =>
+            gameActor.send({ type: 'TOGGLE_SERVE_SIDE' })
+          }
         />
-      )}
 
-      {showNextGameSetup && (
-        <NextGameSetup
-          isFirstGame={matchGames.length === 0}
-          lastWinner={scoreA > scoreB ? 'A' : 'B'}
-          players={matchPlayers}
-          onCancel={() => setShowNextGameSetup(false)}
-          onStartGame={(config) => {
-            // Confirm game over and record result
-            gameActor.send({ type: 'CONFIRM_GAME_OVER' })
-            const finalScore = { A: scoreA, B: scoreB }
-            const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-            matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
-
-            // Start new game immediately
-            matchActorRef.send({
-              type: 'START_NEW_GAME',
-              firstServingTeam: config.firstServingTeam,
-              players: config.players,
-              teamASide: config.teamASide,
-              teamBSide: config.teamBSide,
-            })
-            setShowNextGameSetup(false)
-          }}
-        />
-      )}
-
-      {isGameOver && !showNextGameSetup && (
-        <MatchSummary
-          games={matchGames}
+        <RallyButtons
+          firstServingTeam={firstServingTeam}
           players={players}
-          currentGameNumber={matchGames.length}
-          currentWinner={winnerTeam}
-          onStartNewGame={() => {
-            setShowNextGameSetup(true)
-          }}
-          onEndMatch={() => {
-            matchActorRef.send({ type: 'END_MATCH' })
-            navigate({ to: '/' })
-          }}
+          isDisabled={isGameOver || isAwaitingConfirmation}
+          onRallyWon={(winner) => gameActor.send({ type: 'RALLY_WON', winner })}
         />
-      )}
+
+        <ActionButtons
+          canLet={!isGameOver && !isIdle && !isAwaitingConfirmation}
+          canUndo={history.length > 0}
+          onLet={() => gameActor.send({ type: 'LET' })}
+          onUndo={() => gameActor.send({ type: 'UNDO' })}
+        />
+
+        {isAwaitingConfirmation && !showNextGameSetup && (
+          <GameOverConfirmation
+            winnerTeam={winnerTeam}
+            scoreA={scoreA}
+            scoreB={scoreB}
+            onCancel={() => gameActor.send({ type: 'UNDO' })}
+            onConfirm={() => {
+              gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+              const finalScore = { A: scoreA, B: scoreB }
+              const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+              matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+            }}
+            onNextGame={() => {
+              setShowNextGameSetup(true)
+            }}
+          />
+        )}
+
+        {showNextGameSetup && (
+          <NextGameSetup
+            isFirstGame={matchGames.length === 0}
+            lastWinner={scoreA > scoreB ? 'A' : 'B'}
+            players={matchPlayers}
+            onCancel={() => setShowNextGameSetup(false)}
+            onStartGame={(config) => {
+              // Confirm game over and record result
+              gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+              const finalScore = { A: scoreA, B: scoreB }
+              const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+              matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+
+              // Start new game immediately
+              matchActorRef.send({
+                type: 'START_NEW_GAME',
+                firstServingTeam: config.firstServingTeam,
+                players: config.players,
+                teamASide: config.teamASide,
+                teamBSide: config.teamBSide,
+              })
+              setShowNextGameSetup(false)
+            }}
+          />
+        )}
+
+        {isGameOver && !showNextGameSetup && (
+          <MatchSummary
+            games={matchGames}
+            players={players}
+            currentGameNumber={matchGames.length}
+            currentWinner={winnerTeam}
+            onStartNewGame={() => {
+              setShowNextGameSetup(true)
+            }}
+            onEndMatch={() => {
+              matchActorRef.send({ type: 'END_MATCH' })
+              navigate({ to: '/' })
+            }}
+          />
+        )}
+      </div>
+
+      {/* Match Progress - Mobile (Collapsible) */}
+      <div className="lg:hidden">
+        <details className="collapse collapse-arrow bg-base-200">
+          <summary className="collapse-title font-medium">
+            Match Progress (Game {currentGameNumber})
+          </summary>
+          <div className="collapse-content">
+            <MatchProgress
+              games={matchGames}
+              currentGameNumber={currentGameNumber}
+              players={matchPlayers}
+              matchStartTime={matchStartTime}
+              isGameInProgress={!isGameOver}
+            />
+          </div>
+        </details>
+      </div>
     </div>
   )
 }

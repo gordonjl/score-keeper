@@ -47,7 +47,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = (e: MediaQueryListEvent | MediaQueryList) => {
-      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light')
+      document.documentElement.setAttribute(
+        'data-theme',
+        e.matches ? 'dark' : 'light',
+      )
     }
     apply(mq)
     mq.addEventListener('change', apply)

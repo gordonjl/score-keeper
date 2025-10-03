@@ -7,11 +7,5 @@
   "git": true,
   "version": 1,
   "framework": "react-cra",
-  "chosenAddOns": [
-    "eslint",
-    "netlify",
-    "start",
-    "form",
-    "tanstack-query"
-  ]
+  "chosenAddOns": ["eslint", "netlify", "start", "form", "tanstack-query"]
 }

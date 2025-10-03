@@ -1,9 +1,9 @@
 import {
   RepairCycle,
   RepairCycleSchema,
-} from "@causeCorrection/types/RepairCycle";
-import { Array as A, Option as O, pipe } from "effect";
-import { ActorRefFrom, assign, setup, SnapshotFrom } from "xstate";
+} from '@causeCorrection/types/RepairCycle'
+import { Array as A, Option as O, pipe } from 'effect'
+import { ActorRefFrom, assign, setup, SnapshotFrom } from 'xstate'
 import {
   Choice,
   Component,
@@ -13,108 +13,108 @@ import {
   Stage,
   StageType,
   System,
-} from "../types";
-import { Part, PartSchema } from "../types/Part";
-import { reorderArray } from "../utils/arrayUtils";
-import { partMachine, PartStage } from "./partMachine";
+} from '../types'
+import { Part, PartSchema } from '../types/Part'
+import { reorderArray } from '../utils/arrayUtils'
+import { partMachine, PartStage } from './partMachine'
 
 export type RepairCycleEvent =
   | {
-      type: "xstate.snapshot.*";
-      snapshot: SnapshotFrom<typeof partMachine>;
+      type: 'xstate.snapshot.*'
+      snapshot: SnapshotFrom<typeof partMachine>
     }
   | {
-      type: "CHOICE_UPDATED";
-      choice: SelectedChoice;
+      type: 'CHOICE_UPDATED'
+      choice: SelectedChoice
     }
   | {
-      type: "CHOICE_REMOVED";
-      choice: SelectedChoice;
+      type: 'CHOICE_REMOVED'
+      choice: SelectedChoice
     }
   | {
-      type: "SYSTEM_ADDED";
-      system: System;
+      type: 'SYSTEM_ADDED'
+      system: System
     }
   | {
-      type: "COMPONENT_SELECTED";
-      component: Component;
-      hasParts: boolean;
+      type: 'COMPONENT_SELECTED'
+      component: Component
+      hasParts: boolean
     }
   | {
-      type: "PART_ADDED";
-      part: Part;
+      type: 'PART_ADDED'
+      part: Part
     }
   | {
-      type: "USE_COMMON_VALUES";
-      stage: PartStage;
-      useCommon: boolean;
+      type: 'USE_COMMON_VALUES'
+      stage: PartStage
+      useCommon: boolean
     }
   | {
-      type: "REORDER_ITEMS";
+      type: 'REORDER_ITEMS'
       section: keyof Pick<
         RepairCycleContext,
-        | "diagnosticSelectedChoices"
-        | "finalActionsSelectedChoices"
-        | "commonFailures"
-        | "commonRepairs"
-      >;
-      sourceIndex: number;
-      destinationIndex: number;
+        | 'diagnosticSelectedChoices'
+        | 'finalActionsSelectedChoices'
+        | 'commonFailures'
+        | 'commonRepairs'
+      >
+      sourceIndex: number
+      destinationIndex: number
     }
   | {
-      type: "CHOICE_SELECTION_TOGGLED";
-      choiceConfig: Choice;
+      type: 'CHOICE_SELECTION_TOGGLED'
+      choiceConfig: Choice
       stage: Extract<
         StageType,
-        "failures" | "repairs" | "diagnostics" | "final"
-      >;
+        'failures' | 'repairs' | 'diagnostics' | 'final'
+      >
     }
   | {
-      type: "UPDATE_STARTED_IN_SESSION";
-      startedInSession: boolean;
-    };
+      type: 'UPDATE_STARTED_IN_SESSION'
+      startedInSession: boolean
+    }
 
 type RepairCycleContext = {
-  id: string;
-  systemRefs: readonly System[];
-  diagnosticSelectedChoices: readonly SelectedChoice[];
-  finalActionsSelectedChoices: readonly SelectedChoice[];
-  component?: Component;
-  partActors: ActorRefFrom<typeof partMachine>[];
-  startedInSession: boolean;
-  useCommonFailures: boolean;
-  useCommonRepairs: boolean;
-  commonFailures: readonly SelectedChoice[];
-  commonRepairs: readonly SelectedChoice[];
-  customComponentName: string | null | undefined;
-  makeDirty: number; // used to trigger selectors when a child actor is updated
-};
+  id: string
+  systemRefs: readonly System[]
+  diagnosticSelectedChoices: readonly SelectedChoice[]
+  finalActionsSelectedChoices: readonly SelectedChoice[]
+  component?: Component
+  partActors: ActorRefFrom<typeof partMachine>[]
+  startedInSession: boolean
+  useCommonFailures: boolean
+  useCommonRepairs: boolean
+  commonFailures: readonly SelectedChoice[]
+  commonRepairs: readonly SelectedChoice[]
+  customComponentName: string | null | undefined
+  makeDirty: number // used to trigger selectors when a child actor is updated
+}
 
 type StageConfig = {
-  readonly choices: readonly SelectedChoice[];
-  readonly key: keyof RepairCycleContext;
-};
+  readonly choices: readonly SelectedChoice[]
+  readonly key: keyof RepairCycleContext
+}
 
 const createStageToConfigMap = (
   context: RepairCycleContext,
 ): Partial<Record<CompositionSessionStage, StageConfig>> => ({
   diagnostics: {
     choices: context.diagnosticSelectedChoices,
-    key: "diagnosticSelectedChoices",
+    key: 'diagnosticSelectedChoices',
   },
   failures: {
     choices: context.commonFailures,
-    key: "commonFailures",
+    key: 'commonFailures',
   },
   repairs: {
     choices: context.commonRepairs,
-    key: "commonRepairs",
+    key: 'commonRepairs',
   },
   final: {
     choices: context.finalActionsSelectedChoices,
-    key: "finalActionsSelectedChoices",
+    key: 'finalActionsSelectedChoices',
   },
-});
+})
 
 export const repairCycleMachine = setup({
   types: {
@@ -138,29 +138,29 @@ export const repairCycleMachine = setup({
         }: {
           section: keyof Pick<
             RepairCycleContext,
-            | "diagnosticSelectedChoices"
-            | "finalActionsSelectedChoices"
-            | "commonFailures"
-            | "commonRepairs"
-          >;
-          sourceIndex: number;
-          destinationIndex: number;
+            | 'diagnosticSelectedChoices'
+            | 'finalActionsSelectedChoices'
+            | 'commonFailures'
+            | 'commonRepairs'
+          >
+          sourceIndex: number
+          destinationIndex: number
         },
       ) => {
         // Get the array to reorder
-        const arrayToReorder = context[section];
+        const arrayToReorder = context[section]
 
         // Reorder the array using the shared reorderArray function
         const reorderedArray = reorderArray(
           arrayToReorder,
           sourceIndex,
           destinationIndex,
-        );
+        )
 
         // Return the updated context
         return {
           [section]: reorderedArray,
-        };
+        }
       },
     ),
     selectComponent: assign(
@@ -176,14 +176,14 @@ export const repairCycleMachine = setup({
               spawn(partMachine, {
                 input: {
                   ...PartSchema.make({
-                    name: "",
+                    name: '',
                     isSelected: true,
                   }),
                   component,
                 },
                 syncSnapshot: true,
               }),
-            ];
+            ]
 
         return {
           component: component,
@@ -194,61 +194,61 @@ export const repairCycleMachine = setup({
           finalActionsSelectedChoices: [],
           useCommonFailures: true,
           useCommonRepairs: true,
-        };
+        }
       },
     ),
     removeChoice: assign(
       ({ context }, { choice }: { choice: SelectedChoice }) => {
-        const stageToConfigMap = createStageToConfigMap(context);
-        const currentStageConfig = stageToConfigMap[choice.stage];
+        const stageToConfigMap = createStageToConfigMap(context)
+        const currentStageConfig = stageToConfigMap[choice.stage]
 
         if (!currentStageConfig) {
-          throw new Error(`Invalid stage: ${choice.stage}`);
+          throw new Error(`Invalid stage: ${choice.stage}`)
         }
 
         const updatedChoices = currentStageConfig.choices.filter(
           (selectedChoice) => selectedChoice.id !== choice.id,
-        );
+        )
 
         return {
           // Assign the filtered array back to the correct key in the context
           [currentStageConfig.key]: updatedChoices,
-        };
+        }
       },
     ),
     updateChoice: assign(
       ({ context }, { choice }: { choice: SelectedChoice }) => {
-        const stageToConfig = createStageToConfigMap(context);
+        const stageToConfig = createStageToConfigMap(context)
 
         const upsertSelectedChoice = (config: StageConfig) => {
           // Check if a choice with the same ID already exists
           const exists = config.choices.some(
             (selected) => selected.id === choice.id,
-          );
+          )
 
           // Update the existing choice or add a new one
           const updatedChoices = exists
             ? config.choices.map((selected) =>
                 selected.id === choice.id ? choice : selected,
               )
-            : [...config.choices, choice];
+            : [...config.choices, choice]
 
-          return { [config.key]: updatedChoices };
-        };
-
-        const stageConfig = stageToConfig[choice.stage];
-        if (!stageConfig) {
-          throw new Error(`Invalid stage "${choice.stage}" in RepairCycle`);
+          return { [config.key]: updatedChoices }
         }
 
-        return upsertSelectedChoice(stageConfig);
+        const stageConfig = stageToConfig[choice.stage]
+        if (!stageConfig) {
+          throw new Error(`Invalid stage "${choice.stage}" in RepairCycle`)
+        }
+
+        return upsertSelectedChoice(stageConfig)
       },
     ),
     addSystem: assign(
       ({ context: { systemRefs } }, { system }: { system: System }) => {
         return {
           systemRefs: pipe(systemRefs, A.append(system)),
-        };
+        }
       },
     ),
     createPart: assign(
@@ -264,7 +264,7 @@ export const repairCycleMachine = setup({
               syncSnapshot: true,
             }),
           ],
-        };
+        }
       },
     ),
     updateCommonChoice: assign(
@@ -274,13 +274,13 @@ export const repairCycleMachine = setup({
           choice,
           stage,
         }: {
-          choice: SelectedChoice;
-          stage: Extract<Stage, "failures" | "repairs">;
+          choice: SelectedChoice
+          stage: Extract<Stage, 'failures' | 'repairs'>
         },
       ) => {
-        const key = stage === "failures" ? "commonFailures" : "commonRepairs";
+        const key = stage === 'failures' ? 'commonFailures' : 'commonRepairs'
         const commonChoices =
-          stage === "failures" ? context.commonFailures : context.commonRepairs;
+          stage === 'failures' ? context.commonFailures : context.commonRepairs
 
         const updatedChoices = pipe(
           commonChoices,
@@ -288,16 +288,16 @@ export const repairCycleMachine = setup({
           O.match({
             onNone: () => [...commonChoices, choice],
             onSome: (index) => {
-              const result = [...commonChoices];
-              result[index] = choice;
-              return result;
+              const result = [...commonChoices]
+              result[index] = choice
+              return result
             },
           }),
-        );
+        )
 
         return {
           [key]: updatedChoices,
-        };
+        }
       },
     ),
     useCommonValues: assign(
@@ -307,14 +307,14 @@ export const repairCycleMachine = setup({
           stage,
           useCommon,
         }: {
-          stage: Extract<StageType, "failures" | "repairs">;
-          useCommon: boolean;
+          stage: Extract<StageType, 'failures' | 'repairs'>
+          useCommon: boolean
         },
       ) => {
         return {
-          ...(stage === "failures" && { useCommonFailures: useCommon }),
-          ...(stage === "repairs" && { useCommonRepairs: useCommon }),
-        };
+          ...(stage === 'failures' && { useCommonFailures: useCommon }),
+          ...(stage === 'repairs' && { useCommonRepairs: useCommon }),
+        }
       },
     ),
     toggleChoiceSelection: assign(
@@ -322,22 +322,22 @@ export const repairCycleMachine = setup({
         { context },
         { choiceConfig, stage }: { choiceConfig: Choice; stage: StageType },
       ) => {
-        const selectedChoicesForStage = createStageToConfigMap(context)[stage];
+        const selectedChoicesForStage = createStageToConfigMap(context)[stage]
 
         if (!selectedChoicesForStage)
           throw new Error(
             `stage data not found for stage: '${stage}', choice: ${choiceConfig.id}`,
-          );
+          )
 
         const [nonMatchedChoices, matchedChoices] = A.partition(
           selectedChoicesForStage.choices,
           (choice) => choice.choiceId === choiceConfig.id,
-        );
+        )
 
         const toggledChoices = matchedChoices.map((choice) => ({
           ...choice,
           isSelected: !choice.isSelected,
-        }));
+        }))
 
         const merged =
           toggledChoices.length > 0
@@ -350,17 +350,17 @@ export const repairCycleMachine = setup({
                   phraseId: choiceConfig.phraseId,
                   isSelected: true,
                 }),
-              ];
+              ]
 
         return {
           [selectedChoicesForStage.key]: merged,
-        };
+        }
       },
     ),
   },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5QCcwAcCGBLZBhAngMYA2YAshoQBZYB2YAdMgK6211QDEuA8gAoBNAPoA1AIIAZAKoBRAMoBtAAwBdRKDQB7WFgAuWTbXUgAHogBMATgDMDa+aXWAjAA4A7C4CsLgCxLLADQg+BZObgyOlkoAbOaeAL7xQaiYOAQk5JQ09Eys7LRcuAASPACSuDJCUnwAImIAKjI1ympIIFo6+obGZggAtK7hbtFhg55KExPWQSEITo4RzubR7i6W5mveicno2HhEpBTUdIwsbByccgJyjWRCYjU1TS3GHXoGRm291pZODJ7WTxOFaWLxudY+HwzRCA6IMHwApyQn5AwHmNzbEApPbpQ5ZE65c4Fbg8Mh8HgAORkFPqQjkMgkMlwjWaqle2ne3S+MJGDGi1mibh8gsh3icnmhcyULnh0X81jcCSSWN2aQOmWOOTO+S4fDEACVadU6iyXm03l1PqBelZbPZHIMvL5-JL7J4+aN3Eqdql9hkjtlTnkLlJ6UJeGQyJTRJJZIo2eaOZaehYbHYHM5Vt4-IFgogfNYfAwnJZEXFEsraJoIHBjNi1f78fR2Z0Pin+uZAQxhp7FZMppLxf8lp4fBtlmExZj6368Zqg0SoC3OVbTIh3c4kdYlG5-K4vRK8wh+eZ4aXojZXArzE5zBX4kA */
-  id: "repairCycleMachine",
+  id: 'repairCycleMachine',
   context: ({
     spawn,
     input: {
@@ -383,7 +383,7 @@ export const repairCycleMachine = setup({
         input: { ...part, component: component! },
         syncSnapshot: true,
       }),
-    );
+    )
 
     return {
       diagnosticSelectedChoices,
@@ -400,11 +400,11 @@ export const repairCycleMachine = setup({
       partActors,
       parent,
       makeDirty: 0,
-    };
+    }
   },
-  initial: "running",
+  initial: 'running',
   on: {
-    "xstate.snapshot.*": {
+    'xstate.snapshot.*': {
       actions: [assign({ makeDirty: ({ context }) => context.makeDirty + 1 })],
     },
   },
@@ -414,7 +414,7 @@ export const repairCycleMachine = setup({
         REORDER_ITEMS: {
           actions: [
             {
-              type: "reorderItems",
+              type: 'reorderItems',
               params: ({
                 event: { section, sourceIndex, destinationIndex },
               }) => {
@@ -422,7 +422,7 @@ export const repairCycleMachine = setup({
                   section,
                   sourceIndex,
                   destinationIndex,
-                };
+                }
               },
             },
           ],
@@ -430,7 +430,7 @@ export const repairCycleMachine = setup({
         CHOICE_UPDATED: {
           actions: [
             {
-              type: "updateChoice",
+              type: 'updateChoice',
               params: ({ event: { choice } }) => ({ choice }),
             },
           ],
@@ -438,7 +438,7 @@ export const repairCycleMachine = setup({
         CHOICE_REMOVED: {
           actions: [
             {
-              type: "removeChoice",
+              type: 'removeChoice',
               params: ({ event: { choice } }) => ({ choice }),
             },
           ],
@@ -446,7 +446,7 @@ export const repairCycleMachine = setup({
         SYSTEM_ADDED: {
           actions: [
             {
-              type: "addSystem",
+              type: 'addSystem',
               params: ({ event: { system } }) => ({ system }),
             },
           ],
@@ -454,7 +454,7 @@ export const repairCycleMachine = setup({
         COMPONENT_SELECTED: {
           actions: [
             {
-              type: "selectComponent",
+              type: 'selectComponent',
               params: ({ event: { component, hasParts } }) => ({
                 component,
                 hasParts,
@@ -463,10 +463,10 @@ export const repairCycleMachine = setup({
           ],
         },
         PART_ADDED: {
-          guard: "hasComponent",
+          guard: 'hasComponent',
           actions: [
             {
-              type: "createPart",
+              type: 'createPart',
               params: ({ event: { part }, context: { component } }) => ({
                 part,
                 component: component!,
@@ -477,7 +477,7 @@ export const repairCycleMachine = setup({
         USE_COMMON_VALUES: {
           actions: [
             {
-              type: "useCommonValues",
+              type: 'useCommonValues',
               params: ({ event: { stage, useCommon } }) => ({
                 stage,
                 useCommon,
@@ -488,7 +488,7 @@ export const repairCycleMachine = setup({
         CHOICE_SELECTION_TOGGLED: {
           actions: [
             {
-              type: "toggleChoiceSelection",
+              type: 'toggleChoiceSelection',
               params: ({ event: { choiceConfig, stage } }) => ({
                 choiceConfig,
                 stage,
@@ -509,10 +509,10 @@ export const repairCycleMachine = setup({
   output: ({ context }) => {
     const parts = context.partActors.map((part) =>
       PartSchema.make(part.getSnapshot().context),
-    );
+    )
     return RepairCycleSchema.make({
       ...context,
       parts,
-    });
+    })
   },
-});
+})

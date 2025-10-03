@@ -1,45 +1,45 @@
-import { Array as A, Option as O, pipe } from "effect";
-import { assign, setup } from "xstate";
+import { Array as A, Option as O, pipe } from 'effect'
+import { assign, setup } from 'xstate'
 import {
   Choice,
   Component,
   SelectedChoice,
   SelectedChoiceSchema,
   StageType,
-} from "../types";
-import { Part, PartSchema } from "../types/Part";
-import { reorderArray } from "../utils/arrayUtils";
+} from '../types'
+import { Part, PartSchema } from '../types/Part'
+import { reorderArray } from '../utils/arrayUtils'
 
-export type PartStage = Extract<StageType, "failures" | "repairs">;
+export type PartStage = Extract<StageType, 'failures' | 'repairs'>
 
 export type PartEvent =
   | {
-      type: "REORDER_ITEMS";
-      itemType: PartStage;
-      sourceIndex: number;
-      destinationIndex: number;
+      type: 'REORDER_ITEMS'
+      itemType: PartStage
+      sourceIndex: number
+      destinationIndex: number
     }
   | {
-      type: "CHOICE_UPDATED";
-      choice: SelectedChoice;
-      itemType: PartStage;
+      type: 'CHOICE_UPDATED'
+      choice: SelectedChoice
+      itemType: PartStage
     }
   | {
-      type: "CHOICE_REMOVED";
-      choice: SelectedChoice;
-      itemType: PartStage;
+      type: 'CHOICE_REMOVED'
+      choice: SelectedChoice
+      itemType: PartStage
     }
   | {
-      type: "CHOICE_SELECTION_TOGGLED";
-      choiceConfig: Choice;
-      stage: PartStage;
+      type: 'CHOICE_SELECTION_TOGGLED'
+      choiceConfig: Choice
+      stage: PartStage
     }
   | {
-      type: "SELECTION_TOGGLED";
-    };
+      type: 'SELECTION_TOGGLED'
+    }
 
-type PartContext = Part & { component: Component };
-type PartInput = PartContext;
+type PartContext = Part & { component: Component }
+type PartInput = PartContext
 
 export const partMachine = setup({
   types: {
@@ -56,17 +56,17 @@ export const partMachine = setup({
           choiceConfig,
           stage,
         }: {
-          choiceConfig: Choice;
-          stage: PartStage;
+          choiceConfig: Choice
+          stage: PartStage
         },
       ) => {
-        const items = context[stage];
+        const items = context[stage]
 
         const index = pipe(
           items,
           A.findFirstIndex((c) => c.choiceId === choiceConfig.id),
           O.getOrElse(() => -1),
-        );
+        )
 
         if (index === -1) {
           return {
@@ -79,16 +79,16 @@ export const partMachine = setup({
                 stage,
               }),
             ],
-          };
+          }
         } else {
-          const updatedItems = [...items];
+          const updatedItems = [...items]
           updatedItems[index] = {
             ...items[index],
             isSelected: !items[index].isSelected,
-          };
+          }
           return {
             [stage]: updatedItems,
-          };
+          }
         }
       },
     ),
@@ -101,25 +101,25 @@ export const partMachine = setup({
           sourceIndex,
           destinationIndex,
         }: {
-          itemType: "failures" | "repairs";
-          sourceIndex: number;
-          destinationIndex: number;
+          itemType: 'failures' | 'repairs'
+          sourceIndex: number
+          destinationIndex: number
         },
       ) => {
         // Get the array to reorder
-        const itemsToReorder = partContext[itemType];
+        const itemsToReorder = partContext[itemType]
 
         // Reorder the array using the shared reorderArray function
         const reorderedItems = reorderArray(
           itemsToReorder,
           sourceIndex,
           destinationIndex,
-        );
+        )
 
         // Return the updated context
         return {
           [itemType]: reorderedItems,
-        };
+        }
       },
     ),
     // Action to update a choice in the part
@@ -130,27 +130,27 @@ export const partMachine = setup({
           choice,
           itemType,
         }: {
-          choice: SelectedChoice;
-          itemType: PartStage;
+          choice: SelectedChoice
+          itemType: PartStage
         },
       ) => {
-        const selectedChoices = context[itemType];
+        const selectedChoices = context[itemType]
 
         const index = pipe(
           selectedChoices,
           A.findFirstIndex((c) => c.id === choice.id),
           O.getOrElse(() => -1),
-        );
+        )
 
         if (index === -1) {
           // Choice doesn't exist, add it
           return {
             [itemType]: [...selectedChoices, choice],
-          };
+          }
         } else {
           return {
             [itemType]: A.replace(selectedChoices, index, choice),
-          };
+          }
         }
       },
     ),
@@ -163,30 +163,30 @@ export const partMachine = setup({
           choice,
           itemType,
         }: {
-          choice: SelectedChoice;
-          itemType: PartStage;
+          choice: SelectedChoice
+          itemType: PartStage
         },
       ) => {
-        const items = partContext[itemType];
+        const items = partContext[itemType]
         return {
           [itemType]: items.filter((c) => c.id !== choice.id),
-        };
+        }
       },
     ),
   },
 }).createMachine({
-  id: "partMachine",
+  id: 'partMachine',
   context: ({ input: partInput }) => ({
     ...partInput,
   }),
-  initial: "running",
+  initial: 'running',
   states: {
     running: {
       on: {
         CHOICE_SELECTION_TOGGLED: {
           actions: [
             {
-              type: "toggleChoiceSelection",
+              type: 'toggleChoiceSelection',
               params: ({ event: { choiceConfig, stage } }) => ({
                 choiceConfig,
                 stage,
@@ -197,7 +197,7 @@ export const partMachine = setup({
         REORDER_ITEMS: {
           actions: [
             {
-              type: "reorderItems",
+              type: 'reorderItems',
               params: ({
                 event: { itemType, sourceIndex, destinationIndex },
               }) => ({
@@ -211,7 +211,7 @@ export const partMachine = setup({
         CHOICE_UPDATED: {
           actions: [
             {
-              type: "updateChoice",
+              type: 'updateChoice',
               params: ({ event: { choice, itemType } }) => ({
                 choice,
                 itemType,
@@ -222,7 +222,7 @@ export const partMachine = setup({
         CHOICE_REMOVED: {
           actions: [
             {
-              type: "removeChoice",
+              type: 'removeChoice',
               params: ({ event: { choice, itemType } }) => ({
                 choice,
                 itemType,
@@ -241,4 +241,4 @@ export const partMachine = setup({
     },
   },
   output: ({ context: partContext }) => PartSchema.make(partContext),
-});
+})

@@ -10,7 +10,9 @@ function App() {
       <div className="hero-content text-center">
         <div className="max-w-md">
           <h1 className="text-5xl font-bold">Squash Score Keeper</h1>
-          <p className="py-6">Track scores for doubles squash matches using PAR-15 scoring.</p>
+          <p className="py-6">
+            Track scores for doubles squash matches using PAR-15 scoring.
+          </p>
           <Link to="/setup" className="btn btn-primary">
             Start New Match
           </Link>

@@ -1,6 +1,11 @@
 import { SquashMachineContext } from '../contexts/SquashMachineContext'
 import { serveAnnouncement } from '../machines/squashMachine'
-import type { ActivityGrid, PlayerNameMap, RowKey, Side } from '../machines/squashMachine'
+import type {
+  ActivityGrid,
+  PlayerNameMap,
+  RowKey,
+  Side,
+} from '../machines/squashMachine'
 
 // Select minimal, stable primitives to avoid unnecessary re-renders.
 // Use in components: const col = useCurrentColumn()
@@ -28,7 +33,9 @@ export const useServeAnnouncement = (): string =>
   SquashMachineContext.useSelector((s) => serveAnnouncement(s.context))
 
 export const useScoreTuple = (): readonly [number, number] =>
-  SquashMachineContext.useSelector((s) => [s.context.score.A, s.context.score.B] as const)
+  SquashMachineContext.useSelector(
+    (s) => [s.context.score.A, s.context.score.B] as const,
+  )
 
 export const useGrid = (): ActivityGrid =>
   SquashMachineContext.useSelector((s) => s.context.grid)

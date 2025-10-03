@@ -115,7 +115,9 @@ export const ScoreGrid = ({
                   <span className="text-sm">{players[row]}</span>
                 </div>
               </td>
-              {Array.from({ length: MAX_COLS }, (_, col) => renderCell(row, col))}
+              {Array.from({ length: MAX_COLS }, (_, col) =>
+                renderCell(row, col),
+              )}
             </tr>
           ))}
         </tbody>
