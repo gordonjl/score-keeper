@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm vite build"
+  command = "pnpm dlx vite@7.1.8 build"
   publish = "dist/client"
 
 [build.environment]
