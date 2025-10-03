@@ -5,6 +5,7 @@
 [build.environment]
   NODE_VERSION = "22.20.0"
   PNPM_VERSION = "8.15.9"
+  PNPM_FLAGS = "--prod=false"
 
 # SPA routing for TanStack Router / Vite
 [[redirects]]
