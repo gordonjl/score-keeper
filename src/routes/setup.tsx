@@ -7,12 +7,10 @@ import { SquashMachineContext } from '../contexts/SquashMachineContext'
 // Effect Schema for setup form (no Zod)
 const Team = S.Literal('A', 'B')
 const PlayerRow = S.Literal(1 as const, 2 as const)
-const Side = S.Literal('R', 'L')
 
 const FirstServerSchema = S.Struct({
   team: Team,
   player: PlayerRow,
-  side: Side,
 })
 
 // Trim is a transformer schema that removes whitespace from both ends
@@ -20,8 +18,6 @@ const FirstServerSchema = S.Struct({
 const NonEmptyTrimmedString = S.Trim.pipe(S.minLength(1))
 
 const SetupSchema = S.Struct({
-  teamA: NonEmptyTrimmedString,
-  teamB: NonEmptyTrimmedString,
   A1: NonEmptyTrimmedString,
   A2: NonEmptyTrimmedString,
   B1: NonEmptyTrimmedString,
@@ -41,8 +37,6 @@ function SetupRoute() {
 
   const form = useForm({
     defaultValues: {
-      teamA: '',
-      teamB: '',
       A1: '',
       A2: '',
       B1: '',
@@ -50,14 +44,11 @@ function SetupRoute() {
       firstServer: {
         team: 'A' as 'A' | 'B',
         player: 1 as 1 | 2,
-        side: 'R' as 'R' | 'L',
       },
     },
     onSubmit: ({ value }) => {
       // Build unknown payload to validate
       const payload = {
-        teamA: value.teamA,
-        teamB: value.teamB,
         A1: value.A1,
         A2: value.A2,
         B1: value.B1,
@@ -80,13 +71,16 @@ function SetupRoute() {
           A2: parsed.A2,
           B1: parsed.B1,
           B2: parsed.B2,
-          teamA: parsed.teamA,
-          teamB: parsed.teamB,
+          teamA: 'Team A',
+          teamB: 'Team B',
         },
       })
       actorRef.send({
         type: 'START_GAME',
-        firstServer: parsed.firstServer,
+        firstServer: {
+          ...parsed.firstServer,
+          side: 'R', // Always start from right side
+        },
         maxPoints: 15, // PAR-15 scoring
         winBy: 1, // strictly win-by-1
       })
@@ -104,35 +98,7 @@ function SetupRoute() {
           form.handleSubmit()
         }}
       >
-        <fieldset className="card bg-base-100 shadow p-4">
-          <legend className="card-title mb-2">Teams</legend>
-          <form.Field name="teamA">
-            {(field) => (
-              <label className="form-control w-full mb-2">
-                <span className="label-text">Team A</span>
-                <input
-                  className="input input-bordered"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.currentTarget.value)}
-                />
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="teamB">
-            {(field) => (
-              <label className="form-control w-full">
-                <span className="label-text">Team B</span>
-                <input
-                  className="input input-bordered"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.currentTarget.value)}
-                />
-              </label>
-            )}
-          </form.Field>
-        </fieldset>
-
-        <fieldset className="card bg-base-100 shadow p-4">
+        <fieldset className="card bg-base-100 shadow p-4 md:col-span-2">
           <legend className="card-title mb-2">Players</legend>
           <div className="grid grid-cols-2 gap-2">
             <form.Field name="A1">
@@ -188,55 +154,58 @@ function SetupRoute() {
 
         <fieldset className="card bg-base-100 shadow p-4 md:col-span-2">
           <legend className="card-title mb-2">Start</legend>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <label className="form-control">
-              <span className="label-text">Team</span>
-              <select
-                className="select select-bordered"
-                value={form.state.values.firstServer.team}
-                onChange={(e) =>
-                  form.setFieldValue('firstServer', {
-                    ...form.state.values.firstServer,
-                    team: e.currentTarget.value as 'A' | 'B',
-                  })
-                }
-              >
-                <option value="A">A</option>
-                <option value="B">B</option>
-              </select>
-            </label>
-            <label className="form-control">
-              <span className="label-text">Player</span>
-              <select
-                className="select select-bordered"
-                value={form.state.values.firstServer.player}
-                onChange={(e) =>
-                  form.setFieldValue('firstServer', {
-                    ...form.state.values.firstServer,
-                    player: Number(e.currentTarget.value) as 1 | 2,
-                  })
-                }
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </label>
-            <label className="form-control">
-              <span className="label-text">Side</span>
-              <select
-                className="select select-bordered"
-                value={form.state.values.firstServer.side}
-                onChange={(e) =>
-                  form.setFieldValue('firstServer', {
-                    ...form.state.values.firstServer,
-                    side: e.currentTarget.value as 'R' | 'L',
-                  })
-                }
-              >
-                <option value="R">Right</option>
-                <option value="L">Left</option>
-              </select>
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <form.Field name="firstServer.team">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">Team</span>
+                  <select
+                    className="select select-bordered"
+                    value={field.state.value}
+                    onChange={(e) => {
+                      field.handleChange(e.currentTarget.value as 'A' | 'B')
+                      // Reset player to 1 when team changes
+                      form.setFieldValue('firstServer.player', 1)
+                    }}
+                  >
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                  </select>
+                </label>
+              )}
+            </form.Field>
+            <form.Field name="firstServer.player">
+              {(field) => (
+                <label className="form-control">
+                  <span className="label-text">First Server</span>
+                  <select
+                    className="select select-bordered"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(Number(e.currentTarget.value) as 1 | 2)}
+                  >
+                    {form.state.values.firstServer.team === 'A' ? (
+                      <>
+                        <option value={1}>
+                          {form.state.values.A1 || 'A1'}
+                        </option>
+                        <option value={2}>
+                          {form.state.values.A2 || 'A2'}
+                        </option>
+                      </>
+                    ) : (
+                      <>
+                        <option value={1}>
+                          {form.state.values.B1 || 'B1'}
+                        </option>
+                        <option value={2}>
+                          {form.state.values.B2 || 'B2'}
+                        </option>
+                      </>
+                    )}
+                  </select>
+                </label>
+              )}
+            </form.Field>
           </div>
         </fieldset>
 
