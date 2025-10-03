@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MatchRouteImport } from './routes/_match'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MatchSummaryRouteImport } from './routes/_match.summary'
 import { Route as MatchSetupRouteImport } from './routes/_match.setup'
 import { Route as MatchGameRouteImport } from './routes/_match.game'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MatchSummaryRoute = MatchSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => MatchRoute,
 } as any)
 const MatchSetupRoute = MatchSetupRouteImport.update({
   id: '/setup',
@@ -38,11 +44,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
+  '/summary': typeof MatchSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
+  '/summary': typeof MatchSummaryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -50,13 +58,20 @@ export interface FileRoutesById {
   '/_match': typeof MatchRouteWithChildren
   '/_match/game': typeof MatchGameRoute
   '/_match/setup': typeof MatchSetupRoute
+  '/_match/summary': typeof MatchSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/game' | '/setup'
+  fullPaths: '/' | '/game' | '/setup' | '/summary'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/game' | '/setup'
-  id: '__root__' | '/' | '/_match' | '/_match/game' | '/_match/setup'
+  to: '/' | '/game' | '/setup' | '/summary'
+  id:
+    | '__root__'
+    | '/'
+    | '/_match'
+    | '/_match/game'
+    | '/_match/setup'
+    | '/_match/summary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -80,6 +95,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_match/summary': {
+      id: '/_match/summary'
+      path: '/summary'
+      fullPath: '/summary'
+      preLoaderRoute: typeof MatchSummaryRouteImport
+      parentRoute: typeof MatchRoute
+    }
     '/_match/setup': {
       id: '/_match/setup'
       path: '/setup'
@@ -100,11 +122,13 @@ declare module '@tanstack/react-router' {
 interface MatchRouteChildren {
   MatchGameRoute: typeof MatchGameRoute
   MatchSetupRoute: typeof MatchSetupRoute
+  MatchSummaryRoute: typeof MatchSummaryRoute
 }
 
 const MatchRouteChildren: MatchRouteChildren = {
   MatchGameRoute: MatchGameRoute,
   MatchSetupRoute: MatchSetupRoute,
+  MatchSummaryRoute: MatchSummaryRoute,
 }
 
 const MatchRouteWithChildren = MatchRoute._addFileChildren(MatchRouteChildren)

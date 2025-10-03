@@ -77,6 +77,21 @@ export const matchMachine = setup({
       currentGameActor: null,
     })),
   },
+  guards: {
+    isMatchComplete: ({ context, event }) => {
+      if (event.type !== 'GAME_COMPLETED') return false
+
+      // Count current wins
+      const gamesWonA = context.games.filter((g) => g.winner === 'A').length
+      const gamesWonB = context.games.filter((g) => g.winner === 'B').length
+
+      // Check if adding this game will result in 3 wins
+      const newGamesWonA = event.winner === 'A' ? gamesWonA + 1 : gamesWonA
+      const newGamesWonB = event.winner === 'B' ? gamesWonB + 1 : gamesWonB
+
+      return newGamesWonA >= 3 || newGamesWonB >= 3
+    },
+  },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5QFsCGAXAxgCwHQEsIAbMAYgGUBRAFQFUAFAfQFkBBagYQAkBtABgC6iUAAcA9rHzp8YgHbCQAD0QB2ABwA2XCoCcGlQCYDAFgDMagIwbjxgDQgAnolM6ArLguuNB0wb6udC1NjAwBfUPs0LDwAJzBUCAcKalYAJWpGADlKAHVGAHFWZkp+ISQQcUlpOQVlBAt-Y1wNPh0DDUsDQzVjNXsnBGMLFVwdY1dTPg1zYw6DV3DIjBwCWXzUZDJC4sYOAHlmegAZGkoAEVKFSqkZeXK6htcmlraOiy6DHr7HREtcYx0gLUplcKg6vVMFkWICiKygGzAHDEyBEJHQZHIKXSWVyBSKJUEVwkNxq90QRj4uD4kIMFkBfE0xl03wGXSaximRg5Jg0rgMY2hsLw8M2SJRaLIlEyZxY7G4l3K12qd1AdQpVJpdJ0DOszP6iCGIzGEymMzmCwiMOWeCFYtRYHRpFSlCo1AVomJytqiACBmaHNcgeCelMGn1g2Go3Gk2mPXN4UtsjEEDgCiFRKqt29CAAtGGfrmtHxiyXS6WVILrQRiGAMySVUpVHw-bp9IHadMnnYC0M1P9o6a42p5pXorg4gkBh7M6TVYg3DpRrSVKYXBC1IHw73+xNAxYrHwQoHRyt8GsEXWvWT6u0LLhTCoAXw6bNefnWRNRpy+Oo1CpQSoP4nsKCJ2hKl5ZteIThu8WjRg05jFv+UzAbgtrIva6IQbOjaDCY-xTHSUz6ACOgsgaFh9jYfKgryq5chWCZAA */
   id: 'match',
@@ -162,10 +177,17 @@ export const matchMachine = setup({
         }
       }),
       on: {
-        GAME_COMPLETED: {
-          target: 'gameComplete',
-          actions: ['recordGameResult', 'clearCurrentGame'],
-        },
+        GAME_COMPLETED: [
+          {
+            target: 'matchComplete',
+            guard: 'isMatchComplete',
+            actions: ['recordGameResult', 'clearCurrentGame'],
+          },
+          {
+            target: 'gameComplete',
+            actions: ['recordGameResult', 'clearCurrentGame'],
+          },
+        ],
       },
     },
     gameComplete: {

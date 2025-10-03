@@ -26,19 +26,27 @@ function GameRouteWrapper() {
   const matchData = MatchMachineContext.useSelector((s) => ({
     currentGameActor: s.context.currentGameActor,
     games: s.context.games,
+    isMatchComplete: s.matches('matchComplete'),
   }))
 
   const gameActor = matchData.currentGameActor
 
+  // If match is complete, redirect to summary
+  useEffect(() => {
+    if (matchData.isMatchComplete) {
+      navigate({ to: '/summary' })
+    }
+  }, [matchData.isMatchComplete, navigate])
+
   // If no game actor, redirect to setup
   useEffect(() => {
-    if (!gameActor) {
+    if (!gameActor && !matchData.isMatchComplete) {
       navigate({ to: '/setup' })
     }
-  }, [gameActor, navigate])
+  }, [gameActor, matchData.isMatchComplete, navigate])
 
   // Conditionally render GameRoute only when actor exists
-  if (!gameActor) {
+  if (!gameActor || matchData.isMatchComplete) {
     return <div className="p-4">Loading...</div>
   }
 
@@ -91,6 +99,12 @@ function GameRoute({
   const gamesWonA = matchGames.filter((g) => g.winner === 'A').length
   const gamesWonB = matchGames.filter((g) => g.winner === 'B').length
   const currentGameNumber = matchGames.length + 1
+
+  // Check if this game will complete the match (one team will have 3 wins)
+  const currentWinner = scoreA > scoreB ? 'A' : 'B'
+  const willCompleteMatch =
+    (currentWinner === 'A' && gamesWonA + 1 >= 3) ||
+    (currentWinner === 'B' && gamesWonB + 1 >= 3)
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 p-4 max-w-full mx-auto">
@@ -154,12 +168,18 @@ function GameRoute({
             winnerTeam={winnerTeam}
             scoreA={scoreA}
             scoreB={scoreB}
+            willCompleteMatch={willCompleteMatch}
             onCancel={() => gameActor.send({ type: 'UNDO' })}
             onConfirm={() => {
               gameActor.send({ type: 'CONFIRM_GAME_OVER' })
               const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
               matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+
+              // If match is complete, navigate to summary immediately
+              if (willCompleteMatch) {
+                navigate({ to: '/summary' })
+              }
             }}
             onNextGame={() => {
               setShowNextGameSetup(true)

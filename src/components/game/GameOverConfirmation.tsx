@@ -5,6 +5,7 @@ type GameOverConfirmationProps = {
   onCancel: () => void
   onConfirm: () => void
   onNextGame: () => void
+  willCompleteMatch?: boolean
 }
 
 export const GameOverConfirmation = ({
@@ -14,12 +15,16 @@ export const GameOverConfirmation = ({
   onCancel,
   onConfirm,
   onNextGame,
+  willCompleteMatch = false,
 }: GameOverConfirmationProps) => (
   <dialog className="modal modal-open">
     <div className="modal-box">
-      <h3 className="font-bold text-lg">Game Over!</h3>
+      <h3 className="font-bold text-lg">
+        {willCompleteMatch ? 'Match Over!' : 'Game Over!'}
+      </h3>
       <p className="py-4">
-        <span className="text-2xl font-bold">{winnerTeam}</span> wins the game!
+        <span className="text-2xl font-bold">{winnerTeam}</span> wins{' '}
+        {willCompleteMatch ? 'the match!' : 'the game!'}
       </p>
       <p className="text-sm text-base-content/70">
         Final Score:{' '}
@@ -32,12 +37,20 @@ export const GameOverConfirmation = ({
         <button className="btn btn-ghost" onClick={onCancel}>
           Cancel
         </button>
-        <button className="btn btn-outline" onClick={onConfirm}>
-          View Match Summary
-        </button>
-        <button className="btn btn-primary" onClick={onNextGame}>
-          Next Game
-        </button>
+        {willCompleteMatch ? (
+          <button className="btn btn-primary" onClick={onConfirm}>
+            View Match Summary
+          </button>
+        ) : (
+          <>
+            <button className="btn btn-outline" onClick={onConfirm}>
+              View Match Summary
+            </button>
+            <button className="btn btn-primary" onClick={onNextGame}>
+              Next Game
+            </button>
+          </>
+        )}
       </div>
     </div>
   </dialog>
