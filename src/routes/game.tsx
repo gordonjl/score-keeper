@@ -143,14 +143,14 @@ function GameRoute() {
         <button
           className="btn btn-primary flex-1"
           onClick={() => actorRef.send({ type: 'RALLY_WON', winner: 'A' })}
-          disabled={state.matches('gameOver')}
+          disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
           {players.teamA} Won Rally
         </button>
         <button
           className="btn btn-primary flex-1"
           onClick={() => actorRef.send({ type: 'RALLY_WON', winner: 'B' })}
-          disabled={state.matches('gameOver')}
+          disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
           {players.teamB} Won Rally
         </button>
@@ -161,7 +161,7 @@ function GameRoute() {
         <button
           className="btn btn-ghost"
           onClick={() => actorRef.send({ type: 'LET' })}
-          disabled={state.matches('gameOver') || state.matches('idle')}
+          disabled={state.matches('gameOver') || state.matches('idle') || state.matches('awaitingConfirmation')}
         >
           Let
         </button>
@@ -173,6 +173,41 @@ function GameRoute() {
           Undo
         </button>
       </div>
+
+      {/* Game Over Confirmation Dialog */}
+      {state.matches('awaitingConfirmation') && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Game Over!</h3>
+            <p className="py-4">
+              <span className="text-2xl font-bold">
+                {scoreA > scoreB ? players.teamA : players.teamB}
+              </span>{' '}
+              wins the game!
+            </p>
+            <p className="text-sm text-base-content/70">
+              Final Score: {scoreA > scoreB ? `${scoreA}-${scoreB}` : `${scoreB}-${scoreA}`}
+            </p>
+            <p className="text-sm text-base-content/70 mt-2">
+              Click Cancel to undo the last point and continue playing.
+            </p>
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => actorRef.send({ type: 'UNDO' })}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => actorRef.send({ type: 'CONFIRM_GAME_OVER' })}
+              >
+                Confirm Game Over
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
 
       {state.matches('gameOver') && (
         <div className="alert alert-success mt-4">

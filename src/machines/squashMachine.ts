@@ -66,6 +66,7 @@ export type Events =
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'CLICK_ROW'; row: RowKey }
   | { type: 'TOGGLE_SERVE_SIDE' }
+  | { type: 'CONFIRM_GAME_OVER' }
   | { type: 'LET' }
   | { type: 'UNDO' }
   | { type: 'RESET' }
@@ -458,9 +459,15 @@ export const squashMachine = setup({
     },
     check: {
       always: [
-        { guard: 'gameEnded', target: 'gameOver' },
+        { guard: 'gameEnded', target: 'awaitingConfirmation' },
         { target: 'inPlay' },
       ],
+    },
+    awaitingConfirmation: {
+      on: {
+        CONFIRM_GAME_OVER: { target: 'gameOver' },
+        // UNDO is handled globally and will transition back to inPlay
+      },
     },
     gameOver: { type: 'final' },
   },
