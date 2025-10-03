@@ -1,11 +1,13 @@
 [build]
-  command = "pnpm exec vite build"
+  command = "pnpm dlx vite@7.1.8 build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22.20.0"
   PNPM_VERSION = "8.15.9"
   PNPM_FLAGS = "--prod=false"
+  NODE_ENV = "development"
+  NPM_CONFIG_PRODUCTION = "false"
 
 # SPA routing for TanStack Router / Vite
 [[redirects]]
