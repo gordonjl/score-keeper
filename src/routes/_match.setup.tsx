@@ -156,37 +156,37 @@ function SetupRoute() {
   }, [matchData, searchParams, form])
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-base-200 to-base-300 py-4 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-4">
-          <h1 className="text-2xl sm:text-3xl font-bold">Setup Match</h1>
+    <div className="bg-gradient-to-br from-base-200 to-base-300 py-4 px-4">
+      <div className="max-w-4xl mx-auto pb-4">
+        <div className="text-center mb-2">
+          <h1 className="text-xl sm:text-2xl font-bold">Setup Match</h1>
         </div>
         <form
-          className="space-y-4"
+          className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault()
             form.handleSubmit()
           }}
         >
           <div className="card bg-base-100 shadow-xl">
-            <div className="card-body p-4 sm:p-6">
-              <h2 className="card-title text-lg mb-3">Players</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="card-body p-3 sm:p-4">
+              <h2 className="card-title text-base mb-2">Players</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Team A Column */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="badge badge-primary badge-lg w-full">
                     Team A
                   </div>
                   <form.Field name="A1">
                     {(field) => (
-                      <div className="form-control">
-                        <label className="label py-1">
+                      <div className="form-control w-full">
+                        <div className="label pb-1">
                           <span className="label-text font-semibold">
                             Player 1
                           </span>
-                        </label>
+                        </div>
                         <input
-                          className="input input-bordered"
+                          className="input input-bordered w-full"
                           placeholder="Enter player name"
                           value={field.state.value}
                           onChange={(e) =>
@@ -199,14 +199,14 @@ function SetupRoute() {
                   </form.Field>
                   <form.Field name="A2">
                     {(field) => (
-                      <div className="form-control">
-                        <label className="label py-1">
+                      <div className="form-control w-full">
+                        <div className="label pb-1">
                           <span className="label-text font-semibold">
                             Player 2
                           </span>
-                        </label>
+                        </div>
                         <input
-                          className="input input-bordered"
+                          className="input input-bordered w-full"
                           placeholder="Enter player name"
                           value={field.state.value}
                           onChange={(e) =>
@@ -220,20 +220,20 @@ function SetupRoute() {
                 </div>
 
                 {/* Team B Column */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="badge badge-secondary badge-lg w-full">
                     Team B
                   </div>
                   <form.Field name="B1">
                     {(field) => (
-                      <div className="form-control">
-                        <label className="label py-1">
+                      <div className="form-control w-full">
+                        <div className="label pb-1">
                           <span className="label-text font-semibold">
                             Player 1
                           </span>
-                        </label>
+                        </div>
                         <input
-                          className="input input-bordered"
+                          className="input input-bordered w-full"
                           placeholder="Enter player name"
                           value={field.state.value}
                           onChange={(e) =>
@@ -246,14 +246,14 @@ function SetupRoute() {
                   </form.Field>
                   <form.Field name="B2">
                     {(field) => (
-                      <div className="form-control">
-                        <label className="label py-1">
+                      <div className="form-control w-full">
+                        <div className="label pb-1">
                           <span className="label-text font-semibold">
                             Player 2
                           </span>
-                        </label>
+                        </div>
                         <input
-                          className="input input-bordered"
+                          className="input input-bordered w-full"
                           placeholder="Enter player name"
                           value={field.state.value}
                           onChange={(e) =>
@@ -270,8 +270,8 @@ function SetupRoute() {
           </div>
 
           <div className="card bg-base-100 shadow-xl">
-            <div className="card-body p-4 sm:p-6">
-              <h2 className="card-title text-lg mb-3">
+            <div className="card-body p-3 sm:p-4">
+              <h2 className="card-title text-base mb-2">
                 First Server Designation
               </h2>
               <form.Subscribe
