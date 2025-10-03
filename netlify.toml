@@ -1,4 +1,4 @@
 [build]
-  command = "pnpm install --prod=false && pnpm build"
+  command = "pnpm build"
   publish = "dist/client"
 
