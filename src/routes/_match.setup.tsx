@@ -1,8 +1,8 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Schema as S } from 'effect'
-import { useState } from 'react'
-import { SquashMachineContext } from '../contexts/SquashMachineContext'
+import { Either, Schema as S } from 'effect'
+import { useEffect, useState } from 'react'
+import { MatchMachineContext } from '../contexts/MatchMachineContext'
 
 // Effect Schema for setup form (no Zod)
 const Team = S.Literal('A', 'B')
@@ -22,12 +22,17 @@ const SetupSchema = S.Struct({
   firstServingTeam: Team,
 })
 
-export const Route = createFileRoute('/setup')({
+export const Route = createFileRoute('/_match/setup')({
   component: SetupRoute,
 })
 
 function SetupRoute() {
-  const actorRef = SquashMachineContext.useActorRef()
+  const actorRef = MatchMachineContext.useActorRef()
+  const matchData = MatchMachineContext.useSelector((s) => ({
+    players: s.context.players,
+    teamAFirstServer: s.context.teamAFirstServer,
+    teamBFirstServer: s.context.teamBFirstServer,
+  }))
   const navigate = useNavigate()
 
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -53,16 +58,17 @@ function SetupRoute() {
         teamBFirstServer: value.teamBFirstServer,
         firstServingTeam: value.firstServingTeam,
       }
-      // Use decodeUnknownSync for synchronous validation
-      let parsed: S.Schema.Type<typeof SetupSchema>
-      try {
-        parsed = S.decodeUnknownSync(SetupSchema)(payload)
-      } catch (error) {
+
+      const parseResult = S.decodeUnknownEither(SetupSchema)(payload)
+
+      if (Either.isLeft(parseResult)) {
         setSubmitError('Invalid form. Please check required fields.')
         return
       }
+
       setSubmitError(null)
-      
+      const parsed = parseResult.right
+
       // Reorder players so first servers are in row 1
       const players = {
         A1: parsed.teamAFirstServer === 1 ? parsed.A1 : parsed.A2,
@@ -72,24 +78,40 @@ function SetupRoute() {
         teamA: 'Team A',
         teamB: 'Team B',
       }
-      
+
+      // Setup the match
       actorRef.send({
-        type: 'SETUP_TEAMS',
+        type: 'SETUP_MATCH',
         players,
+        teamAFirstServer: parsed.teamAFirstServer,
+        teamBFirstServer: parsed.teamBFirstServer,
       })
+
+      // Start the first game
       actorRef.send({
-        type: 'START_GAME',
-        firstServer: {
-          team: parsed.firstServingTeam,
-          player: 1, // Always player 1 since we reordered
-          side: 'R', // Always start from right side
-        },
-        maxPoints: 15, // PAR-15 scoring
-        winBy: 1, // strictly win-by-1
+        type: 'START_NEW_GAME',
+        firstServingTeam: parsed.firstServingTeam,
       })
+
       navigate({ to: '/game' })
     },
   })
+
+  // Populate form with existing match data on mount
+  useEffect(() => {
+    console.log('Setup: Match data:', matchData)
+    if (matchData.players.A1) {
+      console.log('Setup: Populating form with existing data')
+      form.setFieldValue('A1', matchData.players.A1)
+      form.setFieldValue('A2', matchData.players.A2)
+      form.setFieldValue('B1', matchData.players.B1)
+      form.setFieldValue('B2', matchData.players.B2)
+      form.setFieldValue('teamAFirstServer', matchData.teamAFirstServer)
+      form.setFieldValue('teamBFirstServer', matchData.teamBFirstServer)
+    } else {
+      console.log('Setup: No existing match data found')
+    }
+  }, [matchData, form])
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -106,7 +128,9 @@ function SetupRoute() {
           <div className="grid grid-cols-2 gap-4">
             {/* Right Wall Column */}
             <div className="space-y-2">
-              <div className="text-sm font-semibold text-base-content/70 text-center">Right Wall</div>
+              <div className="text-sm font-semibold text-base-content/70 text-center">
+                Right Wall
+              </div>
               <form.Field name="A1">
                 {(field) => (
                   <label className="form-control">
@@ -114,7 +138,9 @@ function SetupRoute() {
                     <input
                       className="input input-bordered"
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      onChange={(e) =>
+                        field.handleChange(e.currentTarget.value)
+                      }
                       tabIndex={1}
                     />
                   </label>
@@ -127,17 +153,21 @@ function SetupRoute() {
                     <input
                       className="input input-bordered"
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      onChange={(e) =>
+                        field.handleChange(e.currentTarget.value)
+                      }
                       tabIndex={3}
                     />
                   </label>
                 )}
               </form.Field>
             </div>
-            
+
             {/* Left Wall Column */}
             <div className="space-y-2">
-              <div className="text-sm font-semibold text-base-content/70 text-center">Left Wall</div>
+              <div className="text-sm font-semibold text-base-content/70 text-center">
+                Left Wall
+              </div>
               <form.Field name="A2">
                 {(field) => (
                   <label className="form-control">
@@ -145,7 +175,9 @@ function SetupRoute() {
                     <input
                       className="input input-bordered"
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      onChange={(e) =>
+                        field.handleChange(e.currentTarget.value)
+                      }
                       tabIndex={2}
                     />
                   </label>
@@ -158,7 +190,9 @@ function SetupRoute() {
                     <input
                       className="input input-bordered"
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      onChange={(e) =>
+                        field.handleChange(e.currentTarget.value)
+                      }
                       tabIndex={4}
                     />
                   </label>
@@ -170,31 +204,59 @@ function SetupRoute() {
 
         <fieldset className="card bg-base-100 shadow p-4 md:col-span-2">
           <legend className="card-title mb-2">First Server Designation</legend>
-          <form.Subscribe selector={(state) => ({ A1: state.values.A1, A2: state.values.A2, B1: state.values.B1, B2: state.values.B2, teamAFirstServer: state.values.teamAFirstServer, teamBFirstServer: state.values.teamBFirstServer, firstServingTeam: state.values.firstServingTeam })}>
-            {({ A1, A2, B1, B2, teamAFirstServer, teamBFirstServer, firstServingTeam }) => (
+          <form.Subscribe
+            selector={(state) => ({
+              A1: state.values.A1,
+              A2: state.values.A2,
+              B1: state.values.B1,
+              B2: state.values.B2,
+              teamAFirstServer: state.values.teamAFirstServer,
+              teamBFirstServer: state.values.teamBFirstServer,
+              firstServingTeam: state.values.firstServingTeam,
+            })}
+          >
+            {({
+              A1,
+              A2,
+              B1,
+              B2,
+              teamAFirstServer,
+              teamBFirstServer,
+              firstServingTeam,
+            }) => (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Team A First Server */}
                 <div className="space-y-2">
-                  <div className="font-semibold">Team A - Who serves first on hand-in?</div>
+                  <div className="font-semibold">
+                    Team A - Who serves first on hand-in?
+                  </div>
                   <div className="flex gap-3">
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-semibold">{A1 || 'A1'}</span>
+                      <span className="label-text font-semibold">
+                        {A1 || 'A1'}
+                      </span>
                       <input
                         type="radio"
                         name="teamAFirstServer"
                         className="radio radio-primary"
                         checked={teamAFirstServer === 1}
-                        onChange={() => form.setFieldValue('teamAFirstServer', 1)}
+                        onChange={() =>
+                          form.setFieldValue('teamAFirstServer', 1)
+                        }
                       />
                     </label>
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-semibold">{A2 || 'A2'}</span>
+                      <span className="label-text font-semibold">
+                        {A2 || 'A2'}
+                      </span>
                       <input
                         type="radio"
                         name="teamAFirstServer"
                         className="radio radio-primary"
                         checked={teamAFirstServer === 2}
-                        onChange={() => form.setFieldValue('teamAFirstServer', 2)}
+                        onChange={() =>
+                          form.setFieldValue('teamAFirstServer', 2)
+                        }
                       />
                     </label>
                   </div>
@@ -202,26 +264,36 @@ function SetupRoute() {
 
                 {/* Team B First Server */}
                 <div className="space-y-2">
-                  <div className="font-semibold">Team B - Who serves first on hand-in?</div>
+                  <div className="font-semibold">
+                    Team B - Who serves first on hand-in?
+                  </div>
                   <div className="flex gap-3">
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-semibold">{B1 || 'B1'}</span>
+                      <span className="label-text font-semibold">
+                        {B1 || 'B1'}
+                      </span>
                       <input
                         type="radio"
                         name="teamBFirstServer"
                         className="radio radio-primary"
                         checked={teamBFirstServer === 1}
-                        onChange={() => form.setFieldValue('teamBFirstServer', 1)}
+                        onChange={() =>
+                          form.setFieldValue('teamBFirstServer', 1)
+                        }
                       />
                     </label>
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-semibold">{B2 || 'B2'}</span>
+                      <span className="label-text font-semibold">
+                        {B2 || 'B2'}
+                      </span>
                       <input
                         type="radio"
                         name="teamBFirstServer"
                         className="radio radio-primary"
                         checked={teamBFirstServer === 2}
-                        onChange={() => form.setFieldValue('teamBFirstServer', 2)}
+                        onChange={() =>
+                          form.setFieldValue('teamBFirstServer', 2)
+                        }
                       />
                     </label>
                   </div>
@@ -229,7 +301,9 @@ function SetupRoute() {
 
                 {/* Which Team Serves First Overall */}
                 <div className="md:col-span-2 space-y-2">
-                  <div className="font-semibold">Which team serves first at 0-0?</div>
+                  <div className="font-semibold">
+                    Which team serves first at 0-0?
+                  </div>
                   <div className="flex gap-3 justify-center">
                     <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200">
                       <span className="label-text font-bold">Team A</span>
@@ -238,7 +312,9 @@ function SetupRoute() {
                         name="firstServingTeam"
                         className="radio radio-primary"
                         checked={firstServingTeam === 'A'}
-                        onChange={() => form.setFieldValue('firstServingTeam', 'A')}
+                        onChange={() =>
+                          form.setFieldValue('firstServingTeam', 'A')
+                        }
                       />
                     </label>
                     <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200">
@@ -248,7 +324,9 @@ function SetupRoute() {
                         name="firstServingTeam"
                         className="radio radio-primary"
                         checked={firstServingTeam === 'B'}
-                        onChange={() => form.setFieldValue('firstServingTeam', 'B')}
+                        onChange={() =>
+                          form.setFieldValue('firstServingTeam', 'B')
+                        }
                       />
                     </label>
                   </div>

@@ -1,26 +1,72 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { SquashMachineContext } from '../contexts/SquashMachineContext'
-import {
-  useGrid,
-  usePlayers,
-  useScoreTuple,
-  useServeAnnouncement,
-  useServerRowKey,
-} from '../hooks/useSquash'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useSelector } from '@xstate/react'
+import { useEffect } from 'react'
+import { MatchMachineContext } from '../contexts/MatchMachineContext'
 import type { RowKey } from '../machines/squashMachine'
 
-export const Route = createFileRoute('/game')({
-  component: GameRoute,
+export const Route = createFileRoute('/_match/game')({
+  component: GameRouteWrapper,
 })
 
-function GameRoute() {
-  const state = SquashMachineContext.useSelector((s) => s)
-  const actorRef = SquashMachineContext.useActorRef()
-  const [scoreA, scoreB] = useScoreTuple()
-  const announcement = useServeAnnouncement()
-  const grid = useGrid()
-  const players = usePlayers()
-  const serverRowKey = useServerRowKey()
+// Wrapper component that conditionally renders based on game actor existence
+function GameRouteWrapper() {
+  const navigate = useNavigate()
+  const matchData = MatchMachineContext.useSelector((s) => ({
+    currentGameActor: s.context.currentGameActor,
+    games: s.context.games,
+  }))
+  
+  const gameActor = matchData.currentGameActor
+  
+  // If no game actor, redirect to setup
+  useEffect(() => {
+    if (!gameActor) {
+      navigate({ to: '/setup' })
+    }
+  }, [gameActor, navigate])
+  
+  // Conditionally render GameRoute only when actor exists
+  if (!gameActor) {
+    return <div className="p-4">Loading...</div>
+  }
+  
+  return <GameRoute gameActor={gameActor} matchGames={matchData.games} />
+}
+
+// Main component that requires a game actor
+function GameRoute({ gameActor, matchGames }: { gameActor: any; matchGames: Array<any> }) {
+  const navigate = useNavigate()
+  const matchActorRef = MatchMachineContext.useActorRef()
+  
+  // Subscribe to game actor state - actor is guaranteed to exist here
+  const gameState = useSelector(gameActor, (s: any) => ({
+    score: s.context.score,
+    grid: s.context.grid,
+    players: s.context.players,
+    server: s.context.server,
+    history: s.context.history,
+    isGameOver: s.matches('gameOver'),
+    isAwaitingConfirmation: s.matches('awaitingConfirmation'),
+    isIdle: s.matches('idle'),
+  }))
+  const scoreA = gameState.score.A
+  const scoreB = gameState.score.B
+  const grid = gameState.grid
+  const players = gameState.players
+  const serverRowKey = `${gameState.server.team}${gameState.server.player}` as RowKey
+  
+  // Serve announcement
+  const serverScore = gameState.score[gameState.server.team]
+  const receiverTeam = gameState.server.team === 'A' ? 'B' : 'A'
+  const receiverScore = gameState.score[receiverTeam]
+  const toWords = (n: number) => {
+    const words = ['Love', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen']
+    return words[n] ?? String(n)
+  }
+  const scorePhrase = serverScore === receiverScore ? `${toWords(serverScore)} All` : `${toWords(serverScore)}–${toWords(receiverScore)}`
+  const serverName = players[serverRowKey] || serverRowKey
+  const sideName = gameState.server.side === 'R' ? 'Right' : 'Left'
+  const announcement = `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
 
   // Determine which team served first by checking column 0 of the grid
   // The team that has an entry in column 0 is the first-serving team
@@ -41,10 +87,10 @@ function GameRoute() {
     
     // Cell is clickable only at hand-in (handIndex === 0 AND this is the first serve of the hand)
     // We check if the previous column is empty to determine if this is truly the first serve
-    const serverTeam = state.context.server.team
+    const serverTeam = gameState.server.team
     const prevCol = (serverTeam === 'A' ? scoreA : scoreB) - 1
     const isFirstServeOfHand = prevCol < 0 || !grid[serverRowKey][prevCol]
-    const isClickable = isActive && state.context.server.handIndex === 0 && isFirstServeOfHand && !state.matches('gameOver')
+    const isClickable = isActive && gameState.server.handIndex === 0 && isFirstServeOfHand && !gameState.isGameOver
 
     // Check if this is a merged X cell
     const teamRow = row.startsWith('A') ? 'A' : 'B'
@@ -74,7 +120,7 @@ function GameRoute() {
 
     const handleClick = () => {
       if (isClickable) {
-        actorRef.send({ type: 'TOGGLE_SERVE_SIDE' })
+        gameActor.send({ type: 'TOGGLE_SERVE_SIDE' })
       }
     }
 
@@ -156,8 +202,8 @@ function GameRoute() {
       <div className="flex gap-4 mb-4">
         <button
           className="btn btn-primary flex-1"
-          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam })}
-          disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
+          onClick={() => gameActor.send({ type: 'RALLY_WON', winner: firstServingTeam })}
+          disabled={gameState.isGameOver || gameState.isAwaitingConfirmation}
         >
           {firstServingTeam === 'A' 
             ? `${players.A1} & ${players.A2}` 
@@ -165,8 +211,8 @@ function GameRoute() {
         </button>
         <button
           className="btn btn-primary flex-1"
-          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam === 'A' ? 'B' : 'A' })}
-          disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
+          onClick={() => gameActor.send({ type: 'RALLY_WON', winner: firstServingTeam === 'A' ? 'B' : 'A' })}
+          disabled={gameState.isGameOver || gameState.isAwaitingConfirmation}
         >
           {firstServingTeam === 'A' 
             ? `${players.B1} & ${players.B2}` 
@@ -178,22 +224,22 @@ function GameRoute() {
       <div className="flex gap-2 flex-wrap">
         <button
           className="btn btn-ghost"
-          onClick={() => actorRef.send({ type: 'LET' })}
-          disabled={state.matches('gameOver') || state.matches('idle') || state.matches('awaitingConfirmation')}
+          onClick={() => gameActor.send({ type: 'LET' })}
+          disabled={gameState.isGameOver || gameState.isIdle || gameState.isAwaitingConfirmation}
         >
           Let
         </button>
         <button
           className="btn btn-warning"
-          onClick={() => actorRef.send({ type: 'UNDO' })}
-          disabled={state.context.history.length === 0}
+          onClick={() => gameActor.send({ type: 'UNDO' })}
+          disabled={gameState.history.length === 0}
         >
           Undo
         </button>
       </div>
 
       {/* Game Over Confirmation Dialog */}
-      {state.matches('awaitingConfirmation') && (
+      {gameState.isAwaitingConfirmation && (
         <dialog className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg">Game Over!</h3>
@@ -212,13 +258,19 @@ function GameRoute() {
             <div className="modal-action">
               <button
                 className="btn btn-ghost"
-                onClick={() => actorRef.send({ type: 'UNDO' })}
+                onClick={() => gameActor.send({ type: 'UNDO' })}
               >
                 Cancel
               </button>
               <button
                 className="btn btn-primary"
-                onClick={() => actorRef.send({ type: 'CONFIRM_GAME_OVER' })}
+                onClick={() => {
+                  // Confirm game over and notify match machine
+                  gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+                  const finalScore = { A: scoreA, B: scoreB }
+                  const winner = scoreA > scoreB ? 'A' as const : 'B' as const
+                  matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+                }}
               >
                 Confirm Game Over
               </button>
@@ -227,11 +279,52 @@ function GameRoute() {
         </dialog>
       )}
 
-      {state.matches('gameOver') && (
-        <div className="alert alert-success mt-4">
-          <span className="font-bold">
-            Game Over! {scoreA > scoreB ? players.teamA : players.teamB} wins!
-          </span>
+      {gameState.isGameOver && (
+        <div className="space-y-4 mt-4">
+          <div className="alert alert-success">
+            <span className="font-bold">
+              Game #{matchGames.length} Complete! {scoreA > scoreB ? players.teamA : players.teamB} wins!
+            </span>
+          </div>
+          
+          {/* Match Summary */}
+          {matchGames.length > 0 && (
+            <div className="card bg-base-100 shadow p-4">
+              <h3 className="font-bold mb-2">Match Summary</h3>
+              <div className="space-y-1">
+                {matchGames.map((game: any) => (
+                  <div key={game.gameNumber} className="text-sm">
+                    Game {game.gameNumber}: {game.winner === 'A' ? players.teamA : players.teamB} wins{' '}
+                    ({game.finalScore.A}-{game.finalScore.B})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Start New Game Button */}
+          <div className="flex gap-2">
+            <button
+              className="btn btn-primary flex-1"
+              onClick={() => {
+                // Determine which team serves first for next game (alternate)
+                const lastGame = matchGames[matchGames.length - 1]
+                const nextServingTeam = lastGame.winner === 'A' ? 'B' as const : 'A' as const
+                matchActorRef.send({ type: 'START_NEW_GAME', firstServingTeam: nextServingTeam })
+              }}
+            >
+              Start Game #{matchGames.length + 1}
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                matchActorRef.send({ type: 'END_MATCH' })
+                navigate({ to: '/' })
+              }}
+            >
+              End Match
+            </button>
+          </div>
         </div>
       )}
     </div>

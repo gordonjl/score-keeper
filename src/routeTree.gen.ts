@@ -9,18 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as GameRouteImport } from './routes/game'
+import { Route as MatchRouteImport } from './routes/_match'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MatchSetupRouteImport } from './routes/_match.setup'
+import { Route as MatchGameRouteImport } from './routes/_match.game'
 
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GameRoute = GameRouteImport.update({
-  id: '/game',
-  path: '/game',
+const MatchRoute = MatchRouteImport.update({
+  id: '/_match',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -28,51 +23,54 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MatchSetupRoute = MatchSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => MatchRoute,
+} as any)
+const MatchGameRoute = MatchGameRouteImport.update({
+  id: '/game',
+  path: '/game',
+  getParentRoute: () => MatchRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/game': typeof GameRoute
-  '/setup': typeof SetupRoute
+  '/game': typeof MatchGameRoute
+  '/setup': typeof MatchSetupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/game': typeof GameRoute
-  '/setup': typeof SetupRoute
+  '/game': typeof MatchGameRoute
+  '/setup': typeof MatchSetupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/game': typeof GameRoute
-  '/setup': typeof SetupRoute
+  '/_match': typeof MatchRouteWithChildren
+  '/_match/game': typeof MatchGameRoute
+  '/_match/setup': typeof MatchSetupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/game' | '/setup'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/game' | '/setup'
-  id: '__root__' | '/' | '/game' | '/setup'
+  id: '__root__' | '/' | '/_match' | '/_match/game' | '/_match/setup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  GameRoute: typeof GameRoute
-  SetupRoute: typeof SetupRoute
+  MatchRoute: typeof MatchRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/game': {
-      id: '/game'
-      path: '/game'
-      fullPath: '/game'
-      preLoaderRoute: typeof GameRouteImport
+    '/_match': {
+      id: '/_match'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof MatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -82,13 +80,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_match/setup': {
+      id: '/_match/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof MatchSetupRouteImport
+      parentRoute: typeof MatchRoute
+    }
+    '/_match/game': {
+      id: '/_match/game'
+      path: '/game'
+      fullPath: '/game'
+      preLoaderRoute: typeof MatchGameRouteImport
+      parentRoute: typeof MatchRoute
+    }
   }
 }
 
+interface MatchRouteChildren {
+  MatchGameRoute: typeof MatchGameRoute
+  MatchSetupRoute: typeof MatchSetupRoute
+}
+
+const MatchRouteChildren: MatchRouteChildren = {
+  MatchGameRoute: MatchGameRoute,
+  MatchSetupRoute: MatchSetupRoute,
+}
+
+const MatchRouteWithChildren = MatchRoute._addFileChildren(MatchRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  GameRoute: GameRoute,
-  SetupRoute: SetupRoute,
+  MatchRoute: MatchRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
