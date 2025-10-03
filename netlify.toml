@@ -1,0 +1,18 @@
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22.20.0"
+  PNPM_VERSION = "8.15.9"
+
+# SPA routing for TanStack Router / Vite
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Local `netlify dev` convenience (does not affect deploys)
+[dev]
+  command = "pnpm dev"
+  port = 3000
