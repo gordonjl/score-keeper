@@ -65,6 +65,7 @@ export type Events =
     }
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'CLICK_ROW'; row: RowKey }
+  | { type: 'TOGGLE_SERVE_SIDE' }
   | { type: 'LET' }
   | { type: 'UNDO' }
   | { type: 'RESET' }
@@ -225,6 +226,20 @@ export const squashMachine = setup({
       const value: Cell = context.server.side
       const nextGrid = writeCell(context.grid, currentRow, col, value)
       return { grid: nextGrid }
+    }),
+
+    // Toggle serve side (R <-> L) when starting a new hand
+    // Only allowed when handIndex === 0
+    toggleServeSide: assign(({ context }) => {
+      if (context.server.handIndex !== 0) return {}
+      const newSide = flip(context.server.side)
+      const col = colForTeamServe(context, context.server.team)
+      const currentRow = rowKey(context.server.team, context.server.player)
+      const nextGrid = writeCell(context.grid, currentRow, col, newSide)
+      return {
+        server: { ...context.server, side: newSide },
+        grid: nextGrid,
+      }
     }),
 
     rallyWon: assign(({ context }, { winner }: { winner: Team }) => {
@@ -434,6 +449,9 @@ export const squashMachine = setup({
           actions: [
             { type: 'clickRow', params: ({ event: { row } }) => ({ row }) },
           ],
+        },
+        TOGGLE_SERVE_SIDE: {
+          actions: ['toggleServeSide'],
         },
         LET: {},
       },

@@ -30,6 +30,13 @@ function GameRoute() {
     const isCurrentServer = row === serverRowKey && col === scoreA && row.startsWith('A')
     const isCurrentServerB = row === serverRowKey && col === scoreB && row.startsWith('B')
     const isActive = isCurrentServer || isCurrentServerB
+    
+    // Cell is clickable only at hand-in (handIndex === 0 AND this is the first serve of the hand)
+    // We check if the previous column is empty to determine if this is truly the first serve
+    const serverTeam = state.context.server.team
+    const prevCol = (serverTeam === 'A' ? scoreA : scoreB) - 1
+    const isFirstServeOfHand = prevCol < 0 || !grid[serverRowKey][prevCol]
+    const isClickable = isActive && state.context.server.handIndex === 0 && isFirstServeOfHand && !state.matches('gameOver')
 
     // Check if this is a merged X cell
     const teamRow = row.startsWith('A') ? 'A' : 'B'
@@ -57,12 +64,20 @@ function GameRoute() {
       return null
     }
 
+    const handleClick = () => {
+      if (isClickable) {
+        actorRef.send({ type: 'TOGGLE_SERVE_SIDE' })
+      }
+    }
+
     return (
       <td
         key={`${row}-${col}`}
+        onClick={handleClick}
         className={`border border-base-300 p-1 text-center text-sm min-w-[2rem] ${
           isActive ? 'bg-primary/20 font-bold' : ''
-        }`}
+        } ${isClickable ? 'cursor-pointer hover:bg-primary/40' : ''}`}
+        title={isClickable ? 'Click to toggle R/L' : ''}
       >
         {cell || ''}
       </td>
