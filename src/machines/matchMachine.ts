@@ -1,6 +1,6 @@
 import { assign, createActor, setup } from 'xstate'
 import { squashMachine } from './squashMachine'
-import type { PlayerNameMap, Team } from './squashMachine'
+import type { PlayerName, PlayerNameMap, Team } from './squashMachine'
 
 // Match-level types
 export type GameResult = {
@@ -28,10 +28,10 @@ export type MatchEvents =
       type: 'START_NEW_GAME'
       firstServingTeam: Team
       players?: {
-        A1: string
-        A2: string
-        B1: string
-        B2: string
+        A1: PlayerName
+        A2: PlayerName
+        B1: PlayerName
+        B2: PlayerName
       }
       teamASide?: 'R' | 'L'
       teamBSide?: 'R' | 'L'
@@ -98,10 +98,10 @@ export const matchMachine = setup({
   initial: 'idle',
   context: {
     players: {
-      A1: '',
-      A2: '',
-      B1: '',
-      B2: '',
+      A1: { firstName: '', lastName: '', fullName: '' },
+      A2: { firstName: '', lastName: '', fullName: '' },
+      B1: { firstName: '', lastName: '', fullName: '' },
+      B2: { firstName: '', lastName: '', fullName: '' },
       teamA: 'Team A',
       teamB: 'Team B',
     },
@@ -141,8 +141,8 @@ export const matchMachine = setup({
               A2: event.players.A2,
               B1: event.players.B1,
               B2: event.players.B2,
-              teamA: `${event.players.A1} & ${event.players.A2}`,
-              teamB: `${event.players.B1} & ${event.players.B2}`,
+              teamA: `${event.players.A1.fullName} & ${event.players.A2.fullName}`,
+              teamB: `${event.players.B1.fullName} & ${event.players.B2.fullName}`,
             }
           : context.players
 

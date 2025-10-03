@@ -1,20 +1,21 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { MatchMachineContext } from '../contexts/MatchMachineContext'
+import { ActionButtons } from '../components/game/ActionButtons'
+import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
+import { MatchProgress } from '../components/game/MatchProgress'
+import { MatchSummary } from '../components/game/MatchSummary'
+import { NextGameSetup } from '../components/game/NextGameSetup'
+import { RallyButtons } from '../components/game/RallyButtons'
+import { ScoreGrid } from '../components/game/ScoreGrid'
+import { ScoreHeader } from '../components/game/ScoreHeader'
+import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { useGameState } from '../components/game/useGameState'
 import {
   determineFirstServingTeam,
   getOrderedRows,
 } from '../components/game/utils'
-import { ScoreHeader } from '../components/game/ScoreHeader'
-import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
-import { ScoreGrid } from '../components/game/ScoreGrid'
-import { RallyButtons } from '../components/game/RallyButtons'
-import { ActionButtons } from '../components/game/ActionButtons'
-import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
-import { MatchSummary } from '../components/game/MatchSummary'
-import { NextGameSetup } from '../components/game/NextGameSetup'
-import { MatchProgress } from '../components/game/MatchProgress'
+import { MatchMachineContext } from '../contexts/MatchMachineContext'
+import type { PlayerName } from '../machines/squashMachine'
 
 export const Route = createFileRoute('/_match/game')({
   component: GameRouteWrapper,
@@ -79,6 +80,7 @@ function GameRoute({
     isAwaitingConfirmation,
     isIdle,
     announcement,
+    playerRowLabels,
   } = useGameState(gameActor)
 
   // Get match context for next game setup
@@ -94,6 +96,12 @@ function GameRoute({
   const topScore = firstServingTeam === 'A' ? scoreA : scoreB
   const bottomScore = firstServingTeam === 'A' ? scoreB : scoreA
   const winnerTeam = scoreA > scoreB ? players.teamA : players.teamB
+
+  // Strictly typed team name map for ScoreHeader
+  const teamNames: Record<'teamA' | 'teamB', string> = {
+    teamA: players.teamA,
+    teamB: players.teamB,
+  }
 
   // Calculate games won
   const gamesWonA = matchGames.filter((g) => g.winner === 'A').length
@@ -113,7 +121,7 @@ function GameRoute({
         <MatchProgress
           games={matchGames}
           currentGameNumber={currentGameNumber}
-          players={matchPlayers}
+          players={{ teamA: matchPlayers.teamA, teamB: matchPlayers.teamB }}
           matchStartTime={matchStartTime}
           isGameInProgress={!isGameOver}
         />
@@ -126,7 +134,7 @@ function GameRoute({
           bottomTeam={bottomTeam}
           topScore={topScore}
           bottomScore={bottomScore}
-          players={players}
+          players={teamNames}
           currentGameNumber={currentGameNumber}
           gamesWonA={gamesWonA}
           gamesWonB={gamesWonB}
@@ -136,7 +144,7 @@ function GameRoute({
 
         <ScoreGrid
           rows={rows}
-          players={players}
+          players={playerRowLabels}
           grid={grid}
           serverRowKey={serverRowKey}
           scoreA={scoreA}
@@ -151,7 +159,12 @@ function GameRoute({
 
         <RallyButtons
           firstServingTeam={firstServingTeam}
-          players={players}
+          players={{
+            A1: players.A1.fullName,
+            A2: players.A2.fullName,
+            B1: players.B1.fullName,
+            B2: players.B2.fullName,
+          }}
           isDisabled={isGameOver || isAwaitingConfirmation}
           onRallyWon={(winner) => gameActor.send({ type: 'RALLY_WON', winner })}
         />
@@ -189,7 +202,7 @@ function GameRoute({
 
         {showNextGameSetup && (
           <NextGameSetup
-            isFirstGame={matchGames.length === 0}
+            isFirstGame={false}
             lastWinner={scoreA > scoreB ? 'A' : 'B'}
             players={matchPlayers}
             onCancel={() => setShowNextGameSetup(false)}
@@ -201,10 +214,21 @@ function GameRoute({
               matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
 
               // Start new game immediately
+              const pick = (
+                name: string,
+                p1: PlayerName,
+                p2: PlayerName,
+              ): PlayerName => (name === p1.fullName ? p1 : p2)
+              const reordered = {
+                A1: pick(config.players.A1, matchPlayers.A1, matchPlayers.A2),
+                A2: pick(config.players.A2, matchPlayers.A1, matchPlayers.A2),
+                B1: pick(config.players.B1, matchPlayers.B1, matchPlayers.B2),
+                B2: pick(config.players.B2, matchPlayers.B1, matchPlayers.B2),
+              }
               matchActorRef.send({
                 type: 'START_NEW_GAME',
                 firstServingTeam: config.firstServingTeam,
-                players: config.players,
+                players: reordered,
                 teamASide: config.teamASide,
                 teamBSide: config.teamBSide,
               })
@@ -216,7 +240,7 @@ function GameRoute({
         {isGameOver && !showNextGameSetup && (
           <MatchSummary
             games={matchGames}
-            players={players}
+            players={{ teamA: players.teamA, teamB: players.teamB }}
             currentGameNumber={matchGames.length}
             currentWinner={winnerTeam}
             onStartNewGame={() => {

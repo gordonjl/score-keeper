@@ -7,11 +7,17 @@ export type Side = 'R' | 'L'
 export type RowKey = 'A1' | 'A2' | 'B1' | 'B2'
 export type Cell = '' | 'R' | 'L' | 'R/' | 'L/' | 'X' | '/'
 
+export type PlayerName = {
+  firstName: string
+  lastName: string
+  fullName: string // computed: "firstName lastName"
+}
+
 export type PlayerNameMap = {
-  A1: string
-  A2: string
-  B1: string
-  B2: string
+  A1: PlayerName
+  A2: PlayerName
+  B1: PlayerName
+  B2: PlayerName
   teamA: string
   teamB: string
 }
@@ -154,9 +160,7 @@ export const serveAnnouncement = (ctx: Context): string => {
     serverScore === receiverScore
       ? `${serverWords} All`
       : `${serverWords}–${receiverWords}`
-  const who =
-    players[rowKey(server.team, server.player)] ||
-    `${server.team}${server.player}`
+  const who = players[rowKey(server.team, server.player)].lastName
   const side = server.side === 'R' ? 'Right' : 'Left'
   return `${scorePhrase}, ${who} to Serve from the ${side}`
 }
@@ -394,10 +398,10 @@ export const squashMachine = setup({
   initial: 'idle',
   context: () => ({
     players: {
-      A1: 'A1',
-      A2: 'A2',
-      B1: 'B1',
-      B2: 'B2',
+      A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
+      A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
+      B1: { firstName: 'B1', lastName: 'Player', fullName: 'B1 Player' },
+      B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
       teamA: 'Team A',
       teamB: 'Team B',
     },

@@ -9,7 +9,7 @@ type GameResult = {
 type MatchProgressProps = {
   games: Array<GameResult>
   currentGameNumber: number
-  players: Record<string, string>
+  players: { teamA: string; teamB: string }
   matchStartTime?: number
   isGameInProgress: boolean
 }

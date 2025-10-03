@@ -43,9 +43,6 @@ export const GameOverConfirmation = ({
           </button>
         ) : (
           <>
-            <button className="btn btn-outline" onClick={onConfirm}>
-              View Match Summary
-            </button>
             <button className="btn btn-primary" onClick={onNextGame}>
               Next Game
             </button>

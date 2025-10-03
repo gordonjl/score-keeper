@@ -1,9 +1,11 @@
+type TeamKey = 'teamA' | 'teamB'
+
 type ScoreHeaderProps = {
-  topTeam: string
-  bottomTeam: string
+  topTeam: TeamKey
+  bottomTeam: TeamKey
   topScore: number
   bottomScore: number
-  players: Record<string, string>
+  players: Record<TeamKey, string>
   currentGameNumber: number
   gamesWonA: number
   gamesWonB: number

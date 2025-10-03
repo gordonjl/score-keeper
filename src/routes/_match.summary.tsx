@@ -40,10 +40,10 @@ function MatchSummaryRoute() {
       search: {
         teamA: matchData.players.teamA,
         teamB: matchData.players.teamB,
-        A1: matchData.players.A1,
-        A2: matchData.players.A2,
-        B1: matchData.players.B1,
-        B2: matchData.players.B2,
+        A1: matchData.players.A1.fullName,
+        A2: matchData.players.A2.fullName,
+        B1: matchData.players.B1.fullName,
+        B2: matchData.players.B2.fullName,
       },
     })
   }
@@ -149,8 +149,8 @@ function MatchSummaryRoute() {
                   {matchData.players.teamA}
                 </h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>{matchData.players.A1}</li>
-                  <li>{matchData.players.A2}</li>
+                  <li>{matchData.players.A1.fullName}</li>
+                  <li>{matchData.players.A2.fullName}</li>
                 </ul>
               </div>
               <div className="bg-base-200 p-3 rounded-lg">
@@ -158,8 +158,8 @@ function MatchSummaryRoute() {
                   {matchData.players.teamB}
                 </h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>{matchData.players.B1}</li>
-                  <li>{matchData.players.B2}</li>
+                  <li>{matchData.players.B1.fullName}</li>
+                  <li>{matchData.players.B2.fullName}</li>
                 </ul>
               </div>
             </div>

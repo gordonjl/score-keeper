@@ -1,27 +1,16 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Either, Schema as S } from 'effect'
-import { useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
+import type { PlayerName } from '../machines/squashMachine'
 
 // Effect Schema for setup form (no Zod)
 const Team = S.Literal('A', 'B')
 const PlayerRow = S.Literal(1 as const, 2 as const)
 
-// Trim is a transformer schema that removes whitespace from both ends
-// We compose it with a minLength filter to ensure non-empty strings
-const NonEmptyTrimmedString = S.Trim.pipe(S.minLength(1))
-
-const SetupSchema = S.Struct({
-  A1: NonEmptyTrimmedString,
-  A2: NonEmptyTrimmedString,
-  B1: NonEmptyTrimmedString,
-  B2: NonEmptyTrimmedString,
-  teamAFirstServer: PlayerRow,
-  teamBFirstServer: PlayerRow,
-  firstServingTeam: Team,
-})
+// Using a BasicSchema built in onSubmit for more flexible validation
 
 type SetupSearch = {
   teamA?: string
@@ -60,10 +49,14 @@ function SetupRoute() {
 
   const form = useForm({
     defaultValues: {
-      A1: '',
-      A2: '',
-      B1: '',
-      B2: '',
+      A1First: '',
+      A1Last: '',
+      A2First: '',
+      A2Last: '',
+      B1First: '',
+      B1Last: '',
+      B2First: '',
+      B2Last: '',
       teamAFirstServer: 1 as 1 | 2,
       teamBFirstServer: 1 as 1 | 2,
       firstServingTeam: 'A' as 'A' | 'B',
@@ -71,38 +64,88 @@ function SetupRoute() {
     onSubmit: ({ value }) => {
       // Build unknown payload to validate
       const payload = {
-        A1: value.A1,
-        A2: value.A2,
-        B1: value.B1,
-        B2: value.B2,
+        A1First: value.A1First,
+        A1Last: value.A1Last,
+        A2First: value.A2First,
+        A2Last: value.A2Last,
+        B1First: value.B1First,
+        B1Last: value.B1Last,
+        B2First: value.B2First,
+        B2Last: value.B2Last,
         teamAFirstServer: value.teamAFirstServer,
         teamBFirstServer: value.teamBFirstServer,
         firstServingTeam: value.firstServingTeam,
       }
 
-      const parseResult = S.decodeUnknownEither(SetupSchema)(payload)
+      // Basic decode (strings allowed to be empty)
+      const BasicSchema = S.Struct({
+        A1First: S.Trim,
+        A1Last: S.Trim,
+        A2First: S.Trim,
+        A2Last: S.Trim,
+        B1First: S.Trim,
+        B1Last: S.Trim,
+        B2First: S.Trim,
+        B2Last: S.Trim,
+        teamAFirstServer: PlayerRow,
+        teamBFirstServer: PlayerRow,
+        firstServingTeam: Team,
+      })
+      const parseResult = S.decodeUnknownEither(BasicSchema)(payload)
 
       if (Either.isLeft(parseResult)) {
         setSubmitError('Invalid form. Please check required fields.')
         return
       }
 
-      setSubmitError(null)
       const parsed = parseResult.right
 
+      // Validate: for each player, require at least one of first/last
+      const missing: Array<string> = []
+      const check = (first: string, last: string, label: string) => {
+        if (first.trim() === '' && last.trim() === '') missing.push(label)
+      }
+      check(parsed.A1First, parsed.A1Last, 'Team A - Player 1')
+      check(parsed.A2First, parsed.A2Last, 'Team A - Player 2')
+      check(parsed.B1First, parsed.B1Last, 'Team B - Player 1')
+      check(parsed.B2First, parsed.B2Last, 'Team B - Player 2')
+      if (missing.length) {
+        setSubmitError(`Enter a first or last name for: ${missing.join(', ')}`)
+        return
+      }
+      setSubmitError(null)
+
       // Reorder players so first servers are in row 1
-      const A1 = parsed.teamAFirstServer === 1 ? parsed.A1 : parsed.A2
-      const A2 = parsed.teamAFirstServer === 1 ? parsed.A2 : parsed.A1
-      const B1 = parsed.teamBFirstServer === 1 ? parsed.B1 : parsed.B2
-      const B2 = parsed.teamBFirstServer === 1 ? parsed.B2 : parsed.B1
+      const build = (first: string, last: string): PlayerName => ({
+        firstName: first.trim(),
+        lastName: last.trim(),
+        fullName: `${first.trim()} ${last.trim()}`.trim(),
+      })
+
+      const A1 =
+        parsed.teamAFirstServer === 1
+          ? build(parsed.A1First, parsed.A1Last)
+          : build(parsed.A2First, parsed.A2Last)
+      const A2 =
+        parsed.teamAFirstServer === 1
+          ? build(parsed.A2First, parsed.A2Last)
+          : build(parsed.A1First, parsed.A1Last)
+      const B1 =
+        parsed.teamBFirstServer === 1
+          ? build(parsed.B1First, parsed.B1Last)
+          : build(parsed.B2First, parsed.B2Last)
+      const B2 =
+        parsed.teamBFirstServer === 1
+          ? build(parsed.B2First, parsed.B2Last)
+          : build(parsed.B1First, parsed.B1Last)
 
       const players = {
         A1,
         A2,
         B1,
         B2,
-        teamA: `${A1} & ${A2}`,
-        teamB: `${B1} & ${B2}`,
+        teamA: `${A1.fullName} & ${A2.fullName}`,
+        teamB: `${B1.fullName} & ${B2.fullName}`,
       }
 
       // Setup the match
@@ -136,22 +179,38 @@ function SetupRoute() {
       searchParams.B2
     ) {
       console.log('Setup: Populating form from search params')
-      form.setFieldValue('A1', searchParams.A1)
-      form.setFieldValue('A2', searchParams.A2)
-      form.setFieldValue('B1', searchParams.B1)
-      form.setFieldValue('B2', searchParams.B2)
+      const parse = (full: string) => {
+        const parts = full.trim().split(/\s+/)
+        const last = parts.pop() ?? ''
+        const first = parts.join(' ')
+        return { first, last }
+      }
+      const a1 = parse(searchParams.A1)
+      const a2 = parse(searchParams.A2)
+      const b1 = parse(searchParams.B1)
+      const b2 = parse(searchParams.B2)
+      form.setFieldValue('A1First', a1.first)
+      form.setFieldValue('A1Last', a1.last)
+      form.setFieldValue('A2First', a2.first)
+      form.setFieldValue('A2Last', a2.last)
+      form.setFieldValue('B1First', b1.first)
+      form.setFieldValue('B1Last', b1.last)
+      form.setFieldValue('B2First', b2.first)
+      form.setFieldValue('B2Last', b2.last)
     }
     // Priority 2: Existing match context data
-    else if (matchData.players.A1) {
+    else {
       console.log('Setup: Populating form with existing data')
-      form.setFieldValue('A1', matchData.players.A1)
-      form.setFieldValue('A2', matchData.players.A2)
-      form.setFieldValue('B1', matchData.players.B1)
-      form.setFieldValue('B2', matchData.players.B2)
+      form.setFieldValue('A1First', matchData.players.A1.firstName)
+      form.setFieldValue('A1Last', matchData.players.A1.lastName)
+      form.setFieldValue('A2First', matchData.players.A2.firstName)
+      form.setFieldValue('A2Last', matchData.players.A2.lastName)
+      form.setFieldValue('B1First', matchData.players.B1.firstName)
+      form.setFieldValue('B1Last', matchData.players.B1.lastName)
+      form.setFieldValue('B2First', matchData.players.B2.firstName)
+      form.setFieldValue('B2Last', matchData.players.B2.lastName)
       form.setFieldValue('teamAFirstServer', matchData.teamAFirstServer)
       form.setFieldValue('teamBFirstServer', matchData.teamBFirstServer)
-    } else {
-      console.log('Setup: No existing match data found')
     }
   }, [matchData, searchParams, form])
 
@@ -177,46 +236,72 @@ function SetupRoute() {
                   <div className="badge badge-primary badge-lg w-full">
                     Team A
                   </div>
-                  <form.Field name="A1">
-                    {(field) => (
-                      <div className="form-control w-full">
-                        <div className="label pb-1">
-                          <span className="label-text font-semibold">
-                            Player 1
-                          </span>
-                        </div>
-                        <input
-                          className="input input-bordered w-full"
-                          placeholder="Enter player name"
-                          value={field.state.value}
-                          onChange={(e) =>
-                            field.handleChange(e.currentTarget.value)
-                          }
-                          tabIndex={1}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <form.Field name="A2">
-                    {(field) => (
-                      <div className="form-control w-full">
-                        <div className="label pb-1">
-                          <span className="label-text font-semibold">
-                            Player 2
-                          </span>
-                        </div>
-                        <input
-                          className="input input-bordered w-full"
-                          placeholder="Enter player name"
-                          value={field.state.value}
-                          onChange={(e) =>
-                            field.handleChange(e.currentTarget.value)
-                          }
-                          tabIndex={2}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
+                  <div className="space-y-1">
+                    <div className="label pb-0">
+                      <span className="label-text font-semibold">Player 1</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <form.Field name="A1First">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="First name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={1}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="A1Last">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="Last name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={2}
+                          />
+                        )}
+                      </form.Field>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="label pb-0">
+                      <span className="label-text font-semibold">Player 2</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <form.Field name="A2First">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="First name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={3}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="A2Last">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="Last name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={4}
+                          />
+                        )}
+                      </form.Field>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Team B Column */}
@@ -224,46 +309,72 @@ function SetupRoute() {
                   <div className="badge badge-secondary badge-lg w-full">
                     Team B
                   </div>
-                  <form.Field name="B1">
-                    {(field) => (
-                      <div className="form-control w-full">
-                        <div className="label pb-1">
-                          <span className="label-text font-semibold">
-                            Player 1
-                          </span>
-                        </div>
-                        <input
-                          className="input input-bordered w-full"
-                          placeholder="Enter player name"
-                          value={field.state.value}
-                          onChange={(e) =>
-                            field.handleChange(e.currentTarget.value)
-                          }
-                          tabIndex={3}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <form.Field name="B2">
-                    {(field) => (
-                      <div className="form-control w-full">
-                        <div className="label pb-1">
-                          <span className="label-text font-semibold">
-                            Player 2
-                          </span>
-                        </div>
-                        <input
-                          className="input input-bordered w-full"
-                          placeholder="Enter player name"
-                          value={field.state.value}
-                          onChange={(e) =>
-                            field.handleChange(e.currentTarget.value)
-                          }
-                          tabIndex={4}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
+                  <div className="space-y-1">
+                    <div className="label pb-0">
+                      <span className="label-text font-semibold">Player 1</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <form.Field name="B1First">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="First name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={5}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="B1Last">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="Last name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={6}
+                          />
+                        )}
+                      </form.Field>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="label pb-0">
+                      <span className="label-text font-semibold">Player 2</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <form.Field name="B2First">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="First name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={7}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="B2Last">
+                        {(field) => (
+                          <input
+                            className="input input-bordered input-sm w-full"
+                            placeholder="Last name"
+                            value={field.state.value}
+                            onChange={(e) =>
+                              field.handleChange(e.currentTarget.value)
+                            }
+                            tabIndex={8}
+                          />
+                        )}
+                      </form.Field>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -276,139 +387,153 @@ function SetupRoute() {
               </h2>
               <form.Subscribe
                 selector={(state) => ({
-                  A1: state.values.A1,
-                  A2: state.values.A2,
-                  B1: state.values.B1,
-                  B2: state.values.B2,
+                  A1First: state.values.A1First,
+                  A1Last: state.values.A1Last,
+                  A2First: state.values.A2First,
+                  A2Last: state.values.A2Last,
+                  B1First: state.values.B1First,
+                  B1Last: state.values.B1Last,
+                  B2First: state.values.B2First,
+                  B2Last: state.values.B2Last,
                   teamAFirstServer: state.values.teamAFirstServer,
                   teamBFirstServer: state.values.teamBFirstServer,
                   firstServingTeam: state.values.firstServingTeam,
                 })}
               >
                 {({
-                  A1,
-                  A2,
-                  B1,
-                  B2,
+                  A1First,
+                  A1Last,
+                  A2First,
+                  A2Last,
+                  B1First,
+                  B1Last,
+                  B2First,
+                  B2Last,
                   teamAFirstServer,
                   teamBFirstServer,
                   firstServingTeam,
-                }) => (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Team A First Server */}
-                    <div className="space-y-2">
-                      <div className="font-semibold text-sm sm:text-base">
-                        {A1 && A2 ? `${A1} & ${A2}` : 'Team A'} - Who serves
-                        first on hand-in?
+                }) => {
+                  const A1 = `${A1First} ${A1Last}`.trim()
+                  const A2 = `${A2First} ${A2Last}`.trim()
+                  const B1 = `${B1First} ${B1Last}`.trim()
+                  const B2 = `${B2First} ${B2Last}`.trim()
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Team A First Server */}
+                      <div className="space-y-2">
+                        <div className="font-semibold text-sm sm:text-base">
+                          {A1 && A2 ? `${A1} & ${A2}` : 'Team A'} - Who serves
+                          first on hand-in?
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-semibold">
+                              {A1 || 'A1'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="teamAFirstServer"
+                              className="radio radio-primary"
+                              checked={teamAFirstServer === 1}
+                              onChange={() =>
+                                form.setFieldValue('teamAFirstServer', 1)
+                              }
+                            />
+                          </label>
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-semibold">
+                              {A2 || 'A2'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="teamAFirstServer"
+                              className="radio radio-primary"
+                              checked={teamAFirstServer === 2}
+                              onChange={() =>
+                                form.setFieldValue('teamAFirstServer', 2)
+                              }
+                            />
+                          </label>
+                        </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-semibold">
-                            {A1 || 'A1'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="teamAFirstServer"
-                            className="radio radio-primary"
-                            checked={teamAFirstServer === 1}
-                            onChange={() =>
-                              form.setFieldValue('teamAFirstServer', 1)
-                            }
-                          />
-                        </label>
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-semibold">
-                            {A2 || 'A2'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="teamAFirstServer"
-                            className="radio radio-primary"
-                            checked={teamAFirstServer === 2}
-                            onChange={() =>
-                              form.setFieldValue('teamAFirstServer', 2)
-                            }
-                          />
-                        </label>
-                      </div>
-                    </div>
 
-                    {/* Team B First Server */}
-                    <div className="space-y-2">
-                      <div className="font-semibold text-sm sm:text-base">
-                        {B1 && B2 ? `${B1} & ${B2}` : 'Team B'} - Who serves
-                        first on hand-in?
+                      {/* Team B First Server */}
+                      <div className="space-y-2">
+                        <div className="font-semibold text-sm sm:text-base">
+                          {B1 && B2 ? `${B1} & ${B2}` : 'Team B'} - Who serves
+                          first on hand-in?
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-semibold">
+                              {B1 || 'B1'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="teamBFirstServer"
+                              className="radio radio-primary"
+                              checked={teamBFirstServer === 1}
+                              onChange={() =>
+                                form.setFieldValue('teamBFirstServer', 1)
+                              }
+                            />
+                          </label>
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-semibold">
+                              {B2 || 'B2'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="teamBFirstServer"
+                              className="radio radio-primary"
+                              checked={teamBFirstServer === 2}
+                              onChange={() =>
+                                form.setFieldValue('teamBFirstServer', 2)
+                              }
+                            />
+                          </label>
+                        </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-semibold">
-                            {B1 || 'B1'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="teamBFirstServer"
-                            className="radio radio-primary"
-                            checked={teamBFirstServer === 1}
-                            onChange={() =>
-                              form.setFieldValue('teamBFirstServer', 1)
-                            }
-                          />
-                        </label>
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-semibold">
-                            {B2 || 'B2'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="teamBFirstServer"
-                            className="radio radio-primary"
-                            checked={teamBFirstServer === 2}
-                            onChange={() =>
-                              form.setFieldValue('teamBFirstServer', 2)
-                            }
-                          />
-                        </label>
-                      </div>
-                    </div>
 
-                    {/* Which Team Serves First Overall */}
-                    <div className="lg:col-span-2 space-y-2">
-                      <div className="font-semibold text-sm sm:text-base text-center">
-                        Which team serves first at 0-0?
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-bold">
-                            {A1 && A2 ? `${A1} & ${A2}` : 'Team A'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="firstServingTeam"
-                            className="radio radio-primary"
-                            checked={firstServingTeam === 'A'}
-                            onChange={() =>
-                              form.setFieldValue('firstServingTeam', 'A')
-                            }
-                          />
-                        </label>
-                        <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                          <span className="label-text font-bold">
-                            {B1 && B2 ? `${B1} & ${B2}` : 'Team B'}
-                          </span>
-                          <input
-                            type="radio"
-                            name="firstServingTeam"
-                            className="radio radio-primary"
-                            checked={firstServingTeam === 'B'}
-                            onChange={() =>
-                              form.setFieldValue('firstServingTeam', 'B')
-                            }
-                          />
-                        </label>
+                      {/* Which Team Serves First Overall */}
+                      <div className="lg:col-span-2 space-y-2">
+                        <div className="font-semibold text-sm sm:text-base text-center">
+                          Which team serves first at 0-0?
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-bold">
+                              {A1 && A2 ? `${A1} & ${A2}` : 'Team A'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="firstServingTeam"
+                              className="radio radio-primary"
+                              checked={firstServingTeam === 'A'}
+                              onChange={() =>
+                                form.setFieldValue('firstServingTeam', 'A')
+                              }
+                            />
+                          </label>
+                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
+                            <span className="label-text font-bold">
+                              {B1 && B2 ? `${B1} & ${B2}` : 'Team B'}
+                            </span>
+                            <input
+                              type="radio"
+                              name="firstServingTeam"
+                              className="radio radio-primary"
+                              checked={firstServingTeam === 'B'}
+                              onChange={() =>
+                                form.setFieldValue('firstServingTeam', 'B')
+                              }
+                            />
+                          </label>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )
+                }}
               </form.Subscribe>
             </div>
           </div>
