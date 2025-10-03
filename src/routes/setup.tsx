@@ -100,55 +100,68 @@ function SetupRoute() {
       >
         <fieldset className="card bg-base-100 shadow p-4 md:col-span-2">
           <legend className="card-title mb-2">Players</legend>
-          <div className="grid grid-cols-2 gap-2">
-            <form.Field name="A1">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">A1</span>
-                  <input
-                    className="input input-bordered"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="A2">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">A2</span>
-                  <input
-                    className="input input-bordered"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="B1">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">B1</span>
-                  <input
-                    className="input input-bordered"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="B2">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">B2</span>
-                  <input
-                    className="input input-bordered"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </form.Field>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Right Wall Column */}
+            <div className="space-y-2">
+              <div className="text-sm font-semibold text-base-content/70 text-center">Right Wall</div>
+              <form.Field name="A1">
+                {(field) => (
+                  <label className="form-control">
+                    <span className="label-text">A1</span>
+                    <input
+                      className="input input-bordered"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      tabIndex={1}
+                    />
+                  </label>
+                )}
+              </form.Field>
+              <form.Field name="B1">
+                {(field) => (
+                  <label className="form-control">
+                    <span className="label-text">B1</span>
+                    <input
+                      className="input input-bordered"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      tabIndex={3}
+                    />
+                  </label>
+                )}
+              </form.Field>
+            </div>
+            
+            {/* Left Wall Column */}
+            <div className="space-y-2">
+              <div className="text-sm font-semibold text-base-content/70 text-center">Left Wall</div>
+              <form.Field name="A2">
+                {(field) => (
+                  <label className="form-control">
+                    <span className="label-text">A2</span>
+                    <input
+                      className="input input-bordered"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      tabIndex={2}
+                    />
+                  </label>
+                )}
+              </form.Field>
+              <form.Field name="B2">
+                {(field) => (
+                  <label className="form-control">
+                    <span className="label-text">B2</span>
+                    <input
+                      className="input input-bordered"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.currentTarget.value)}
+                      tabIndex={4}
+                    />
+                  </label>
+                )}
+              </form.Field>
+            </div>
           </div>
         </fieldset>
 
