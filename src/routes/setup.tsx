@@ -27,7 +27,6 @@ const SetupSchema = S.Struct({
   B1: NonEmptyTrimmedString,
   B2: NonEmptyTrimmedString,
   firstServer: FirstServerSchema,
-  maxPoints: S.NumberFromString.pipe(S.int(), S.greaterThanOrEqualTo(1)),
 })
 
 export const Route = createFileRoute('/setup')({
@@ -53,7 +52,6 @@ function SetupRoute() {
         player: 1 as 1 | 2,
         side: 'R' as 'R' | 'L',
       },
-      maxPoints: '15',
     },
     onSubmit: ({ value }) => {
       // Build unknown payload to validate
@@ -65,7 +63,6 @@ function SetupRoute() {
         B1: value.B1,
         B2: value.B2,
         firstServer: value.firstServer,
-        maxPoints: value.maxPoints,
       }
       // Use decodeUnknownSync for synchronous validation
       let parsed: S.Schema.Type<typeof SetupSchema>
@@ -90,7 +87,7 @@ function SetupRoute() {
       actorRef.send({
         type: 'START_GAME',
         firstServer: parsed.firstServer,
-        maxPoints: parsed.maxPoints,
+        maxPoints: 15, // PAR-15 scoring
         winBy: 1, // strictly win-by-1
       })
       navigate({ to: '/game' })
@@ -240,19 +237,6 @@ function SetupRoute() {
                 <option value="L">Left</option>
               </select>
             </label>
-            <form.Field name="maxPoints">
-              {(field) => (
-                <label className="form-control">
-                  <span className="label-text">Max Points</span>
-                  <input
-                    className="input input-bordered"
-                    inputMode="numeric"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </form.Field>
           </div>
         </fieldset>
 
