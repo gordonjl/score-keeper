@@ -78,7 +78,7 @@ export const NextGameSetup = ({
           <div className="flex gap-3 justify-center">
             <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-300 flex-1">
               <span className="label-text font-bold">{players.teamA}</span>
-              {lastWinner === 'A' && !isFirstGame && (
+              {lastWinner === 'A' && (
                 <span className="text-xs text-success">(Last Winner)</span>
               )}
               <input
@@ -91,7 +91,7 @@ export const NextGameSetup = ({
             </label>
             <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-300 flex-1">
               <span className="label-text font-bold">{players.teamB}</span>
-              {lastWinner === 'B' && !isFirstGame && (
+              {lastWinner === 'B' && (
                 <span className="text-xs text-success">(Last Winner)</span>
               )}
               <input
@@ -103,12 +103,10 @@ export const NextGameSetup = ({
               />
             </label>
           </div>
-          {!isFirstGame && (
-            <p className="text-xs text-base-content/70 mt-2 text-center">
-              {lastWinner === 'A' ? players.teamA : players.teamB} won the last
-              game.
-            </p>
-          )}
+          <p className="text-xs text-base-content/70 mt-2 text-center">
+            {lastWinner === 'A' ? players.teamA : players.teamB} won the last
+            game.
+          </p>
         </div>
 
         {/* First Server Designation */}
