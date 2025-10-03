@@ -37,14 +37,8 @@ export const NextGameSetup = ({
   onCancel,
   onStartGame,
 }: NextGameSetupProps) => {
-  // Default serving team based on rules:
-  // - First game: already determined by racquet spin (handled at match setup)
-  // - Subsequent games: losing team serves (but winners can opt to serve)
-  const defaultServingTeam: Team = isFirstGame
-    ? 'A' // This won't actually be used for first game
-    : lastWinner === 'A'
-      ? 'B'
-      : 'A'
+  // Default serving team: winning team serves first
+  const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
 
   const [firstServingTeam, setFirstServingTeam] =
     useState<Team>(defaultServingTeam)
@@ -52,19 +46,6 @@ export const NextGameSetup = ({
   // Track which player serves first on hand-in for each team (for this game)
   const [teamAFirstServer, setTeamAFirstServer] = useState<1 | 2>(1)
   const [teamBFirstServer, setTeamBFirstServer] = useState<1 | 2>(1)
-
-  // Track court positions independently - which player is on right wall
-  // Default: player 1 (A1/B1) starts on right wall
-  const [teamARightWallPlayer, setTeamARightWallPlayer] = useState<1 | 2>(1)
-  const [teamBRightWallPlayer, setTeamBRightWallPlayer] = useState<1 | 2>(1)
-
-  const handleSwapTeamA = () => {
-    setTeamARightWallPlayer(teamARightWallPlayer === 1 ? 2 : 1)
-  }
-
-  const handleSwapTeamB = () => {
-    setTeamBRightWallPlayer(teamBRightWallPlayer === 1 ? 2 : 1)
-  }
 
   const handleStartGame = () => {
     // Reorder players based on who serves first on hand-in
@@ -76,20 +57,13 @@ export const NextGameSetup = ({
       B2: teamBFirstServer === 1 ? players.B2 : players.B1,
     }
 
-    // Determine which side the first server starts on
-    // teamARightWallPlayer tells us which ORIGINAL player (1 or 2) is on right wall
-    // teamAFirstServer tells us which ORIGINAL player (1 or 2) serves first
-    // If they match, first server is on right ('R'), otherwise left ('L')
-    const teamASide: Side =
-      teamARightWallPlayer === teamAFirstServer ? 'R' : 'L'
-    const teamBSide: Side =
-      teamBRightWallPlayer === teamBFirstServer ? 'R' : 'L'
-
+    // Default both teams to start serving from right side
+    // Side can be toggled during gameplay by clicking the cell
     onStartGame({
       firstServingTeam,
       players: gamePlayers,
-      teamASide,
-      teamBSide,
+      teamASide: 'R',
+      teamBSide: 'R',
     })
   }
 
@@ -132,7 +106,7 @@ export const NextGameSetup = ({
           {!isFirstGame && (
             <p className="text-xs text-base-content/70 mt-2 text-center">
               {lastWinner === 'A' ? players.teamA : players.teamB} won the last
-              game. Typically, the losing team serves first.
+              game.
             </p>
           )}
         </div>
@@ -196,82 +170,6 @@ export const NextGameSetup = ({
                     onChange={() => setTeamBFirstServer(2)}
                   />
                 </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Player Court Positions */}
-        <div className="card bg-base-200 p-4 mb-4">
-          <h4 className="font-semibold mb-3">Player Court Positions</h4>
-          <div className="text-xs text-base-content/70 mb-3">
-            Which side does the first server start on?
-          </div>
-
-          {/* Team A Positions */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold text-sm">{players.teamA}</span>
-              <button
-                type="button"
-                className="btn btn-xs btn-ghost"
-                onClick={handleSwapTeamA}
-              >
-                Swap Sides
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-base-100 p-2 rounded text-center">
-                <div className="text-xs text-base-content/70">Right Wall</div>
-                <div className="font-medium">
-                  {teamARightWallPlayer === 1 ? players.A1 : players.A2}
-                </div>
-                {teamARightWallPlayer === teamAFirstServer && (
-                  <div className="text-xs text-primary mt-1">First server</div>
-                )}
-              </div>
-              <div className="bg-base-100 p-2 rounded text-center">
-                <div className="text-xs text-base-content/70">Left Wall</div>
-                <div className="font-medium">
-                  {teamARightWallPlayer === 1 ? players.A2 : players.A1}
-                </div>
-                {teamARightWallPlayer !== teamAFirstServer && (
-                  <div className="text-xs text-primary mt-1">First server</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Team B Positions */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold text-sm">{players.teamB}</span>
-              <button
-                type="button"
-                className="btn btn-xs btn-ghost"
-                onClick={handleSwapTeamB}
-              >
-                Swap Sides
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-base-100 p-2 rounded text-center">
-                <div className="text-xs text-base-content/70">Right Wall</div>
-                <div className="font-medium">
-                  {teamBRightWallPlayer === 1 ? players.B1 : players.B2}
-                </div>
-                {teamBRightWallPlayer === teamBFirstServer && (
-                  <div className="text-xs text-primary mt-1">First server</div>
-                )}
-              </div>
-              <div className="bg-base-100 p-2 rounded text-center">
-                <div className="text-xs text-base-content/70">Left Wall</div>
-                <div className="font-medium">
-                  {teamBRightWallPlayer === 1 ? players.B2 : players.B1}
-                </div>
-                {teamBRightWallPlayer !== teamBFirstServer && (
-                  <div className="text-xs text-primary mt-1">First server</div>
-                )}
               </div>
             </div>
           </div>
