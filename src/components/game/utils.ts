@@ -1,0 +1,33 @@
+import type { RowKey } from '../../machines/squashMachine'
+
+export const toWords = (n: number): string => {
+  const words = [
+    'Love',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+  ]
+  return words[n] ?? String(n)
+}
+
+export const determineFirstServingTeam = (grid: any): 'A' | 'B' => {
+  return grid.A1[0] || grid.A2[0] ? 'A' : 'B'
+}
+
+export const getOrderedRows = (firstServingTeam: 'A' | 'B'): Array<RowKey> => {
+  return firstServingTeam === 'A'
+    ? ['A1', 'A2', 'B1', 'B2']
+    : ['B1', 'B2', 'A1', 'A2']
+}
