@@ -1,4 +1,4 @@
 [build]
-  command = "pnpm build"
+  command = "pnpm install --shamefully-hoist && pnpm build"
   publish = "dist/client"
 
