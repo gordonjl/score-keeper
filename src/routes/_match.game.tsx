@@ -190,7 +190,11 @@ function GameRoute({
         {showNextGameSetup && (
           <NextGameSetup
             isFirstGame={matchGames.length === 0}
-            lastWinner={scoreA > scoreB ? 'A' : 'B'}
+            lastWinner={
+              matchGames.length > 0
+                ? matchGames[matchGames.length - 1].winner
+                : 'A'
+            }
             players={matchPlayers}
             onCancel={() => setShowNextGameSetup(false)}
             onStartGame={(config) => {
