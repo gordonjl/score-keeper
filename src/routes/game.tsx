@@ -22,7 +22,15 @@ function GameRoute() {
   const players = usePlayers()
   const serverRowKey = useServerRowKey()
 
-  const rows: Array<RowKey> = ['A1', 'A2', 'B1', 'B2']
+  // Determine which team served first by checking column 0 of the grid
+  // The team that has an entry in column 0 is the first-serving team
+  const firstServingTeam = (grid.A1[0] || grid.A2[0]) ? 'A' : 'B'
+  
+  // Order rows: first-serving team on top
+  const rows: Array<RowKey> = firstServingTeam === 'A' 
+    ? ['A1', 'A2', 'B1', 'B2']
+    : ['B1', 'B2', 'A1', 'A2']
+  
   const maxCols = 16 // 0-15
 
   const renderCell = (row: RowKey, col: number) => {
@@ -84,21 +92,27 @@ function GameRoute() {
     )
   }
 
+  // Display teams in order: first-serving team on left/top
+  const topTeam = firstServingTeam === 'A' ? 'teamA' : 'teamB'
+  const bottomTeam = firstServingTeam === 'A' ? 'teamB' : 'teamA'
+  const topScore = firstServingTeam === 'A' ? scoreA : scoreB
+  const bottomScore = firstServingTeam === 'A' ? scoreB : scoreA
+
   return (
     <div className="p-4 max-w-full mx-auto">
       {/* Header with team names and score */}
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-xl font-bold">{players.teamA}</h1>
-          <div className="text-3xl font-bold">{scoreA}</div>
+          <h1 className="text-xl font-bold">{players[topTeam]}</h1>
+          <div className="text-3xl font-bold">{topScore}</div>
         </div>
         <div className="text-center">
           <div className="text-sm text-base-content/60">Game in Progress</div>
           <div className="text-2xl">-</div>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-bold">{players.teamB}</h1>
-          <div className="text-3xl font-bold">{scoreB}</div>
+          <h1 className="text-xl font-bold">{players[bottomTeam]}</h1>
+          <div className="text-3xl font-bold">{bottomScore}</div>
         </div>
       </div>
 
@@ -138,21 +152,21 @@ function GameRoute() {
         </table>
       </div>
 
-      {/* Rally buttons */}
+      {/* Rally buttons - ordered by first-serving team */}
       <div className="flex gap-4 mb-4">
         <button
           className="btn btn-primary flex-1"
-          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: 'A' })}
+          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam })}
           disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
-          {players.teamA} Won Rally
+          {players[topTeam]} Won Rally
         </button>
         <button
           className="btn btn-primary flex-1"
-          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: 'B' })}
+          onClick={() => actorRef.send({ type: 'RALLY_WON', winner: firstServingTeam === 'A' ? 'B' : 'A' })}
           disabled={state.matches('gameOver') || state.matches('awaitingConfirmation')}
         >
-          {players.teamB} Won Rally
+          {players[bottomTeam]} Won Rally
         </button>
       </div>
 
