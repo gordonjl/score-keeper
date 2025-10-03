@@ -6,7 +6,6 @@ import {
   useScoreTuple,
   useServeAnnouncement,
   useServerRowKey,
-  useServerSide,
 } from '../hooks/useSquash'
 import type { RowKey } from '../machines/squashMachine'
 
@@ -22,7 +21,6 @@ function GameRoute() {
   const grid = useGrid()
   const players = usePlayers()
   const serverRowKey = useServerRowKey()
-  const serverSide = useServerSide()
 
   const rows: Array<RowKey> = ['A1', 'A2', 'B1', 'B2']
   const maxCols = 16 // 0-15
@@ -32,6 +30,32 @@ function GameRoute() {
     const isCurrentServer = row === serverRowKey && col === scoreA && row.startsWith('A')
     const isCurrentServerB = row === serverRowKey && col === scoreB && row.startsWith('B')
     const isActive = isCurrentServer || isCurrentServerB
+
+    // Check if this is a merged X cell
+    const teamRow = row.startsWith('A') ? 'A' : 'B'
+    const teamCell = grid[teamRow][col]
+    const isTopOfTeam = row === 'A1' || row === 'B1'
+    const isBottomOfTeam = row === 'A2' || row === 'B2'
+
+    // If top row has X, merge with bottom
+    if (isTopOfTeam && teamCell === 'X') {
+      return (
+        <td
+          key={`${row}-${col}`}
+          rowSpan={2}
+          className={`border border-base-300 p-1 text-center text-sm min-w-[2rem] ${
+            isActive ? 'bg-primary/20 font-bold' : ''
+          }`}
+        >
+          X
+        </td>
+      )
+    }
+
+    // If bottom row and top has X, skip rendering (already merged)
+    if (isBottomOfTeam && grid[teamRow][col] === 'X') {
+      return null
+    }
 
     return (
       <td
@@ -95,34 +119,6 @@ function GameRoute() {
                 {Array.from({ length: maxCols }, (_, col) => renderCell(row, col))}
               </tr>
             ))}
-            {/* Team A merged row for X marks */}
-            <tr>
-              <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-100 z-10">
-                <span className="text-sm">Team A</span>
-              </td>
-              {Array.from({ length: maxCols }, (_, col) => (
-                <td
-                  key={`A-${col}`}
-                  className="border border-base-300 p-1 text-center text-sm"
-                >
-                  {grid.A[col] || ''}
-                </td>
-              ))}
-            </tr>
-            {/* Team B merged row for X marks */}
-            <tr>
-              <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-100 z-10">
-                <span className="text-sm">Team B</span>
-              </td>
-              {Array.from({ length: maxCols }, (_, col) => (
-                <td
-                  key={`B-${col}`}
-                  className="border border-base-300 p-1 text-center text-sm"
-                >
-                  {grid.B[col] || ''}
-                </td>
-              ))}
-            </tr>
           </tbody>
         </table>
       </div>
@@ -160,19 +156,6 @@ function GameRoute() {
           disabled={state.context.history.length === 0}
         >
           Undo
-        </button>
-        <button
-          className="btn btn-error"
-          onClick={() => actorRef.send({ type: 'RESET' })}
-        >
-          Reset
-        </button>
-        <button
-          className="btn btn-info"
-          onClick={() => actorRef.send({ type: 'CLICK_ROW', row: serverRowKey })}
-          disabled={state.matches('gameOver') || state.matches('idle')}
-        >
-          Write {serverSide}
         </button>
       </div>
 

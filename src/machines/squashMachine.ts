@@ -172,20 +172,30 @@ export const squashMachine = setup({
           maxPoints?: number
           winBy?: number
         },
-      ) => ({
-        score: { A: 0, B: 0 },
-        server: {
+      ) => {
+        const server: Server = {
           team: params.firstServer.team,
           player: params.firstServer.player,
           side: params.firstServer.side,
           handIndex: 0 as const,
-        },
-        maxPoints: params.maxPoints ?? context.maxPoints,
-        winBy: params.winBy ?? context.winBy,
-        grid: initialGrid(),
-        firstHandUsed: false,
-        history: [],
-      }),
+        }
+        // Pre-write R/L for first serve at column 0
+        const grid = writeCell(
+          initialGrid(),
+          rowKey(server.team, server.player),
+          0,
+          server.side,
+        )
+        return {
+          score: { A: 0, B: 0 },
+          server,
+          maxPoints: params.maxPoints ?? context.maxPoints,
+          winBy: params.winBy ?? context.winBy,
+          grid,
+          firstHandUsed: false,
+          history: [],
+        }
+      },
     ),
 
     snapshot: assign(({ context }) => ({
@@ -213,15 +223,12 @@ export const squashMachine = setup({
 
     rallyWon: assign(({ context }, { winner }: { winner: Team }) => {
       const cur = context.server
-      // Column where this serve is recorded
+      // Column where this serve was recorded
       const col = colForTeamServe(context, cur.team)
-      const grid0 = context.grid
+      let grid = context.grid
 
-      // If server is serving this rally, write R/L or R//L/ accordingly
+      // If server won, R/L is already written, just update score and flip side
       if (winner === cur.team) {
-        // Serving team won → write R/L in server row at current column
-        const v: Cell = cur.side
-        const grid = writeCell(grid0, rowKey(cur.team, cur.player), col, v)
         // Increment server team score
         const nextScore: Score = {
           ...context.score,
@@ -229,19 +236,23 @@ export const squashMachine = setup({
         }
         // Next server is same player, flip side
         const nextServer: Server = { ...cur, side: flip(cur.side) }
+        // Pre-write the next serve R/L
+        const nextCol = nextScore[cur.team]
+        grid = writeCell(grid, rowKey(cur.team, cur.player), nextCol, nextServer.side)
         return { score: nextScore, server: nextServer, grid }
       } else {
         // Receiving team won
-        // Mark R/ or L/ for the server row at current column
-        const v: Cell = (cur.side + '/') as Cell
-        const grid1 = writeCell(grid0, rowKey(cur.team, cur.player), col, v)
+        // Add slash to existing R/L in server row at current column
+        const existingCell = grid[rowKey(cur.team, cur.player)][col]
+        const v: Cell = (existingCell + '/') as Cell
+        grid = writeCell(grid, rowKey(cur.team, cur.player), col, v)
 
         // First-hand exception at 0–0 for the very first server
         const isStartOfGame = context.score.A === 0 && context.score.B === 0
         if (isStartOfGame && !context.firstHandUsed) {
           // Partner did not serve → mark '/' in partner row at col 0 per convention
           const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-          const grid = writeCell(grid1, partnerRow, 0, '/')
+          grid = writeCell(grid, partnerRow, 0, '/')
           const nextScore: Score = {
             ...context.score,
             [winner]: context.score[winner] + 1,
@@ -254,6 +265,9 @@ export const squashMachine = setup({
             side: 'R',
             handIndex: 0,
           }
+          // Pre-write R/L for the new server
+          const nextCol = nextScore[t]
+          grid = writeCell(grid, rowKey(t, 1), nextCol, nextServer.side)
           return {
             score: nextScore,
             server: nextServer,
@@ -268,17 +282,42 @@ export const squashMachine = setup({
           [winner]: context.score[winner] + 1,
         }
 
-        if (cur.handIndex === 0) {
-          // Partner still to serve (second hand)
+        // Check if this is the first hand - if so, immediate hand-out (no partner)
+        if (cur.handIndex === 0 && !context.firstHandUsed) {
+          // First hand lost -> mark partner with / at current column
+          const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+          grid = writeCell(grid, partnerRow, col, '/')
+          // Hand-out to other team
+          const t = otherTeam(cur.team)
+          const nextServer: Server = {
+            team: t,
+            player: 1,
+            side: 'R',
+            handIndex: 0,
+          }
+          // Pre-write R/L for the new server
+          const nextCol = nextScore[t]
+          grid = writeCell(grid, rowKey(t, 1), nextCol, nextServer.side)
+          return {
+            score: nextScore,
+            server: nextServer,
+            grid,
+            firstHandUsed: true,
+          }
+        } else if (cur.handIndex === 0) {
+          // Not first hand, partner still to serve (second hand)
           // Write X on winner team at their new column
           const xCol = nextScore[winner]
-          const grid = writeCell(grid1, winner, xCol, 'X')
+          grid = writeCell(grid, winner, xCol, 'X')
           const partner: Server = {
             team: cur.team,
             player: cur.player === 1 ? 2 : 1,
             side: flip(cur.side),
             handIndex: 1,
           }
+          // Pre-write R/L for the partner
+          const nextCol = context.score[cur.team]
+          grid = writeCell(grid, rowKey(partner.team, partner.player), nextCol, partner.side)
           return {
             score: nextScore,
             server: partner,
@@ -294,10 +333,13 @@ export const squashMachine = setup({
             side: 'R',
             handIndex: 0,
           }
+          // Pre-write R/L for the new server
+          const nextCol = nextScore[t]
+          grid = writeCell(grid, rowKey(t, 1), nextCol, nextServer.side)
           return {
             score: nextScore,
             server: nextServer,
-            grid: grid1,
+            grid,
             firstHandUsed: true,
           }
         }
