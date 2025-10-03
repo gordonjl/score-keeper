@@ -143,9 +143,15 @@ const toScoreWords = (n: number) => {
 
 export const serveAnnouncement = (ctx: Context): string => {
   const { server, score, players } = ctx
-  const a = toScoreWords(score.A)
-  const b = toScoreWords(score.B)
-  const scorePhrase = score.A === score.B ? `${a} All` : `${a}–${b}`
+  const serverScore = score[server.team]
+  const receiverScore = score[otherTeam(server.team)]
+  const serverWords = toScoreWords(serverScore)
+  const receiverWords = toScoreWords(receiverScore)
+  // Server's score first, then receiver's score
+  const scorePhrase =
+    serverScore === receiverScore
+      ? `${serverWords} All`
+      : `${serverWords}–${receiverWords}`
   const who =
     players[rowKey(server.team, server.player)] ||
     `${server.team}${server.player}`
