@@ -71,6 +71,9 @@ function GameRoute({
     announcement,
   } = useGameState(gameActor)
 
+  // Get match context for next game setup
+  const matchPlayers = MatchMachineContext.useSelector((s) => s.context.players)
+
   // Determine which team served first
   const firstServingTeam = determineFirstServingTeam(grid)
   const rows = getOrderedRows(firstServingTeam)
@@ -121,7 +124,7 @@ function GameRoute({
         onUndo={() => gameActor.send({ type: 'UNDO' })}
       />
 
-      {isAwaitingConfirmation && (
+      {isAwaitingConfirmation && !showNextGameSetup && (
         <GameOverConfirmation
           winnerTeam={winnerTeam}
           scoreA={scoreA}
@@ -134,10 +137,6 @@ function GameRoute({
             matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
           }}
           onNextGame={() => {
-            gameActor.send({ type: 'CONFIRM_GAME_OVER' })
-            const finalScore = { A: scoreA, B: scoreB }
-            const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-            matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
             setShowNextGameSetup(true)
           }}
         />
@@ -147,13 +146,22 @@ function GameRoute({
         <NextGameSetup
           isFirstGame={matchGames.length === 0}
           lastWinner={scoreA > scoreB ? 'A' : 'B'}
-          players={players}
+          players={matchPlayers}
           onCancel={() => setShowNextGameSetup(false)}
           onStartGame={(config) => {
+            // Confirm game over and record result
+            gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+            const finalScore = { A: scoreA, B: scoreB }
+            const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+            matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+
+            // Start new game immediately
             matchActorRef.send({
               type: 'START_NEW_GAME',
               firstServingTeam: config.firstServingTeam,
               players: config.players,
+              teamASide: config.teamASide,
+              teamBSide: config.teamBSide,
             })
             setShowNextGameSetup(false)
           }}

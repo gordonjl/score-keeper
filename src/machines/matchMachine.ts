@@ -33,6 +33,8 @@ export type MatchEvents =
         B1: string
         B2: string
       }
+      teamASide?: 'R' | 'L'
+      teamBSide?: 'R' | 'L'
     }
   | {
       type: 'GAME_COMPLETED'
@@ -136,12 +138,18 @@ export const matchMachine = setup({
         })
 
         // Start game
+        // Determine which side the first server starts from
+        const firstServerSide =
+          event.firstServingTeam === 'A'
+            ? event.teamASide || 'R'
+            : event.teamBSide || 'R'
+
         gameActor.send({
           type: 'START_GAME',
           firstServer: {
             team: event.firstServingTeam,
             player: 1, // Always player 1 since we reordered
-            side: 'R',
+            side: firstServerSide,
           },
           maxPoints: 15,
           winBy: 1,
