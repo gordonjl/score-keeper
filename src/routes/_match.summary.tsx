@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
 
 export const Route = createFileRoute('/_match/summary')({
@@ -53,16 +54,17 @@ function MatchSummaryRoute() {
   }
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="space-y-6">
+    <div className="min-h-full bg-gradient-to-br from-base-200 to-base-300 py-4 px-4">
+      <div className="max-w-4xl mx-auto space-y-4">
         {/* Match Winner Banner */}
-        <div className="alert alert-success shadow-lg">
-          <div className="flex flex-col items-center w-full">
-            <h1 className="text-3xl font-bold mb-2">Match Complete!</h1>
-            <p className="text-2xl">
+        <div className="alert alert-success shadow-xl">
+          <div className="flex flex-col items-center w-full gap-2">
+            <Trophy className="w-12 h-12" />
+            <h1 className="text-2xl sm:text-3xl font-bold">Match Complete!</h1>
+            <p className="text-xl sm:text-2xl">
               <span className="font-bold">{matchWinner}</span> win the match!
             </p>
-            <p className="text-lg mt-2">
+            <p className="text-lg font-mono">
               {gamesWonA} - {gamesWonB}
             </p>
           </div>
@@ -70,11 +72,13 @@ function MatchSummaryRoute() {
 
         {/* Match Summary Card */}
         <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title text-2xl mb-4">Match Summary</h2>
+          <div className="card-body p-4 sm:p-6">
+            <h2 className="card-title text-lg sm:text-xl mb-3">
+              Match Summary
+            </h2>
 
             {/* Games Won Overview */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <div
                 className={`stat bg-base-200 rounded-lg ${matchWinnerTeam === 'A' ? 'ring-2 ring-success' : ''}`}
               >
@@ -92,8 +96,8 @@ function MatchSummaryRoute() {
             </div>
 
             {/* Game-by-Game Results */}
-            <div className="divider">Game Results</div>
-            <div className="space-y-3">
+            <div className="divider text-sm">Game Results</div>
+            <div className="space-y-2">
               {matchData.games.map((game) => {
                 const gameWinner =
                   game.winner === 'A'
@@ -103,16 +107,18 @@ function MatchSummaryRoute() {
                 return (
                   <div
                     key={game.gameNumber}
-                    className="flex items-center justify-between p-4 bg-base-200 rounded-lg"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-base-200 rounded-lg gap-2"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="badge badge-lg badge-neutral">
+                    <div className="flex items-center gap-3">
+                      <div className="badge badge-neutral">
                         Game {game.gameNumber}
                       </div>
-                      <div className="font-semibold">{gameWinner} win</div>
+                      <div className="font-semibold text-sm">
+                        {gameWinner} win
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs sm:text-sm">
                         <span
                           className={gameWinnerTeam === 'A' ? 'font-bold' : ''}
                         >
@@ -136,18 +142,22 @@ function MatchSummaryRoute() {
             </div>
 
             {/* Players */}
-            <div className="divider">Players</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-base-200 p-4 rounded-lg">
-                <h3 className="font-bold mb-2">{matchData.players.teamA}</h3>
-                <ul className="list-disc list-inside space-y-1">
+            <div className="divider text-sm">Players</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-base-200 p-3 rounded-lg">
+                <h3 className="font-bold mb-2 text-sm">
+                  {matchData.players.teamA}
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>{matchData.players.A1}</li>
                   <li>{matchData.players.A2}</li>
                 </ul>
               </div>
-              <div className="bg-base-200 p-4 rounded-lg">
-                <h3 className="font-bold mb-2">{matchData.players.teamB}</h3>
-                <ul className="list-disc list-inside space-y-1">
+              <div className="bg-base-200 p-3 rounded-lg">
+                <h3 className="font-bold mb-2 text-sm">
+                  {matchData.players.teamB}
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>{matchData.players.B1}</li>
                   <li>{matchData.players.B2}</li>
                 </ul>
@@ -157,14 +167,19 @@ function MatchSummaryRoute() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
-            className="btn btn-primary flex-1"
+            className="btn btn-primary flex-1 gap-2"
             onClick={handleStartNewMatch}
           >
+            <RotateCcw className="w-4 h-4" />
             Start New Match (Same Teams)
           </button>
-          <button className="btn btn-ghost flex-1" onClick={handleEndMatch}>
+          <button
+            className="btn btn-ghost flex-1 gap-2"
+            onClick={handleEndMatch}
+          >
+            <Home className="w-4 h-4" />
             End Match
           </button>
         </div>

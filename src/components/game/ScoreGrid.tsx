@@ -54,7 +54,7 @@ export const ScoreGrid = ({
         <td
           key={`${row}-${col}`}
           rowSpan={2}
-          className={`border border-base-300 p-1 text-center text-sm min-w-[2rem] ${
+          className={`border border-base-300 p-0.5 sm:p-1 text-center text-xs sm:text-sm min-w-[28px] sm:min-w-[32px] ${
             isActive ? 'bg-primary/20 font-bold' : ''
           }`}
         >
@@ -78,7 +78,7 @@ export const ScoreGrid = ({
       <td
         key={`${row}-${col}`}
         onClick={handleClick}
-        className={`border border-base-300 p-1 text-center text-sm min-w-[2rem] ${
+        className={`border border-base-300 p-0.5 sm:p-1 text-center text-xs sm:text-sm min-w-[28px] sm:min-w-[32px] ${
           isActive ? 'bg-primary/20 font-bold' : ''
         } ${isClickable ? 'cursor-pointer hover:bg-primary/40' : ''}`}
         title={isClickable ? 'Click to toggle R/L' : ''}
@@ -89,39 +89,47 @@ export const ScoreGrid = ({
   }
 
   return (
-    <div className="card bg-base-100 shadow mb-4 overflow-x-auto">
-      <table className="table-compact w-full">
-        <thead>
-          <tr>
-            <th className="border border-base-300 p-1 text-center sticky left-0 bg-base-100 z-10">
-              Player
-            </th>
-            {Array.from({ length: MAX_COLS }, (_, i) => (
-              <th
-                key={i}
-                className="border border-base-300 p-1 text-center text-xs"
-              >
-                {i}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row}>
-              <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-100 z-10">
-                <div className="flex flex-col">
-                  <span className="text-xs text-base-content/60">{row}</span>
-                  <span className="text-sm">{players[row]}</span>
-                </div>
-              </td>
-              {Array.from({ length: MAX_COLS }, (_, col) =>
-                renderCell(row, col),
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="card bg-base-100 shadow-xl mb-4">
+      <div className="card-body p-2 sm:p-4">
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <table className="table table-xs w-full">
+            <thead>
+              <tr>
+                <th className="border border-base-300 p-1 text-center sticky left-0 bg-base-100 z-10 min-w-[60px] sm:min-w-[80px]">
+                  <span className="text-[10px] sm:text-xs">Player</span>
+                </th>
+                {Array.from({ length: MAX_COLS }, (_, i) => (
+                  <th
+                    key={i}
+                    className="border border-base-300 p-1 text-center text-[10px] sm:text-xs min-w-[28px] sm:min-w-[32px]"
+                  >
+                    {i}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row}>
+                  <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-100 z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] sm:text-xs text-base-content/60">
+                        {row}
+                      </span>
+                      <span className="text-xs sm:text-sm truncate max-w-[50px] sm:max-w-[70px]">
+                        {players[row]}
+                      </span>
+                    </div>
+                  </td>
+                  {Array.from({ length: MAX_COLS }, (_, col) =>
+                    renderCell(row, col),
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

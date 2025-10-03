@@ -23,25 +23,34 @@ export const ScoreHeader = ({
   const bottomTeamGamesWon = topTeam === 'teamA' ? gamesWonB : gamesWonA
 
   return (
-    <div className="flex justify-between items-center mb-4">
-      <div>
-        <h1 className="text-xl font-bold">{players[topTeam]}</h1>
-        <div className="text-3xl font-bold">{topScore}</div>
-        <div className="text-xs text-base-content/60 mt-1">
-          {topTeamGamesWon} {topTeamGamesWon === 1 ? 'game' : 'games'} won
-        </div>
-      </div>
-      <div className="text-center">
-        <div className="text-sm text-base-content/60">
-          Game {currentGameNumber}
-        </div>
-        <div className="text-2xl">-</div>
-      </div>
-      <div className="text-right">
-        <h1 className="text-xl font-bold">{players[bottomTeam]}</h1>
-        <div className="text-3xl font-bold">{bottomScore}</div>
-        <div className="text-xs text-base-content/60 mt-1">
-          {bottomTeamGamesWon} {bottomTeamGamesWon === 1 ? 'game' : 'games'} won
+    <div className="card bg-base-100 shadow-xl mb-3">
+      <div className="card-body p-3 sm:p-4">
+        <div className="flex justify-between items-center">
+          <div className="flex-1">
+            <h1 className="text-sm sm:text-lg font-bold truncate">
+              {players[topTeam]}
+            </h1>
+            <div className="text-2xl sm:text-4xl font-bold">{topScore}</div>
+            <div className="text-[10px] sm:text-xs text-base-content/60 mt-1">
+              {topTeamGamesWon} {topTeamGamesWon === 1 ? 'game' : 'games'} won
+            </div>
+          </div>
+          <div className="text-center px-2">
+            <div className="text-xs sm:text-sm text-base-content/60">
+              Game {currentGameNumber}
+            </div>
+            <div className="text-xl sm:text-2xl">-</div>
+          </div>
+          <div className="text-right flex-1">
+            <h1 className="text-sm sm:text-lg font-bold truncate">
+              {players[bottomTeam]}
+            </h1>
+            <div className="text-2xl sm:text-4xl font-bold">{bottomScore}</div>
+            <div className="text-[10px] sm:text-xs text-base-content/60 mt-1">
+              {bottomTeamGamesWon} {bottomTeamGamesWon === 1 ? 'game' : 'games'}{' '}
+              won
+            </div>
+          </div>
         </div>
       </div>
     </div>
