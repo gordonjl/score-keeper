@@ -1,6 +1,6 @@
 [build]
-  command = "pnpm dlx vite@7.1.8 build"
-  publish = "dist"
+  command = "pnpm vite build"
+  publish = "dist/client"
 
 [build.environment]
   NODE_VERSION = "22.20.0"
