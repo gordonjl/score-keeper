@@ -44,6 +44,9 @@ export default function Header() {
             <li>
               <Link to="/setup">New Match</Link>
             </li>
+            <li>
+              <a href="/support" target="_blank" rel="noopener noreferrer">Support</a>
+            </li>
           </ul>
         </div>
       </div>
