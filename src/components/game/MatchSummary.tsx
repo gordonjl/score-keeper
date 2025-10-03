@@ -24,7 +24,7 @@ export const MatchSummary = ({
   <div className="space-y-4 mt-4">
     <div className="alert alert-success">
       <span className="font-bold">
-        Game #{currentGameNumber} Complete! {currentWinner} wins!
+        Game #{currentGameNumber} Complete! {currentWinner} win!
       </span>
     </div>
 
@@ -36,7 +36,7 @@ export const MatchSummary = ({
           {games.map((game) => (
             <div key={game.gameNumber} className="text-sm">
               Game {game.gameNumber}:{' '}
-              {game.winner === 'A' ? players.teamA : players.teamB} wins (
+              {game.winner === 'A' ? players.teamA : players.teamB} win (
               {game.finalScore.A}-{game.finalScore.B})
             </div>
           ))}

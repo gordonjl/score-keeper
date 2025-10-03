@@ -41,7 +41,7 @@ function GameRouteWrapper() {
   // If no game actor, redirect to setup
   useEffect(() => {
     if (!gameActor && !matchData.isMatchComplete) {
-      navigate({ to: '/setup' })
+      navigate({ to: '/setup', search: {} })
     }
   }, [gameActor, matchData.isMatchComplete, navigate])
 

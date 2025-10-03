@@ -18,7 +18,7 @@ function MatchSummaryRoute() {
   // Redirect if not in matchComplete state
   useEffect(() => {
     if (!matchData.isMatchComplete) {
-      navigate({ to: '/setup' })
+      navigate({ to: '/setup', search: {} })
     }
   }, [matchData.isMatchComplete, navigate])
 
@@ -48,7 +48,7 @@ function MatchSummaryRoute() {
   }
 
   const handleEndMatch = () => {
-    matchActorRef.send({ type: 'RESET' })
+    // Navigate to root - this exits the _match layout and destroys the match machine
     navigate({ to: '/' })
   }
 
@@ -60,7 +60,7 @@ function MatchSummaryRoute() {
           <div className="flex flex-col items-center w-full">
             <h1 className="text-3xl font-bold mb-2">Match Complete!</h1>
             <p className="text-2xl">
-              <span className="font-bold">{matchWinner}</span> wins the match!
+              <span className="font-bold">{matchWinner}</span> win the match!
             </p>
             <p className="text-lg mt-2">
               {gamesWonA} - {gamesWonB}
@@ -109,7 +109,7 @@ function MatchSummaryRoute() {
                       <div className="badge badge-lg badge-neutral">
                         Game {game.gameNumber}
                       </div>
-                      <div className="font-semibold">{gameWinner} wins</div>
+                      <div className="font-semibold">{gameWinner} win</div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-sm">

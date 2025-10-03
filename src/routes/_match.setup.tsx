@@ -22,8 +22,27 @@ const SetupSchema = S.Struct({
   firstServingTeam: Team,
 })
 
+type SetupSearch = {
+  teamA?: string
+  teamB?: string
+  A1?: string
+  A2?: string
+  B1?: string
+  B2?: string
+}
+
 export const Route = createFileRoute('/_match/setup')({
   component: SetupRoute,
+  validateSearch: (search: Record<string, unknown>): SetupSearch => {
+    return {
+      teamA: search.teamA as string | undefined,
+      teamB: search.teamB as string | undefined,
+      A1: search.A1 as string | undefined,
+      A2: search.A2 as string | undefined,
+      B1: search.B1 as string | undefined,
+      B2: search.B2 as string | undefined,
+    }
+  },
 })
 
 function SetupRoute() {
@@ -34,6 +53,7 @@ function SetupRoute() {
     teamBFirstServer: s.context.teamBFirstServer,
   }))
   const navigate = useNavigate()
+  const searchParams = Route.useSearch()
 
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -102,10 +122,26 @@ function SetupRoute() {
     },
   })
 
-  // Populate form with existing match data on mount
+  // Populate form with search params (priority) or existing match data on mount
   useEffect(() => {
+    console.log('Setup: Search params:', searchParams)
     console.log('Setup: Match data:', matchData)
-    if (matchData.players.A1) {
+
+    // Priority 1: Search params (from "Start New Match (Same Teams)")
+    if (
+      searchParams.A1 &&
+      searchParams.A2 &&
+      searchParams.B1 &&
+      searchParams.B2
+    ) {
+      console.log('Setup: Populating form from search params')
+      form.setFieldValue('A1', searchParams.A1)
+      form.setFieldValue('A2', searchParams.A2)
+      form.setFieldValue('B1', searchParams.B1)
+      form.setFieldValue('B2', searchParams.B2)
+    }
+    // Priority 2: Existing match context data
+    else if (matchData.players.A1) {
       console.log('Setup: Populating form with existing data')
       form.setFieldValue('A1', matchData.players.A1)
       form.setFieldValue('A2', matchData.players.A2)
@@ -116,7 +152,7 @@ function SetupRoute() {
     } else {
       console.log('Setup: No existing match data found')
     }
-  }, [matchData, form])
+  }, [matchData, searchParams, form])
 
   return (
     <div className="p-4 max-w-3xl mx-auto">

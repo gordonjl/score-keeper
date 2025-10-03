@@ -23,7 +23,7 @@ export const GameOverConfirmation = ({
         {willCompleteMatch ? 'Match Over!' : 'Game Over!'}
       </h3>
       <p className="py-4">
-        <span className="text-2xl font-bold">{winnerTeam}</span> wins{' '}
+        <span className="text-2xl font-bold">{winnerTeam}</span> win{' '}
         {willCompleteMatch ? 'the match!' : 'the game!'}
       </p>
       <p className="text-sm text-base-content/70">
