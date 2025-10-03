@@ -1,4 +1,4 @@
 [build]
-  command = "rm -rf node_modules && pnpm install && pnpm build"
+  command = "rm -rf node_modules && pnpm install --prod=false && pnpm build"
   publish = "dist/client"
 
