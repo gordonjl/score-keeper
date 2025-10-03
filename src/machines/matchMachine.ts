@@ -141,8 +141,8 @@ export const matchMachine = setup({
               A2: event.players.A2,
               B1: event.players.B1,
               B2: event.players.B2,
-              teamA: context.players.teamA,
-              teamB: context.players.teamB,
+              teamA: `${event.players.A1} & ${event.players.A2}`,
+              teamB: `${event.players.B1} & ${event.players.B2}`,
             }
           : context.players
 

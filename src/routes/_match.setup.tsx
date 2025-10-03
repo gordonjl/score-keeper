@@ -70,13 +70,18 @@ function SetupRoute() {
       const parsed = parseResult.right
 
       // Reorder players so first servers are in row 1
+      const A1 = parsed.teamAFirstServer === 1 ? parsed.A1 : parsed.A2
+      const A2 = parsed.teamAFirstServer === 1 ? parsed.A2 : parsed.A1
+      const B1 = parsed.teamBFirstServer === 1 ? parsed.B1 : parsed.B2
+      const B2 = parsed.teamBFirstServer === 1 ? parsed.B2 : parsed.B1
+
       const players = {
-        A1: parsed.teamAFirstServer === 1 ? parsed.A1 : parsed.A2,
-        A2: parsed.teamAFirstServer === 1 ? parsed.A2 : parsed.A1,
-        B1: parsed.teamBFirstServer === 1 ? parsed.B1 : parsed.B2,
-        B2: parsed.teamBFirstServer === 1 ? parsed.B2 : parsed.B1,
-        teamA: 'Team A',
-        teamB: 'Team B',
+        A1,
+        A2,
+        B1,
+        B2,
+        teamA: `${A1} & ${A2}`,
+        teamB: `${B1} & ${B2}`,
       }
 
       // Setup the match
@@ -228,7 +233,8 @@ function SetupRoute() {
                 {/* Team A First Server */}
                 <div className="space-y-2">
                   <div className="font-semibold">
-                    Team A - Who serves first on hand-in?
+                    {A1 && A2 ? `${A1} & ${A2}` : 'Team A'} - Who serves first
+                    on hand-in?
                   </div>
                   <div className="flex gap-3">
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
@@ -265,7 +271,8 @@ function SetupRoute() {
                 {/* Team B First Server */}
                 <div className="space-y-2">
                   <div className="font-semibold">
-                    Team B - Who serves first on hand-in?
+                    {B1 && B2 ? `${B1} & ${B2}` : 'Team B'} - Who serves first
+                    on hand-in?
                   </div>
                   <div className="flex gap-3">
                     <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border border-base-300 rounded-lg hover:bg-base-200">
@@ -306,7 +313,9 @@ function SetupRoute() {
                   </div>
                   <div className="flex gap-3 justify-center">
                     <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-bold">Team A</span>
+                      <span className="label-text font-bold">
+                        {A1 && A2 ? `${A1} & ${A2}` : 'Team A'}
+                      </span>
                       <input
                         type="radio"
                         name="firstServingTeam"
@@ -318,7 +327,9 @@ function SetupRoute() {
                       />
                     </label>
                     <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200">
-                      <span className="label-text font-bold">Team B</span>
+                      <span className="label-text font-bold">
+                        {B1 && B2 ? `${B1} & ${B2}` : 'Team B'}
+                      </span>
                       <input
                         type="radio"
                         name="firstServingTeam"
