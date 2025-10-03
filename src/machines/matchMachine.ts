@@ -24,7 +24,16 @@ export type MatchEvents =
       teamAFirstServer: 1 | 2
       teamBFirstServer: 1 | 2
     }
-  | { type: 'START_NEW_GAME'; firstServingTeam: Team }
+  | {
+      type: 'START_NEW_GAME'
+      firstServingTeam: Team
+      players?: {
+        A1: string
+        A2: string
+        B1: string
+        B2: string
+      }
+    }
   | {
       type: 'GAME_COMPLETED'
       winner: Team
@@ -108,10 +117,22 @@ export const matchMachine = setup({
         const gameActor = createActor(squashMachine)
         gameActor.start()
 
+        // Use updated player positions if provided, otherwise use existing
+        const players = event.players
+          ? {
+              A1: event.players.A1,
+              A2: event.players.A2,
+              B1: event.players.B1,
+              B2: event.players.B2,
+              teamA: context.players.teamA,
+              teamB: context.players.teamB,
+            }
+          : context.players
+
         // Setup teams
         gameActor.send({
           type: 'SETUP_TEAMS',
-          players: context.players,
+          players,
         })
 
         // Start game
@@ -128,6 +149,8 @@ export const matchMachine = setup({
 
         return {
           currentGameActor: gameActor,
+          // Update context players if positions changed
+          ...(event.players ? { players } : {}),
         }
       }),
       on: {

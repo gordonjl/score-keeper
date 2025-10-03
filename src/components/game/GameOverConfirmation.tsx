@@ -4,6 +4,7 @@ type GameOverConfirmationProps = {
   scoreB: number
   onCancel: () => void
   onConfirm: () => void
+  onNextGame: () => void
 }
 
 export const GameOverConfirmation = ({
@@ -12,6 +13,7 @@ export const GameOverConfirmation = ({
   scoreB,
   onCancel,
   onConfirm,
+  onNextGame,
 }: GameOverConfirmationProps) => (
   <dialog className="modal modal-open">
     <div className="modal-box">
@@ -26,12 +28,15 @@ export const GameOverConfirmation = ({
       <p className="text-sm text-base-content/70 mt-2">
         Click Cancel to undo the last point and continue playing.
       </p>
-      <div className="modal-action">
+      <div className="modal-action flex-col sm:flex-row gap-2">
         <button className="btn btn-ghost" onClick={onCancel}>
           Cancel
         </button>
-        <button className="btn btn-primary" onClick={onConfirm}>
-          Confirm Game Over
+        <button className="btn btn-outline" onClick={onConfirm}>
+          View Match Summary
+        </button>
+        <button className="btn btn-primary" onClick={onNextGame}>
+          Next Game
         </button>
       </div>
     </div>

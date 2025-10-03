@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
 import { useGameState } from '../components/game/useGameState'
-import { determineFirstServingTeam, getOrderedRows } from '../components/game/utils'
+import {
+  determineFirstServingTeam,
+  getOrderedRows,
+} from '../components/game/utils'
 import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { ScoreGrid } from '../components/game/ScoreGrid'
@@ -10,6 +13,7 @@ import { RallyButtons } from '../components/game/RallyButtons'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchSummary } from '../components/game/MatchSummary'
+import { NextGameSetup } from '../components/game/NextGameSetup'
 
 export const Route = createFileRoute('/_match/game')({
   component: GameRouteWrapper,
@@ -22,21 +26,21 @@ function GameRouteWrapper() {
     currentGameActor: s.context.currentGameActor,
     games: s.context.games,
   }))
-  
+
   const gameActor = matchData.currentGameActor
-  
+
   // If no game actor, redirect to setup
   useEffect(() => {
     if (!gameActor) {
       navigate({ to: '/setup' })
     }
   }, [gameActor, navigate])
-  
+
   // Conditionally render GameRoute only when actor exists
   if (!gameActor) {
     return <div className="p-4">Loading...</div>
   }
-  
+
   return <GameRoute gameActor={gameActor} matchGames={matchData.games} />
 }
 
@@ -50,6 +54,7 @@ function GameRoute({
 }) {
   const navigate = useNavigate()
   const matchActorRef = MatchMachineContext.useActorRef()
+  const [showNextGameSetup, setShowNextGameSetup] = useState(false)
 
   // Use custom hook to get all game state
   const {
@@ -106,9 +111,7 @@ function GameRoute({
         firstServingTeam={firstServingTeam}
         players={players}
         isDisabled={isGameOver || isAwaitingConfirmation}
-        onRallyWon={(winner) =>
-          gameActor.send({ type: 'RALLY_WON', winner })
-        }
+        onRallyWon={(winner) => gameActor.send({ type: 'RALLY_WON', winner })}
       />
 
       <ActionButtons
@@ -130,22 +133,41 @@ function GameRoute({
             const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
             matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
           }}
+          onNextGame={() => {
+            gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+            const finalScore = { A: scoreA, B: scoreB }
+            const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+            matchActorRef.send({ type: 'GAME_COMPLETED', winner, finalScore })
+            setShowNextGameSetup(true)
+          }}
         />
       )}
 
-      {isGameOver && (
+      {showNextGameSetup && (
+        <NextGameSetup
+          isFirstGame={matchGames.length === 0}
+          lastWinner={scoreA > scoreB ? 'A' : 'B'}
+          players={players}
+          onCancel={() => setShowNextGameSetup(false)}
+          onStartGame={(config) => {
+            matchActorRef.send({
+              type: 'START_NEW_GAME',
+              firstServingTeam: config.firstServingTeam,
+              players: config.players,
+            })
+            setShowNextGameSetup(false)
+          }}
+        />
+      )}
+
+      {isGameOver && !showNextGameSetup && (
         <MatchSummary
           games={matchGames}
           players={players}
           currentGameNumber={matchGames.length}
           currentWinner={winnerTeam}
           onStartNewGame={() => {
-            const lastGame = matchGames[matchGames.length - 1]
-            const nextServingTeam: 'A' | 'B' = lastGame.winner === 'A' ? 'B' : 'A'
-            matchActorRef.send({
-              type: 'START_NEW_GAME',
-              firstServingTeam: nextServingTeam,
-            })
+            setShowNextGameSetup(true)
           }}
           onEndMatch={() => {
             matchActorRef.send({ type: 'END_MATCH' })
