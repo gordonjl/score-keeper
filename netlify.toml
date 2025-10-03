@@ -1,4 +1,7 @@
 [build]
-  command = "pnpm install --shamefully-hoist && pnpm build"
+  command = "pnpm build"
   publish = "dist/client"
+
+[context.production]
+  environment = {PNPM_FLAGS = "--shamefully-hoist"}
 
