@@ -44,13 +44,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  // Apply theme after hydration to avoid mismatch
+  // Apply theme based on system preferences
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = (e: MediaQueryListEvent | MediaQueryList) => {
       document.documentElement.setAttribute(
         'data-theme',
-        e.matches ? 'dark' : 'light',
+        e.matches ? 'pcsquash-dark' : 'pcsquash',
       )
     }
     apply(mq)

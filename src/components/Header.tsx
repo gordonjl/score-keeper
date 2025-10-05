@@ -1,22 +1,45 @@
 import { Link } from '@tanstack/react-router'
-import { Trophy } from 'lucide-react'
+import { Moon, Sun, Trophy } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function Header() {
+  const [theme, setTheme] = useState<'pcsquash' | 'pcsquash-dark'>('pcsquash')
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    setTheme(mq.matches ? 'pcsquash-dark' : 'pcsquash')
+  }, [])
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'pcsquash' ? 'pcsquash-dark' : 'pcsquash'
+    setTheme(newTheme)
+    document.documentElement.setAttribute('data-theme', newTheme)
+  }
+
   return (
-    <header className="navbar bg-base-100 shadow-lg sticky top-0 z-50">
+    <header className="navbar bg-base-100 shadow-lg sticky top-0 z-50 border-b border-base-300">
       <div className="navbar-start">
         <Link to="/" className="btn btn-ghost text-xl gap-2">
-          <Trophy className="w-6 h-6" />
+          <Trophy className="w-6 h-6 text-primary" />
           <span className="hidden sm:inline">Squash Score Keeper</span>
           <span className="sm:hidden">Squash</span>
         </Link>
       </div>
       <div className="navbar-center hidden md:flex">
-        <div className="text-sm text-base-content/60">
-          PAR-15 Doubles Scoring
-        </div>
+        <div className="badge badge-ghost badge-lg">PAR-15 Doubles Scoring</div>
       </div>
-      <div className="navbar-end">
+      <div className="navbar-end gap-2">
+        <button
+          onClick={toggleTheme}
+          className="btn btn-ghost btn-circle"
+          aria-label="Toggle theme"
+        >
+          {theme === 'pcsquash' ? (
+            <Moon className="w-5 h-5" />
+          ) : (
+            <Sun className="w-5 h-5" />
+          )}
+        </button>
         <div className="dropdown dropdown-end">
           <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
             <svg
@@ -36,7 +59,7 @@ export default function Header() {
           </div>
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
+            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow-xl border border-base-300"
           >
             <li>
               <Link to="/">Home</Link>
@@ -45,7 +68,9 @@ export default function Header() {
               <Link to="/setup">New Match</Link>
             </li>
             <li>
-              <a href="/support" target="_blank" rel="noopener noreferrer">Support</a>
+              <a href="/support" target="_blank" rel="noopener noreferrer">
+                Support
+              </a>
             </li>
           </ul>
         </div>
