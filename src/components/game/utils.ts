@@ -1,4 +1,4 @@
-import type { RowKey } from '../../machines/squashMachine'
+import type { ActivityGrid, RowKey } from '../../machines/squashMachine'
 
 export const toWords = (n: number): string => {
   const words = [
@@ -22,7 +22,7 @@ export const toWords = (n: number): string => {
   return words[n] ?? String(n)
 }
 
-export const determineFirstServingTeam = (grid: any): 'A' | 'B' => {
+export const determineFirstServingTeam = (grid: ActivityGrid): 'A' | 'B' => {
   return grid.A1[0] || grid.A2[0] ? 'A' : 'B'
 }
 

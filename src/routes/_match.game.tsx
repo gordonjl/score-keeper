@@ -14,8 +14,12 @@ import {
   determineFirstServingTeam,
   getOrderedRows,
 } from '../components/game/utils'
+
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
-import type { PlayerName } from '../machines/squashMachine'
+import { useCurrentGameActor } from '../hooks/useMatch'
+import type { ActorRefFrom } from 'xstate'
+import type { GameResult } from '../machines/matchMachine'
+import type { PlayerName, squashMachine } from '../machines/squashMachine'
 
 export const Route = createFileRoute('/_match/game')({
   component: GameRouteWrapper,
@@ -24,13 +28,11 @@ export const Route = createFileRoute('/_match/game')({
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
   const navigate = useNavigate()
+  const gameActor = useCurrentGameActor()
   const matchData = MatchMachineContext.useSelector((s) => ({
-    currentGameActor: s.context.currentGameActor,
     games: s.context.games,
     isMatchComplete: s.matches('matchComplete'),
   }))
-
-  const gameActor = matchData.currentGameActor
 
   // If match is complete, redirect to summary
   useEffect(() => {
@@ -59,8 +61,8 @@ function GameRoute({
   gameActor,
   matchGames,
 }: {
-  gameActor: any
-  matchGames: Array<any>
+  gameActor: ActorRefFrom<typeof squashMachine>
+  matchGames: Array<GameResult>
 }) {
   const navigate = useNavigate()
   const matchActorRef = MatchMachineContext.useActorRef()
@@ -80,11 +82,18 @@ function GameRoute({
     isAwaitingConfirmation,
     isIdle,
     announcement,
-    playerRowLabels,
   } = useGameState(gameActor)
 
   // Get match context for next game setup
   const matchPlayers = MatchMachineContext.useSelector((s) => s.context.players)
+
+  // Build player row labels from match players (source of truth)
+  const matchPlayerRowLabels: Record<'A1' | 'A2' | 'B1' | 'B2', string> = {
+    A1: matchPlayers.A1.lastName || matchPlayers.A1.firstName || 'A1',
+    A2: matchPlayers.A2.lastName || matchPlayers.A2.firstName || 'A2',
+    B1: matchPlayers.B1.lastName || matchPlayers.B1.firstName || 'B1',
+    B2: matchPlayers.B2.lastName || matchPlayers.B2.firstName || 'B2',
+  }
 
   // Determine which team served first
   const firstServingTeam = determineFirstServingTeam(grid)
@@ -98,9 +107,10 @@ function GameRoute({
   const winnerTeam = scoreA > scoreB ? players.teamA : players.teamB
 
   // Strictly typed team name map for ScoreHeader
+  // Use match players as source of truth for team names
   const teamNames: Record<'teamA' | 'teamB', string> = {
-    teamA: players.teamA,
-    teamB: players.teamB,
+    teamA: matchPlayers.teamA,
+    teamB: matchPlayers.teamB,
   }
 
   // Calculate games won
@@ -144,7 +154,7 @@ function GameRoute({
 
         <ScoreGrid
           rows={rows}
-          players={playerRowLabels}
+          players={matchPlayerRowLabels}
           grid={grid}
           serverRowKey={serverRowKey}
           scoreA={scoreA}

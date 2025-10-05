@@ -1,4 +1,5 @@
-import { assign, createActor, setup } from 'xstate'
+import { assign, sendTo, setup, spawnChild } from 'xstate'
+
 import { squashMachine } from './squashMachine'
 import type { PlayerName, PlayerNameMap, Team } from './squashMachine'
 
@@ -14,7 +15,7 @@ export type MatchContext = {
   teamAFirstServer: 1 | 2
   teamBFirstServer: 1 | 2
   games: Array<GameResult>
-  currentGameActor: ReturnType<typeof createActor<typeof squashMachine>> | null
+  currentGameId: string | null
 }
 
 export type MatchEvents =
@@ -49,6 +50,9 @@ export const matchMachine = setup({
     context: {} as MatchContext,
     events: {} as MatchEvents,
   },
+  actors: {
+    squashGame: squashMachine,
+  },
   actions: {
     setupMatch: assign(({ event }) => {
       if (event.type !== 'SETUP_MATCH') return {}
@@ -57,9 +61,66 @@ export const matchMachine = setup({
         teamAFirstServer: event.teamAFirstServer,
         teamBFirstServer: event.teamBFirstServer,
         games: [],
-        currentGameActor: null,
+        currentGameId: null,
       }
     }),
+    spawnGameActor: spawnChild('squashGame', {
+      id: ({ context }) => `game-${context.games.length + 1}`,
+    }),
+    updatePlayersAndGameId: assign(({ context, event }) => {
+      if (event.type !== 'START_NEW_GAME') return {}
+
+      // Use updated player positions if provided, otherwise use existing
+      const players = event.players
+        ? {
+            A1: event.players.A1,
+            A2: event.players.A2,
+            B1: event.players.B1,
+            B2: event.players.B2,
+            teamA: `${event.players.A1.fullName} & ${event.players.A2.fullName}`,
+            teamB: `${event.players.B1.fullName} & ${event.players.B2.fullName}`,
+          }
+        : context.players
+      return {
+        currentGameId: `game-${context.games.length + 1}`,
+        players,
+      }
+    }),
+    setupGameTeams: sendTo(
+      (_, params: { gameId: string }) => params.gameId,
+      (_, params: { players: PlayerNameMap }) => ({
+        type: 'SETUP_TEAMS',
+        players: params.players,
+      }),
+    ),
+    startGame: sendTo(
+      (_, params: { gameId: string }) => params.gameId,
+      (
+        _,
+        params: {
+          firstServingTeam: Team
+          teamASide?: 'R' | 'L'
+          teamBSide?: 'R' | 'L'
+        },
+      ) => {
+        // Determine which side the first server starts from
+        const firstServerSide =
+          params.firstServingTeam === 'A'
+            ? params.teamASide || 'R'
+            : params.teamBSide || 'R'
+
+        return {
+          type: 'START_GAME',
+          firstServer: {
+            team: params.firstServingTeam,
+            player: 1, // Always player 1 since we reordered
+            side: firstServerSide,
+          },
+          maxPoints: 15,
+          winBy: 1,
+        }
+      },
+    ),
     recordGameResult: assign(({ context, event }) => {
       if (event.type !== 'GAME_COMPLETED') return {}
       return {
@@ -74,7 +135,7 @@ export const matchMachine = setup({
       }
     }),
     clearCurrentGame: assign(() => ({
-      currentGameActor: null,
+      currentGameId: null,
     })),
   },
   guards: {
@@ -108,7 +169,7 @@ export const matchMachine = setup({
     teamAFirstServer: 1,
     teamBFirstServer: 1,
     games: [],
-    currentGameActor: null,
+    currentGameId: null,
   },
   states: {
     idle: {
@@ -127,55 +188,31 @@ export const matchMachine = setup({
       },
     },
     inGame: {
-      entry: assign(({ context, event }) => {
-        if (event.type !== 'START_NEW_GAME') return {}
-
-        // Create a new game actor
-        const gameActor = createActor(squashMachine)
-        gameActor.start()
-
-        // Use updated player positions if provided, otherwise use existing
-        const players = event.players
-          ? {
-              A1: event.players.A1,
-              A2: event.players.A2,
-              B1: event.players.B1,
-              B2: event.players.B2,
-              teamA: `${event.players.A1.fullName} & ${event.players.A2.fullName}`,
-              teamB: `${event.players.B1.fullName} & ${event.players.B2.fullName}`,
+      entry: [
+        'spawnGameActor',
+        'updatePlayersAndGameId',
+        {
+          type: 'setupGameTeams',
+          params: ({ context }) => ({
+            gameId: `game-${context.games.length + 1}`,
+            players: context.players,
+          }),
+        },
+        {
+          type: 'startGame',
+          params: ({ context, event }) => {
+            if (event.type !== 'START_NEW_GAME') {
+              throw new Error('Invalid event type for startGame')
             }
-          : context.players
-
-        // Setup teams
-        gameActor.send({
-          type: 'SETUP_TEAMS',
-          players,
-        })
-
-        // Start game
-        // Determine which side the first server starts from
-        const firstServerSide =
-          event.firstServingTeam === 'A'
-            ? event.teamASide || 'R'
-            : event.teamBSide || 'R'
-
-        gameActor.send({
-          type: 'START_GAME',
-          firstServer: {
-            team: event.firstServingTeam,
-            player: 1, // Always player 1 since we reordered
-            side: firstServerSide,
+            return {
+              gameId: `game-${context.games.length + 1}`,
+              firstServingTeam: event.firstServingTeam,
+              teamASide: event.teamASide,
+              teamBSide: event.teamBSide,
+            }
           },
-          maxPoints: 15,
-          winBy: 1,
-        })
-
-        return {
-          currentGameActor: gameActor,
-          // Update context players if positions changed
-          ...(event.players ? { players } : {}),
-        }
-      }),
+        },
+      ],
       on: {
         GAME_COMPLETED: [
           {

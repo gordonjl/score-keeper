@@ -1,6 +1,12 @@
 import { useSelector } from '@xstate/react'
 import { toWords } from './utils'
-import type { PlayerName, RowKey } from '../../machines/squashMachine'
+import type { ActorRefFrom } from 'xstate'
+
+import type {
+  PlayerName,
+  RowKey,
+  squashMachine,
+} from '../../machines/squashMachine'
 
 // Helper to get display name: prefer lastName, fallback to firstName, then default
 const getDisplayName = (
@@ -15,8 +21,8 @@ const getDisplayName = (
   return defaultName
 }
 
-export const useGameState = (gameActor: any) => {
-  const gameState = useSelector(gameActor, (s: any) => ({
+export const useGameState = (gameActor: ActorRefFrom<typeof squashMachine>) => {
+  const gameState = useSelector(gameActor, (s) => ({
     score: s.context.score,
     grid: s.context.grid,
     players: s.context.players,
@@ -58,10 +64,10 @@ export const useGameState = (gameActor: any) => {
 
   // Full names for tooltips
   const playerFullNames: Record<RowKey, string> = {
-    A1: gameState.players.A1?.fullName ?? 'A1',
-    A2: gameState.players.A2?.fullName ?? 'A2',
-    B1: gameState.players.B1?.fullName ?? 'B1',
-    B2: gameState.players.B2?.fullName ?? 'B2',
+    A1: gameState.players.A1.fullName,
+    A2: gameState.players.A2.fullName,
+    B1: gameState.players.B1.fullName,
+    B2: gameState.players.B2.fullName,
   }
 
   return {
