@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
+import { archiveCurrentMatch } from '../utils/matchPersistence'
 
 export const Route = createFileRoute('/_match/summary')({
   component: MatchSummaryRoute,
@@ -49,6 +50,8 @@ function MatchSummaryRoute() {
   }
 
   const handleEndMatch = () => {
+    // Archive the match before navigating away
+    archiveCurrentMatch()
     // Navigate to root - this exits the _match layout and destroys the match machine
     navigate({ to: '/' })
   }

@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { MatchMachineContext } from '../contexts/MatchMachineContext'
+import { archiveCurrentMatch } from '../utils/matchPersistence'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchProgress } from '../components/game/MatchProgress'
@@ -14,8 +16,6 @@ import {
   determineFirstServingTeam,
   getOrderedRows,
 } from '../components/game/utils'
-
-import { MatchMachineContext } from '../contexts/MatchMachineContext'
 import { useCurrentGameActor } from '../hooks/useMatch'
 import type { ActorRefFrom } from 'xstate'
 import type { GameResult } from '../machines/matchMachine'
@@ -258,6 +258,7 @@ function GameRoute({
             }}
             onEndMatch={() => {
               matchActorRef.send({ type: 'END_MATCH' })
+              archiveCurrentMatch()
               navigate({ to: '/' })
             }}
           />

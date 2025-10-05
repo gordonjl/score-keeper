@@ -66,6 +66,7 @@ export const matchMachine = setup({
     }),
     spawnGameActor: spawnChild('squashGame', {
       id: ({ context }) => `game-${context.games.length + 1}`,
+      syncSnapshot: true,
     }),
     updatePlayersAndGameId: assign(({ context, event }) => {
       if (event.type !== 'START_NEW_GAME') return {}
