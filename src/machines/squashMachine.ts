@@ -216,7 +216,9 @@ export const squashMachine = setup({
         {
           score: { ...context.score },
           server: { ...context.server },
-          grid: JSON.parse(JSON.stringify(context.grid)) as ActivityGrid,
+          grid: {
+            ...context.grid,
+          },
           firstHandUsed: context.firstHandUsed,
         },
       ],

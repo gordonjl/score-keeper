@@ -62,6 +62,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <title>PCS Squash Score Keeper</title>
       </head>
       <body className="flex flex-col min-h-screen">
         <Header />
