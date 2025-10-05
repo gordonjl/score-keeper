@@ -9,18 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SupportRouteImport } from './routes/support'
 import { Route as MatchRouteImport } from './routes/_match'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchSummaryRouteImport } from './routes/_match.summary'
 import { Route as MatchSetupRouteImport } from './routes/_match.setup'
 import { Route as MatchGameRouteImport } from './routes/_match.game'
 
-const SupportRoute = SupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MatchRoute = MatchRouteImport.update({
   id: '/_match',
   getParentRoute: () => rootRouteImport,
@@ -48,14 +42,12 @@ const MatchGameRoute = MatchGameRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/support': typeof SupportRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
   '/summary': typeof MatchSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/support': typeof SupportRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
   '/summary': typeof MatchSummaryRoute
@@ -64,21 +56,19 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_match': typeof MatchRouteWithChildren
-  '/support': typeof SupportRoute
   '/_match/game': typeof MatchGameRoute
   '/_match/setup': typeof MatchSetupRoute
   '/_match/summary': typeof MatchSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/support' | '/game' | '/setup' | '/summary'
+  fullPaths: '/' | '/game' | '/setup' | '/summary'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/support' | '/game' | '/setup' | '/summary'
+  to: '/' | '/game' | '/setup' | '/summary'
   id:
     | '__root__'
     | '/'
     | '/_match'
-    | '/support'
     | '/_match/game'
     | '/_match/setup'
     | '/_match/summary'
@@ -87,18 +77,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MatchRoute: typeof MatchRouteWithChildren
-  SupportRoute: typeof SupportRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_match': {
       id: '/_match'
       path: ''
@@ -154,7 +136,6 @@ const MatchRouteWithChildren = MatchRoute._addFileChildren(MatchRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MatchRoute: MatchRouteWithChildren,
-  SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

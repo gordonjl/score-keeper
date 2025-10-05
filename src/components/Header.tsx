@@ -1,9 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import { Moon, Sun, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { LetStrokeModal } from './modals/LetStrokeModal'
+import { TimersModal } from './modals/TimersModal'
 
 export default function Header() {
   const [theme, setTheme] = useState<'pcsquash' | 'pcsquash-dark'>('pcsquash')
+  const [isLetStrokeModalOpen, setIsLetStrokeModalOpen] = useState(false)
+  const [isTimersModalOpen, setIsTimersModalOpen] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -14,6 +18,12 @@ export default function Header() {
     const newTheme = theme === 'pcsquash' ? 'pcsquash-dark' : 'pcsquash'
     setTheme(newTheme)
     document.documentElement.setAttribute('data-theme', newTheme)
+  }
+
+  const closeDropdown = () => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
   }
 
   return (
@@ -62,19 +72,60 @@ export default function Header() {
             className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow-xl border border-base-300"
           >
             <li>
-              <Link to="/">Home</Link>
+              <Link to="/" onClick={closeDropdown}>
+                Home
+              </Link>
             </li>
             <li>
-              <Link to="/setup">New Match</Link>
+              <Link to="/game" onClick={closeDropdown}>
+                Current Game
+              </Link>
             </li>
             <li>
-              <a href="/support" target="_blank" rel="noopener noreferrer">
-                Support
-              </a>
+              Referee Tools
+              <ul>
+                <li>
+                  <button
+                    onClick={() => {
+                      setIsLetStrokeModalOpen(true)
+                      closeDropdown()
+                    }}
+                  >
+                    Let/Stroke Helper
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setIsTimersModalOpen(true)
+                      closeDropdown()
+                    }}
+                  >
+                    Timers & Conduct
+                  </button>
+                </li>
+                <li>
+                  <a
+                    href="https://ussquash.org/wp-content/uploads/2024/11/2024-Hardball-Squash-Doubles-Rules.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Hardball Rules (PDF)
+                  </a>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
       </div>
+      <LetStrokeModal
+        isOpen={isLetStrokeModalOpen}
+        onClose={() => setIsLetStrokeModalOpen(false)}
+      />
+      <TimersModal
+        isOpen={isTimersModalOpen}
+        onClose={() => setIsTimersModalOpen(false)}
+      />
     </header>
   )
 }
