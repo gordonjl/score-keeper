@@ -11,11 +11,19 @@ export const ActionButtons = ({
   onLet,
   onUndo,
 }: ActionButtonsProps) => (
-  <div className="flex gap-2 flex-wrap">
-    <button className="btn btn-ghost" onClick={onLet} disabled={!canLet}>
+  <div className="flex gap-3 flex-wrap">
+    <button
+      className="btn btn-outline btn-neutral shadow-md hover:shadow-lg transition-all"
+      onClick={onLet}
+      disabled={!canLet}
+    >
       Let
     </button>
-    <button className="btn btn-warning" onClick={onUndo} disabled={!canUndo}>
+    <button
+      className="btn btn-warning shadow-md hover:shadow-lg transition-all"
+      onClick={onUndo}
+      disabled={!canUndo}
+    >
       Undo
     </button>
   </div>

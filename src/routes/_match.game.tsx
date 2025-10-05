@@ -168,7 +168,6 @@ function GameRoute({
         />
 
         <RallyButtons
-          firstServingTeam={firstServingTeam}
           players={{
             A1: players.A1.fullName,
             A2: players.A2.fullName,
