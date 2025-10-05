@@ -1,5 +1,5 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { ClientOnly, Outlet, createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { MatchMachineContext } from '../contexts/MatchMachineContext'
 import { ACTIVE_MATCH_KEY } from '../utils/matchPersistence'
 
@@ -27,28 +27,21 @@ const MatchContent = () => {
   return <Outlet />
 }
 
-function MatchLayout() {
-  // Use state to defer localStorage read until after hydration
-  const [restoredSnapshot, setRestoredSnapshot] = useState<any>(undefined)
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    // Only run on client after hydration
-    setIsClient(true)
+const MatchProviderClient = () => {
+  // This only runs on the client after hydration
+  const getRestoredSnapshot = () => {
     try {
       const persistedState = localStorage.getItem(ACTIVE_MATCH_KEY)
       if (persistedState) {
-        setRestoredSnapshot(JSON.parse(persistedState))
+        return JSON.parse(persistedState)
       }
     } catch (error) {
       console.error('Failed to restore match state:', error)
     }
-  }, [])
-
-  // Don't render provider until we've checked for persisted state
-  if (!isClient) {
-    return null
+    return undefined
   }
+
+  const restoredSnapshot = getRestoredSnapshot()
 
   return (
     <MatchMachineContext.Provider
@@ -56,5 +49,13 @@ function MatchLayout() {
     >
       <MatchContent />
     </MatchMachineContext.Provider>
+  )
+}
+
+function MatchLayout() {
+  return (
+    <ClientOnly fallback={null}>
+      <MatchProviderClient />
+    </ClientOnly>
   )
 }
