@@ -97,22 +97,28 @@ export const listMatches = (
       }),
   }).pipe(Effect.map((matches) => applyFilters(matches, filter)))
 
-// Archive match
-export const archiveMatch = (
+// Update match status
+export const updateMatchStatus = (
   matchId: MatchId,
+  status: MatchStatus,
 ): Effect.Effect<void, DatabaseError> =>
   Effect.tryPromise({
     try: () =>
       db.matches.update(matchId, {
-        status: 'archived' as MatchStatus,
+        status,
         updatedAt: Date.now(),
       }),
     catch: (error) =>
       new DatabaseError({
-        operation: 'archiveMatch',
+        operation: 'updateMatchStatus',
         reason: String(error),
       }),
   }).pipe(Effect.asVoid)
+
+// Archive match
+export const archiveMatch = (
+  matchId: MatchId,
+): Effect.Effect<void, DatabaseError> => updateMatchStatus(matchId, 'archived')
 
 // Delete match and all associated data
 export const deleteMatch = (
@@ -205,6 +211,7 @@ export const importMatch = (
 export const MatchManager = {
   createMatch,
   listMatches,
+  updateMatchStatus,
   archiveMatch,
   deleteMatch,
   exportMatch,

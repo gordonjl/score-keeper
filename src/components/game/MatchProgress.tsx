@@ -1,10 +1,5 @@
 import { Clock, TrendingUp, Trophy } from 'lucide-react'
-
-type GameResult = {
-  gameNumber: number
-  winner: 'A' | 'B'
-  finalScore: { A: number; B: number }
-}
+import type { GameResult } from '../../machines/matchMachine'
 
 type MatchProgressProps = {
   games: Array<GameResult>
@@ -15,7 +10,10 @@ type MatchProgressProps = {
 }
 
 const calculateMatchStats = (games: Array<GameResult>) => {
-  if (games.length === 0) {
+  // Filter to only completed games
+  const completedGames = games.filter((g) => g.status === 'completed')
+
+  if (completedGames.length === 0) {
     return {
       gamesWonA: 0,
       gamesWonB: 0,
@@ -26,29 +24,29 @@ const calculateMatchStats = (games: Array<GameResult>) => {
     }
   }
 
-  const gamesWonA = games.filter((g) => g.winner === 'A').length
-  const gamesWonB = games.filter((g) => g.winner === 'B').length
-  const totalPoints = games.reduce(
-    (sum, g) => sum + g.finalScore.A + g.finalScore.B,
+  const gamesWonA = completedGames.filter((g) => g.winner === 'A').length
+  const gamesWonB = completedGames.filter((g) => g.winner === 'B').length
+  const totalPoints = completedGames.reduce(
+    (sum, g) => sum + g.finalScore!.A + g.finalScore!.B,
     0,
   )
 
-  const longestGame = games.reduce(
+  const longestGame = completedGames.reduce(
     (longest, game) => {
-      const points = game.finalScore.A + game.finalScore.B
+      const points = game.finalScore!.A + game.finalScore!.B
       const longestPoints = longest
-        ? longest.finalScore.A + longest.finalScore.B
+        ? longest.finalScore!.A + longest.finalScore!.B
         : 0
       return points > longestPoints ? game : longest
     },
     null as GameResult | null,
   )
 
-  const closestGame = games.reduce(
+  const closestGame = completedGames.reduce(
     (closest, game) => {
-      const diff = Math.abs(game.finalScore.A - game.finalScore.B)
+      const diff = Math.abs(game.finalScore!.A - game.finalScore!.B)
       const closestDiff = closest
-        ? Math.abs(closest.finalScore.A - closest.finalScore.B)
+        ? Math.abs(closest.finalScore!.A - closest.finalScore!.B)
         : Infinity
       return diff < closestDiff ? game : closest
     },
@@ -57,17 +55,17 @@ const calculateMatchStats = (games: Array<GameResult>) => {
 
   // Calculate current streak
   let currentStreak = { team: null as 'A' | 'B' | null, count: 0 }
-  if (games.length > 0) {
-    const lastWinner = games[games.length - 1].winner
+  if (completedGames.length > 0) {
+    const lastWinner = completedGames[completedGames.length - 1].winner
     let count = 0
-    for (let i = games.length - 1; i >= 0; i--) {
-      if (games[i].winner === lastWinner) {
+    for (let i = completedGames.length - 1; i >= 0; i--) {
+      if (completedGames[i].winner === lastWinner) {
         count++
       } else {
         break
       }
     }
-    currentStreak = { team: lastWinner, count }
+    currentStreak = { team: lastWinner!, count }
   }
 
   return {
@@ -154,39 +152,43 @@ export const MatchProgress = ({
           <div className="card-body p-4">
             <h3 className="font-bold mb-3">Game History</h3>
             <div className="space-y-2">
-              {games.map((game) => {
-                const winnerName =
-                  game.winner === 'A' ? players.teamA : players.teamB
-                const isDominant =
-                  Math.abs(game.finalScore.A - game.finalScore.B) >= 10
+              {games
+                .filter((g) => g.status === 'completed')
+                .map((game) => {
+                  const winnerName =
+                    game.winner === 'A' ? players.teamA : players.teamB
+                  const isDominant =
+                    Math.abs(game.finalScore!.A - game.finalScore!.B) >= 10
 
-                return (
-                  <div
-                    key={game.gameNumber}
-                    className="flex items-center justify-between p-3 bg-base-100 rounded-lg shadow-sm border border-base-300"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="badge badge-primary badge-sm">
-                        Game {game.gameNumber}
+                  return (
+                    <div
+                      key={game.gameNumber}
+                      className="flex items-center justify-between p-3 bg-base-100 rounded-lg shadow-sm border border-base-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="badge badge-primary badge-sm">
+                          Game {game.gameNumber}
+                        </div>
+                        <Trophy
+                          className={`w-4 h-4 ${
+                            game.winner === 'A' ? 'text-success' : 'text-accent'
+                          }`}
+                        />
+                        <span className="font-medium text-sm">
+                          {winnerName}
+                        </span>
                       </div>
-                      <Trophy
-                        className={`w-4 h-4 ${
-                          game.winner === 'A' ? 'text-success' : 'text-accent'
-                        }`}
-                      />
-                      <span className="font-medium text-sm">{winnerName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">
+                          {game.finalScore!.A}-{game.finalScore!.B}
+                        </span>
+                        {isDominant && (
+                          <TrendingUp className="w-3 h-3 text-warning" />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">
-                        {game.finalScore.A}-{game.finalScore.B}
-                      </span>
-                      {isDominant && (
-                        <TrendingUp className="w-3 h-3 text-warning" />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
             </div>
           </div>
         </div>
@@ -220,8 +222,8 @@ export const MatchProgress = ({
                   <span className="text-base-content/70">Longest Game</span>
                   <span className="font-semibold badge badge-ghost">
                     Game {stats.longestGame.gameNumber} (
-                    {stats.longestGame.finalScore.A +
-                      stats.longestGame.finalScore.B}{' '}
+                    {stats.longestGame.finalScore!.A +
+                      stats.longestGame.finalScore!.B}{' '}
                     pts)
                   </span>
                 </div>
@@ -232,8 +234,8 @@ export const MatchProgress = ({
                   <span className="font-semibold badge badge-ghost">
                     Game {stats.closestGame.gameNumber} (
                     {Math.abs(
-                      stats.closestGame.finalScore.A -
-                        stats.closestGame.finalScore.B,
+                      stats.closestGame.finalScore!.A -
+                        stats.closestGame.finalScore!.B,
                     )}{' '}
                     pt diff)
                   </span>

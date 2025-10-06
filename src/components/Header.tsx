@@ -120,6 +120,11 @@ export default function Header() {
               </li>
             )}
             <li>
+              <Link to="/matches" onClick={closeDropdown}>
+                All Matches
+              </Link>
+            </li>
+            <li>
               Referee Tools
               <ul>
                 <li>

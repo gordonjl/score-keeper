@@ -10,7 +10,7 @@ export const Route = createFileRoute('/_match/summary')({
 function MatchSummaryRoute() {
   const navigate = useNavigate()
   const { actor: matchActorRef } = useEventSourcedMatch()
-  
+
   const matchData = matchActorRef
     ? {
         games: matchActorRef.getSnapshot().context.games,
@@ -30,8 +30,12 @@ function MatchSummaryRoute() {
     return <div className="p-4">Loading...</div>
   }
 
-  const gamesWonA = matchData.games.filter((g) => g.winner === 'A').length
-  const gamesWonB = matchData.games.filter((g) => g.winner === 'B').length
+  const gamesWonA = matchData.games.filter(
+    (g) => g.status === 'completed' && g.winner === 'A',
+  ).length
+  const gamesWonB = matchData.games.filter(
+    (g) => g.status === 'completed' && g.winner === 'B',
+  ).length
   const matchWinner =
     gamesWonA >= 3 ? matchData.players.teamA : matchData.players.teamB
   const matchWinnerTeam = gamesWonA >= 3 ? 'A' : 'B'
@@ -103,47 +107,53 @@ function MatchSummaryRoute() {
             {/* Game-by-Game Results */}
             <div className="divider text-sm">Game Results</div>
             <div className="space-y-2">
-              {matchData.games.map((game) => {
-                const gameWinner =
-                  game.winner === 'A'
-                    ? matchData.players.teamA
-                    : matchData.players.teamB
-                const gameWinnerTeam = game.winner
-                return (
-                  <div
-                    key={game.gameNumber}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-base-200 rounded-lg gap-2"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="badge badge-neutral">
-                        Game {game.gameNumber}
+              {matchData.games
+                .filter((g) => g.status === 'completed')
+                .map((game) => {
+                  const gameWinner =
+                    game.winner === 'A'
+                      ? matchData.players.teamA
+                      : matchData.players.teamB
+                  const gameWinnerTeam = game.winner
+                  return (
+                    <div
+                      key={game.gameNumber}
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-base-200 rounded-lg gap-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="badge badge-neutral">
+                          Game {game.gameNumber}
+                        </div>
+                        <div className="font-semibold text-sm">
+                          {gameWinner} win
+                        </div>
                       </div>
-                      <div className="font-semibold text-sm">
-                        {gameWinner} win
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs sm:text-sm">
+                          <span
+                            className={
+                              gameWinnerTeam === 'A' ? 'font-bold' : ''
+                            }
+                          >
+                            {matchData.players.teamA}
+                          </span>{' '}
+                          <span className="font-mono">{game.finalScore.A}</span>
+                          {' - '}
+                          <span className="font-mono">
+                            {game.finalScore.B}
+                          </span>{' '}
+                          <span
+                            className={
+                              gameWinnerTeam === 'B' ? 'font-bold' : ''
+                            }
+                          >
+                            {matchData.players.teamB}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs sm:text-sm">
-                        <span
-                          className={gameWinnerTeam === 'A' ? 'font-bold' : ''}
-                        >
-                          {matchData.players.teamA}
-                        </span>{' '}
-                        <span className="font-mono">{game.finalScore.A}</span>
-                        {' - '}
-                        <span className="font-mono">
-                          {game.finalScore.B}
-                        </span>{' '}
-                        <span
-                          className={gameWinnerTeam === 'B' ? 'font-bold' : ''}
-                        >
-                          {matchData.players.teamB}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
             </div>
 
             {/* Players */}

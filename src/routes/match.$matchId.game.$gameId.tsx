@@ -26,10 +26,10 @@ export const Route = createFileRoute('/match/$matchId/game/$gameId')({
 
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
-  const { matchId } = Route.useParams()
+  const { matchId, gameId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
   const { actor, isLoading } = useEventSourcedMatch()
-  const gameActor = useEventSourcedGameActor()
+  const gameActor = useEventSourcedGameActor(gameId)
 
   const matchData = actor
     ? {
@@ -132,10 +132,17 @@ function GameRoute({
     teamB: matchPlayers.teamB,
   }
 
-  // Calculate games won
-  const gamesWonA = matchGames.filter((g) => g.winner === 'A').length
-  const gamesWonB = matchGames.filter((g) => g.winner === 'B').length
-  const currentGameNumber = matchGames.length + 1
+  // Calculate games won (only count completed games)
+  const gamesWonA = matchGames.filter(
+    (g) => g.status === 'completed' && g.winner === 'A',
+  ).length
+  const gamesWonB = matchGames.filter(
+    (g) => g.status === 'completed' && g.winner === 'B',
+  ).length
+
+  // Get current game number from the games array (highest game number)
+  const currentGameNumber =
+    matchGames.length > 0 ? Math.max(...matchGames.map((g) => g.gameNumber)) : 1
 
   // Check if this game will complete the match (one team will have 3 wins)
   const currentWinner = scoreA > scoreB ? 'A' : 'B'
@@ -288,7 +295,7 @@ function GameRoute({
           <MatchSummary
             games={matchGames}
             players={{ teamA: players.teamA, teamB: players.teamB }}
-            currentGameNumber={matchGames.length}
+            currentGameNumber={currentGameNumber}
             currentWinner={winnerTeam}
             onStartNewGame={() => {
               setShowNextGameSetup(true)

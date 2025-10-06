@@ -3,19 +3,21 @@ import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 /**
  * Hook to get the current game actor from the event-sourced match machine.
  * This is compatible with the existing useCurrentGameActor hook.
+ *
+ * @param gameId - Optional game ID to retrieve. If not provided, uses currentGameId from context.
  */
-export const useEventSourcedGameActor = () => {
+export const useEventSourcedGameActor = (gameId?: string) => {
   const { actor } = useEventSourcedMatch()
 
   if (!actor) return null
 
   const snapshot = actor.getSnapshot()
-  const currentGameId = snapshot.context.currentGameId
+  const targetGameId = gameId ?? snapshot.context.currentGameId
 
-  if (!currentGameId) return null
+  if (!targetGameId) return null
 
   // Access the spawned game actor from snapshot.children
-  return snapshot.children[currentGameId] ?? null
+  return snapshot.children[targetGameId] ?? null
 }
 
 /**
@@ -29,7 +31,7 @@ export const useEventSourcedMatchSend = () => {
       console.warn('Cannot send event: actor not initialized')
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     actor.send(event as any)
   }
 }

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as MatchRouteImport } from './routes/_match'
 import { Route as EventMatchRouteImport } from './routes/_eventMatch'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,6 +21,11 @@ import { Route as MatchMatchIdSummaryRouteImport } from './routes/match.$matchId
 import { Route as MatchMatchIdSetupRouteImport } from './routes/match.$matchId.setup'
 import { Route as MatchMatchIdGameGameIdRouteImport } from './routes/match.$matchId.game.$gameId'
 
+const MatchesRoute = MatchesRouteImport.update({
+  id: '/matches',
+  path: '/matches',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchRoute = MatchRouteImport.update({
   id: '/_match',
   getParentRoute: () => rootRouteImport,
@@ -71,6 +77,7 @@ const MatchMatchIdGameGameIdRoute = MatchMatchIdGameGameIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/matches': typeof MatchesRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
   '/summary': typeof MatchSummaryRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/matches': typeof MatchesRoute
   '/game': typeof MatchGameRoute
   '/setup': typeof MatchSetupRoute
   '/summary': typeof MatchSummaryRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_eventMatch': typeof EventMatchRoute
   '/_match': typeof MatchRouteWithChildren
+  '/matches': typeof MatchesRoute
   '/_match/game': typeof MatchGameRoute
   '/_match/setup': typeof MatchSetupRoute
   '/_match/summary': typeof MatchSummaryRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/matches'
     | '/game'
     | '/setup'
     | '/summary'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/matches'
     | '/game'
     | '/setup'
     | '/summary'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_eventMatch'
     | '/_match'
+    | '/matches'
     | '/_match/game'
     | '/_match/setup'
     | '/_match/summary'
@@ -141,11 +153,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EventMatchRoute: typeof EventMatchRoute
   MatchRoute: typeof MatchRouteWithChildren
+  MatchesRoute: typeof MatchesRoute
   MatchMatchIdRoute: typeof MatchMatchIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/matches': {
+      id: '/matches'
+      path: '/matches'
+      fullPath: '/matches'
+      preLoaderRoute: typeof MatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_match': {
       id: '/_match'
       path: ''
@@ -253,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EventMatchRoute: EventMatchRoute,
   MatchRoute: MatchRouteWithChildren,
+  MatchesRoute: MatchesRoute,
   MatchMatchIdRoute: MatchMatchIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

@@ -18,13 +18,16 @@ type EventSourcedMatchContextType = {
   readonly error: string | null
 }
 
-const EventSourcedMatchContext = createContext<EventSourcedMatchContextType | null>(null)
+const EventSourcedMatchContext =
+  createContext<EventSourcedMatchContextType | null>(null)
 
 // Hook to use the context
 export const useEventSourcedMatch = () => {
   const context = useContext(EventSourcedMatchContext)
   if (!context) {
-    throw new Error('useEventSourcedMatch must be used within EventSourcedMatchProvider')
+    throw new Error(
+      'useEventSourcedMatch must be used within EventSourcedMatchProvider',
+    )
   }
   return context
 }
@@ -52,7 +55,9 @@ export const EventSourcedMatchProvider = ({
   matchId,
   children,
 }: EventSourcedMatchProviderProps) => {
-  const [actor, setActor] = useState<ActorRefFrom<typeof matchMachine> | null>(null)
+  const [actor, setActor] = useState<ActorRefFrom<typeof matchMachine> | null>(
+    null,
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const lastEventCountRef = useRef(0)
@@ -122,11 +127,30 @@ export const EventSourcedMatchProvider = ({
     )
   }, [matchId])
 
-  // Create snapshots periodically (persistence is now handled by machine actions)
+  // Create snapshots periodically and update match status
   useEffect(() => {
     if (!actor) return
 
     const subscription = actor.subscribe(() => {
+      const snapshot = actor.getSnapshot()
+
+      // Update match status to 'completed' when match is complete
+      if (snapshot.matches('matchComplete')) {
+        const updateStatusProgram = MatchManager.updateMatchStatus(
+          matchId,
+          'completed',
+        )
+        Runtime.runPromise(runtime)(
+          Effect.matchEffect(updateStatusProgram, {
+            onFailure: (err) =>
+              Effect.sync(() => {
+                console.error('Failed to update match status:', err)
+              }),
+            onSuccess: () => Effect.void,
+          }),
+        )
+      }
+
       // Check if we should create a snapshot
       const currentEventCount = countMatchEvents(actor)
       if (

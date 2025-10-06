@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Play, Target, Trophy, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
@@ -10,6 +10,7 @@ export const Route = createFileRoute('/')({
 function App() {
   const { createMatch, isCreating, error } = useCreateEventSourcedMatch()
   const [isStarting, setIsStarting] = useState(false)
+  const navigate = useNavigate({ from: Route.fullPath })
 
   const handleStartNewMatch = async () => {
     setIsStarting(true)
@@ -17,8 +18,7 @@ function App() {
     const matchId = await createMatch(playerNames)
 
     if (matchId) {
-      // Navigate using string path with matchId interpolated
-      window.location.href = `/match/${matchId}/setup`
+      navigate({ to: '/match/$matchId/setup', params: { matchId } })
     } else {
       setIsStarting(false)
     }

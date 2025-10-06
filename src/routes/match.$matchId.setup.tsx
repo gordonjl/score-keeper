@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -39,6 +39,7 @@ function SetupRoute() {
   const { matchId } = Route.useParams()
   const { actor, isLoading } = useEventSourcedMatch()
   const searchParams = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -183,7 +184,10 @@ function SetupRoute() {
       // Navigate to the game route with the current game ID
       const currentGameId = actor.getSnapshot().context.currentGameId
       if (currentGameId) {
-        window.location.href = `/match/${matchId}/game/${currentGameId}`
+        navigate({
+          to: '/match/$matchId/game/$gameId',
+          params: { matchId, gameId: currentGameId },
+        })
       }
     },
   })
@@ -592,9 +596,7 @@ function SetupRoute() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => {
-                window.location.href = '/'
-              }}
+              onClick={() => navigate({ to: '/' })}
             >
               Cancel
             </button>

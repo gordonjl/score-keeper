@@ -5,9 +5,10 @@ import type { PlayerName, PlayerNameMap, Team } from './squashMachine'
 
 // Match-level types
 export type GameResult = {
-  winner: Team
-  finalScore: { A: number; B: number }
+  winner: Team | null // null if game is in progress
+  finalScore: { A: number; B: number } | null // null if game is in progress
   gameNumber: number
+  status: 'in_progress' | 'completed'
 }
 
 export type MatchContext = {
@@ -90,7 +91,7 @@ export const matchMachine = setup({
           }
         : context.players
       return {
-        currentGameId: `${context.games.length + 1}`,
+        currentGameId: `${context.games.length}`,
         players,
       }
     }),
@@ -129,17 +130,34 @@ export const matchMachine = setup({
         }
       },
     ),
-    recordGameResult: assign(({ context, event }) => {
-      if (event.type !== 'GAME_COMPLETED') return {}
+    createGameEntry: assign(({ context }) => {
       return {
         games: [
           ...context.games,
           {
-            winner: event.winner,
-            finalScore: event.finalScore,
+            winner: null,
+            finalScore: null,
             gameNumber: context.games.length + 1,
+            status: 'in_progress' as const,
           },
         ],
+      }
+    }),
+    recordGameResult: assign(({ context, event }) => {
+      if (event.type !== 'GAME_COMPLETED') return {}
+      // Update the last game (which should be in_progress) with the result
+      const updatedGames = [...context.games]
+      const lastGameIndex = updatedGames.length - 1
+      if (lastGameIndex >= 0) {
+        updatedGames[lastGameIndex] = {
+          ...updatedGames[lastGameIndex],
+          winner: event.winner,
+          finalScore: event.finalScore,
+          status: 'completed' as const,
+        }
+      }
+      return {
+        games: updatedGames,
       }
     }),
     clearCurrentGame: assign(() => ({
@@ -150,9 +168,13 @@ export const matchMachine = setup({
     isMatchComplete: ({ context, event }) => {
       if (event.type !== 'GAME_COMPLETED') return false
 
-      // Count current wins
-      const gamesWonA = context.games.filter((g) => g.winner === 'A').length
-      const gamesWonB = context.games.filter((g) => g.winner === 'B').length
+      // Count current wins from completed games only
+      const gamesWonA = context.games.filter(
+        (g) => g.status === 'completed' && g.winner === 'A',
+      ).length
+      const gamesWonB = context.games.filter(
+        (g) => g.status === 'completed' && g.winner === 'B',
+      ).length
 
       // Check if adding this game will result in 3 wins
       const newGamesWonA = event.winner === 'A' ? gamesWonA + 1 : gamesWonA
@@ -199,11 +221,12 @@ export const matchMachine = setup({
     inGame: {
       entry: [
         'spawnGameActor',
+        'createGameEntry',
         'updatePlayersAndGameId',
         {
           type: 'setupGameTeams',
           params: ({ context }) => ({
-            gameId: `${context.games.length + 1}`,
+            gameId: `${context.games.length}`,
             players: context.players,
           }),
         },
@@ -214,7 +237,7 @@ export const matchMachine = setup({
               throw new Error('Invalid event type for startGame')
             }
             return {
-              gameId: `${context.games.length + 1}`,
+              gameId: `${context.games.length}`,
               firstServingTeam: event.firstServingTeam,
               teamASide: event.teamASide,
               teamBSide: event.teamBSide,
