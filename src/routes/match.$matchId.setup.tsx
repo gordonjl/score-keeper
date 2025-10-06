@@ -4,6 +4,7 @@ import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { getCurrentGameId } from '../machines/matchMachine'
 import type { PlayerName } from '../machines/squashMachine'
 
 // Effect Schema for setup form (no Zod)
@@ -182,7 +183,8 @@ function SetupRoute() {
       })
 
       // Navigate to the game route with the current game ID
-      const currentGameId = actor.getSnapshot().context.currentGameId
+      const snapshot = actor.getSnapshot()
+      const currentGameId = getCurrentGameId(snapshot)
       if (currentGameId) {
         navigate({
           to: '/match/$matchId/game/$gameId',

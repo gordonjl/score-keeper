@@ -16,8 +16,26 @@ export type MatchContext = {
   teamAFirstServer: 1 | 2
   teamBFirstServer: 1 | 2
   games: Array<GameResult>
-  currentGameId: string | null
   matchId: MatchId | null // Track match ID for persistence
+}
+
+// Derived selector: currentGameId is games.length when in inGame state, null otherwise
+export const getCurrentGameId = (snapshot: {
+  value: unknown
+  context: MatchContext
+}): string | null => {
+  // Check if we're in the inGame state
+  if (typeof snapshot.value === 'string' && snapshot.value === 'inGame') {
+    return `${snapshot.context.games.length}`
+  }
+  if (
+    typeof snapshot.value === 'object' &&
+    snapshot.value !== null &&
+    'inGame' in snapshot.value
+  ) {
+    return `${snapshot.context.games.length}`
+  }
+  return null
 }
 
 export type MatchEvents =
@@ -64,7 +82,6 @@ export const matchMachine = setup({
         teamAFirstServer: event.teamAFirstServer,
         teamBFirstServer: event.teamBFirstServer,
         games: [],
-        currentGameId: null,
         matchId: context.matchId, // Preserve matchId
       }
     }),
@@ -76,7 +93,7 @@ export const matchMachine = setup({
         gameId: `${context.games.length + 1}`,
       }),
     }),
-    updatePlayersAndGameId: assign(({ context, event }) => {
+    updatePlayers: assign(({ context, event }) => {
       if (event.type !== 'START_NEW_GAME') return {}
 
       // Use updated player positions if provided, otherwise use existing
@@ -91,7 +108,6 @@ export const matchMachine = setup({
           }
         : context.players
       return {
-        currentGameId: `${context.games.length}`,
         players,
       }
     }),
@@ -160,9 +176,6 @@ export const matchMachine = setup({
         games: updatedGames,
       }
     }),
-    clearCurrentGame: assign(() => ({
-      currentGameId: null,
-    })),
   },
   guards: {
     isMatchComplete: ({ context, event }) => {
@@ -199,7 +212,6 @@ export const matchMachine = setup({
     teamAFirstServer: 1,
     teamBFirstServer: 1,
     games: [],
-    currentGameId: null,
     matchId: input.matchId ?? null,
   }),
   states: {
@@ -222,7 +234,7 @@ export const matchMachine = setup({
       entry: [
         'spawnGameActor',
         'createGameEntry',
-        'updatePlayersAndGameId',
+        'updatePlayers',
         {
           type: 'setupGameTeams',
           params: ({ context }) => ({
@@ -250,11 +262,11 @@ export const matchMachine = setup({
           {
             target: 'matchComplete',
             guard: 'isMatchComplete',
-            actions: ['recordGameResult', 'clearCurrentGame'],
+            actions: ['recordGameResult'],
           },
           {
             target: 'gameComplete',
-            actions: ['recordGameResult', 'clearCurrentGame'],
+            actions: ['recordGameResult'],
           },
         ],
       },

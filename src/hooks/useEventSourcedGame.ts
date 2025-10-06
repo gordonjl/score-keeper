@@ -1,10 +1,11 @@
+import { getCurrentGameId } from '../machines/matchMachine'
 import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 
 /**
  * Hook to get the current game actor from the event-sourced match machine.
  * This is compatible with the existing useCurrentGameActor hook.
  *
- * @param gameId - Optional game ID to retrieve. If not provided, uses currentGameId from context.
+ * @param gameId - Optional game ID to retrieve. If not provided, derives currentGameId from state.
  */
 export const useEventSourcedGameActor = (gameId?: string) => {
   const { actor } = useEventSourcedMatch()
@@ -12,7 +13,7 @@ export const useEventSourcedGameActor = (gameId?: string) => {
   if (!actor) return null
 
   const snapshot = actor.getSnapshot()
-  const targetGameId = gameId ?? snapshot.context.currentGameId
+  const targetGameId = gameId ?? getCurrentGameId(snapshot)
 
   if (!targetGameId) return null
 

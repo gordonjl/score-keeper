@@ -1,9 +1,10 @@
 import { Effect, pipe } from 'effect'
 import { createActor } from 'xstate'
-import { matchMachine } from '../machines/matchMachine'
+import { getCurrentGameId, matchMachine } from '../machines/matchMachine'
 import { EventStore } from './eventStore'
 import { StateReconstructionError } from './types'
-import type { ActorRefFrom, Snapshot } from 'xstate'
+import type { squashMachine } from '@/machines/squashMachine'
+import type { ActorRefFrom, EventFromLogic, Snapshot } from 'xstate'
 import type { MatchEvent, MatchId } from './types'
 
 // Parse game event prefix (e.g., "GAME:game-1:RALLY_WON" -> { gameId: "game-1", type: "RALLY_WON" })
@@ -43,11 +44,11 @@ const applyEvent = (
             typeof event.payload === 'object' && event.payload !== null
               ? event.payload
               : { type: gameEvent.type }
-          childActor.send(xstateEvent as any)
+          childActor.send(xstateEvent as EventFromLogic<typeof squashMachine>)
         } else {
           // Child actor doesn't exist - this is expected for completed games
-          // Only log if it's for the current game
-          const currentGameId = snapshot.context.currentGameId
+          // Only log if it's for the current game (derived from state)
+          const currentGameId = getCurrentGameId(snapshot)
           if (gameEvent.gameId === currentGameId) {
             console.warn(
               `Child actor ${gameEvent.gameId} not found for event ${event.type}`,
@@ -58,7 +59,7 @@ const applyEvent = (
       } else {
         // This is a match event - send to match actor
         const xstateEvent = mapEventToXState(event)
-        matchActor.send(xstateEvent as any)
+        matchActor.send(xstateEvent as EventFromLogic<typeof matchMachine>)
       }
     },
     catch: (error) =>

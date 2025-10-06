@@ -16,6 +16,7 @@ import {
   determineFirstServingTeam,
   getOrderedRows,
 } from '../components/game/utils'
+import { getCurrentGameId } from '../machines/matchMachine'
 import type { ActorRefFrom } from 'xstate'
 import type { GameResult } from '../machines/matchMachine'
 import type { PlayerName, squashMachine } from '../machines/squashMachine'
@@ -277,8 +278,8 @@ function GameRoute({
               })
 
               // Get the new game ID and navigate to it
-              const newGameId =
-                matchActorRef?.getSnapshot().context.currentGameId
+              const snapshot = matchActorRef?.getSnapshot()
+              const newGameId = snapshot ? getCurrentGameId(snapshot) : null
               if (newGameId) {
                 navigate({
                   to: '/match/$matchId/game/$gameId',
