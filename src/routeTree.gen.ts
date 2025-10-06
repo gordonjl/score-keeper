@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MatchRouteImport } from './routes/_match'
+import { Route as EventMatchRouteImport } from './routes/_eventMatch'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchSummaryRouteImport } from './routes/_match.summary'
 import { Route as MatchSetupRouteImport } from './routes/_match.setup'
@@ -17,6 +18,10 @@ import { Route as MatchGameRouteImport } from './routes/_match.game'
 
 const MatchRoute = MatchRouteImport.update({
   id: '/_match',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventMatchRoute = EventMatchRouteImport.update({
+  id: '/_eventMatch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -55,6 +60,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_eventMatch': typeof EventMatchRoute
   '/_match': typeof MatchRouteWithChildren
   '/_match/game': typeof MatchGameRoute
   '/_match/setup': typeof MatchSetupRoute
@@ -68,6 +74,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_eventMatch'
     | '/_match'
     | '/_match/game'
     | '/_match/setup'
@@ -76,6 +83,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EventMatchRoute: typeof EventMatchRoute
   MatchRoute: typeof MatchRouteWithChildren
 }
 
@@ -86,6 +94,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof MatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_eventMatch': {
+      id: '/_eventMatch'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof EventMatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -135,6 +150,7 @@ const MatchRouteWithChildren = MatchRoute._addFileChildren(MatchRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EventMatchRoute: EventMatchRoute,
   MatchRoute: MatchRouteWithChildren,
 }
 export const routeTree = rootRouteImport
