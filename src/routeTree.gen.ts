@@ -10,13 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MatchesRouteImport } from './routes/matches'
-import { Route as MatchRouteImport } from './routes/_match'
-import { Route as EventMatchRouteImport } from './routes/_eventMatch'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchMatchIdRouteImport } from './routes/match.$matchId'
-import { Route as MatchSummaryRouteImport } from './routes/_match.summary'
-import { Route as MatchSetupRouteImport } from './routes/_match.setup'
-import { Route as MatchGameRouteImport } from './routes/_match.game'
 import { Route as MatchMatchIdSummaryRouteImport } from './routes/match.$matchId.summary'
 import { Route as MatchMatchIdSetupRouteImport } from './routes/match.$matchId.setup'
 import { Route as MatchMatchIdGameGameIdRouteImport } from './routes/match.$matchId.game.$gameId'
@@ -24,14 +19,6 @@ import { Route as MatchMatchIdGameGameIdRouteImport } from './routes/match.$matc
 const MatchesRoute = MatchesRouteImport.update({
   id: '/matches',
   path: '/matches',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatchRoute = MatchRouteImport.update({
-  id: '/_match',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventMatchRoute = EventMatchRouteImport.update({
-  id: '/_eventMatch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -43,21 +30,6 @@ const MatchMatchIdRoute = MatchMatchIdRouteImport.update({
   id: '/match/$matchId',
   path: '/match/$matchId',
   getParentRoute: () => rootRouteImport,
-} as any)
-const MatchSummaryRoute = MatchSummaryRouteImport.update({
-  id: '/summary',
-  path: '/summary',
-  getParentRoute: () => MatchRoute,
-} as any)
-const MatchSetupRoute = MatchSetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => MatchRoute,
-} as any)
-const MatchGameRoute = MatchGameRouteImport.update({
-  id: '/game',
-  path: '/game',
-  getParentRoute: () => MatchRoute,
 } as any)
 const MatchMatchIdSummaryRoute = MatchMatchIdSummaryRouteImport.update({
   id: '/summary',
@@ -78,9 +50,6 @@ const MatchMatchIdGameGameIdRoute = MatchMatchIdGameGameIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/matches': typeof MatchesRoute
-  '/game': typeof MatchGameRoute
-  '/setup': typeof MatchSetupRoute
-  '/summary': typeof MatchSummaryRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
@@ -89,9 +58,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/matches': typeof MatchesRoute
-  '/game': typeof MatchGameRoute
-  '/setup': typeof MatchSetupRoute
-  '/summary': typeof MatchSummaryRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
@@ -100,12 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_eventMatch': typeof EventMatchRoute
-  '/_match': typeof MatchRouteWithChildren
   '/matches': typeof MatchesRoute
-  '/_match/game': typeof MatchGameRoute
-  '/_match/setup': typeof MatchSetupRoute
-  '/_match/summary': typeof MatchSummaryRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
@@ -116,9 +77,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/matches'
-    | '/game'
-    | '/setup'
-    | '/summary'
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
@@ -127,9 +85,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/matches'
-    | '/game'
-    | '/setup'
-    | '/summary'
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
@@ -137,12 +92,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/_eventMatch'
-    | '/_match'
     | '/matches'
-    | '/_match/game'
-    | '/_match/setup'
-    | '/_match/summary'
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
@@ -151,8 +101,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  EventMatchRoute: typeof EventMatchRoute
-  MatchRoute: typeof MatchRouteWithChildren
   MatchesRoute: typeof MatchesRoute
   MatchMatchIdRoute: typeof MatchMatchIdRouteWithChildren
 }
@@ -164,20 +112,6 @@ declare module '@tanstack/react-router' {
       path: '/matches'
       fullPath: '/matches'
       preLoaderRoute: typeof MatchesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_match': {
-      id: '/_match'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof MatchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_eventMatch': {
-      id: '/_eventMatch'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof EventMatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -193,27 +127,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/match/$matchId'
       preLoaderRoute: typeof MatchMatchIdRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_match/summary': {
-      id: '/_match/summary'
-      path: '/summary'
-      fullPath: '/summary'
-      preLoaderRoute: typeof MatchSummaryRouteImport
-      parentRoute: typeof MatchRoute
-    }
-    '/_match/setup': {
-      id: '/_match/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof MatchSetupRouteImport
-      parentRoute: typeof MatchRoute
-    }
-    '/_match/game': {
-      id: '/_match/game'
-      path: '/game'
-      fullPath: '/game'
-      preLoaderRoute: typeof MatchGameRouteImport
-      parentRoute: typeof MatchRoute
     }
     '/match/$matchId/summary': {
       id: '/match/$matchId/summary'
@@ -239,20 +152,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface MatchRouteChildren {
-  MatchGameRoute: typeof MatchGameRoute
-  MatchSetupRoute: typeof MatchSetupRoute
-  MatchSummaryRoute: typeof MatchSummaryRoute
-}
-
-const MatchRouteChildren: MatchRouteChildren = {
-  MatchGameRoute: MatchGameRoute,
-  MatchSetupRoute: MatchSetupRoute,
-  MatchSummaryRoute: MatchSummaryRoute,
-}
-
-const MatchRouteWithChildren = MatchRoute._addFileChildren(MatchRouteChildren)
-
 interface MatchMatchIdRouteChildren {
   MatchMatchIdSetupRoute: typeof MatchMatchIdSetupRoute
   MatchMatchIdSummaryRoute: typeof MatchMatchIdSummaryRoute
@@ -271,8 +170,6 @@ const MatchMatchIdRouteWithChildren = MatchMatchIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  EventMatchRoute: EventMatchRoute,
-  MatchRoute: MatchRouteWithChildren,
   MatchesRoute: MatchesRoute,
   MatchMatchIdRoute: MatchMatchIdRouteWithChildren,
 }

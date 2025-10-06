@@ -1,5 +1,5 @@
 import Dexie from 'dexie'
-import type {EntityTable} from 'dexie';
+import type { EntityTable } from 'dexie'
 import type { Match, MatchEvent, MatchSnapshot } from './types'
 
 export class SquashDatabase extends Dexie {

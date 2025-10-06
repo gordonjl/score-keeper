@@ -7,7 +7,9 @@ import type { ActorRefFrom, Snapshot } from 'xstate'
 import type { MatchEvent, MatchId } from './types'
 
 // Parse game event prefix (e.g., "GAME:game-1:RALLY_WON" -> { gameId: "game-1", type: "RALLY_WON" })
-const parseGameEvent = (eventType: string): { gameId: string; type: string } | null => {
+const parseGameEvent = (
+  eventType: string,
+): { gameId: string; type: string } | null => {
   const match = eventType.match(/^GAME:([^:]+):(.+)$/)
   if (!match) return null
   return { gameId: match[1], type: match[2] }
@@ -29,24 +31,27 @@ const applyEvent = (
   Effect.try({
     try: () => {
       const gameEvent = parseGameEvent(event.type)
-      
+
       if (gameEvent) {
         // This is a game event - send to child actor
         const snapshot = matchActor.getSnapshot()
         const childActor = snapshot.children[gameEvent.gameId]
-        
+
         if (childActor) {
           // Extract the original event from payload
-          const xstateEvent = typeof event.payload === 'object' && event.payload !== null
-            ? event.payload
-            : { type: gameEvent.type }
+          const xstateEvent =
+            typeof event.payload === 'object' && event.payload !== null
+              ? event.payload
+              : { type: gameEvent.type }
           childActor.send(xstateEvent as any)
         } else {
           // Child actor doesn't exist - this is expected for completed games
           // Only log if it's for the current game
           const currentGameId = snapshot.context.currentGameId
           if (gameEvent.gameId === currentGameId) {
-            console.warn(`Child actor ${gameEvent.gameId} not found for event ${event.type}`)
+            console.warn(
+              `Child actor ${gameEvent.gameId} not found for event ${event.type}`,
+            )
           }
           // Skip events for old/completed games silently
         }

@@ -176,11 +176,13 @@ export const squashMachine = setup({
     input: {} as { matchId?: MatchId; gameId?: string },
   },
   actions: {
-    assignTeams: assign(({ context }, { players }: { players: PlayerNameMap }) => ({
-      players,
-      matchId: context.matchId, // Preserve
-      gameId: context.gameId, // Preserve
-    })),
+    assignTeams: assign(
+      ({ context }, { players }: { players: PlayerNameMap }) => ({
+        players,
+        matchId: context.matchId, // Preserve
+        gameId: context.gameId, // Preserve
+      }),
+    ),
 
     startGame: assign(
       (
