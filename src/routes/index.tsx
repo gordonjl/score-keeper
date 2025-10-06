@@ -11,14 +11,18 @@ function App() {
       <div className="container mx-auto px-4 py-8 sm:py-12 lg:py-16">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
-            <div className="bg-primary/10 p-8 rounded-full shadow-xl border-4 border-primary/20">
-              <Trophy className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+          <div className="flex flex-col items-center gap-6 mb-8">
+            <div className="relative p-6 rounded-2xl bg-base-100 shadow-2xl border border-base-300">
+              <img
+                src="/pcs_shield.png"
+                alt="PCS Shield"
+                className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain"
+              />
             </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Squash Score Keeper
+            </h1>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Squash Score Keeper
-          </h1>
           <p className="text-lg sm:text-xl text-base-content/70 max-w-2xl mx-auto mb-8">
             Professional scoring system for doubles squash matches using PAR-15
             rules

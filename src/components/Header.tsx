@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Moon, Sun, Trophy } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ACTIVE_MATCH_KEY } from '../utils/matchPersistence'
 import { LetStrokeModal } from './modals/LetStrokeModal'
@@ -62,7 +62,11 @@ export default function Header() {
     <header className="navbar bg-base-100 shadow-lg sticky top-0 z-50 border-b border-base-300">
       <div className="navbar-start">
         <Link to="/" className="btn btn-ghost text-xl gap-2">
-          <Trophy className="w-6 h-6 text-primary" />
+          <img
+            src="/pcs_shield.png"
+            alt="PCS Logo"
+            className="w-6 h-6 object-contain"
+          />
           <span className="hidden sm:inline">Squash Score Keeper</span>
           <span className="sm:hidden">Squash</span>
         </Link>
