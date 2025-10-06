@@ -68,11 +68,11 @@ export const matchMachine = setup({
       }
     }),
     spawnGameActor: spawnChild('squashGame', {
-      id: ({ context }) => `game-${context.games.length + 1}`,
+      id: ({ context }) => `${context.games.length + 1}`,
       syncSnapshot: true,
       input: ({ context }) => ({
         matchId: context.matchId ?? undefined,
-        gameId: `game-${context.games.length + 1}`,
+        gameId: `${context.games.length + 1}`,
       }),
     }),
     updatePlayersAndGameId: assign(({ context, event }) => {
@@ -90,7 +90,7 @@ export const matchMachine = setup({
           }
         : context.players
       return {
-        currentGameId: `game-${context.games.length + 1}`,
+        currentGameId: `${context.games.length + 1}`,
         players,
       }
     }),
@@ -203,7 +203,7 @@ export const matchMachine = setup({
         {
           type: 'setupGameTeams',
           params: ({ context }) => ({
-            gameId: `game-${context.games.length + 1}`,
+            gameId: `${context.games.length + 1}`,
             players: context.players,
           }),
         },
@@ -214,7 +214,7 @@ export const matchMachine = setup({
               throw new Error('Invalid event type for startGame')
             }
             return {
-              gameId: `game-${context.games.length + 1}`,
+              gameId: `${context.games.length + 1}`,
               firstServingTeam: event.firstServingTeam,
               teamASide: event.teamASide,
               teamBSide: event.teamBSide,

@@ -9,7 +9,7 @@ export const Route = createFileRoute('/match/$matchId/summary')({
 
 function MatchSummaryRoute() {
   const { matchId } = Route.useParams()
-  const { actor: matchActorRef } = useEventSourcedMatch()
+  const { actor: matchActorRef, isLoading } = useEventSourcedMatch()
 
   const matchData = matchActorRef
     ? {
@@ -19,12 +19,24 @@ function MatchSummaryRoute() {
       }
     : null
 
-  // Redirect if not in matchComplete state
+  // Redirect if not in matchComplete state after loading completes
   useEffect(() => {
-    if (!matchData?.isMatchComplete) {
+    if (!isLoading && !matchData?.isMatchComplete) {
       window.location.href = `/match/${matchId}/setup`
     }
-  }, [matchData?.isMatchComplete, matchId])
+  }, [isLoading, matchData?.isMatchComplete, matchId])
+
+  // Show loading while initializing
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="loading loading-spinner loading-lg"></div>
+          <p className="mt-4">Loading match...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!matchData || !matchData.isMatchComplete) {
     return <div className="p-4">Loading...</div>
