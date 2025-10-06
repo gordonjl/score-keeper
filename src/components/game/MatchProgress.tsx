@@ -242,9 +242,11 @@ export const MatchProgress = ({
                 </div>
               )}
               {stats.currentStreak.count > 1 && stats.currentStreak.team && (
-                <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg">
-                  <span className="text-base-content/70">Current Streak</span>
-                  <span className="font-semibold badge badge-warning">
+                <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg gap-2">
+                  <span className="text-base-content/70 flex-shrink-0">
+                    Current Streak
+                  </span>
+                  <span className="font-semibold badge badge-warning whitespace-nowrap overflow-hidden text-ellipsis">
                     {stats.currentStreak.team === 'A'
                       ? players.teamA
                       : players.teamB}{' '}

@@ -14,6 +14,9 @@ type MatchWithStatus = Match & {
   displayStatus: 'In Progress' | 'Complete' | 'Archived'
   latestGameNumber?: number
   actualPlayerNames?: ReadonlyArray<string>
+  gamesWonA?: number
+  gamesWonB?: number
+  totalGames?: number
 }
 
 function MatchesListRoute() {
@@ -43,6 +46,9 @@ function MatchesListRoute() {
           // Get latest game number and actual player names by reconstructing state
           let latestGameNumber: number | undefined
           let actualPlayerNames: ReadonlyArray<string> | undefined
+          let gamesWonA: number | undefined
+          let gamesWonB: number | undefined
+          let totalGames: number | undefined
 
           try {
             const actor = await pipe(
@@ -68,8 +74,19 @@ function MatchesListRoute() {
             if (games.length > 0) {
               const gameNumbers = games.map((g) => g.gameNumber)
               latestGameNumber = Math.max(...gameNumbers)
+
+              // Calculate game stats
+              const completedGames = games.filter(
+                (g) => g.status === 'completed',
+              )
+              totalGames = completedGames.length
+              gamesWonA = completedGames.filter((g) => g.winner === 'A').length
+              gamesWonB = completedGames.filter((g) => g.winner === 'B').length
             } else {
               latestGameNumber = undefined
+              totalGames = 0
+              gamesWonA = 0
+              gamesWonB = 0
             }
 
             console.log('Latest game number:', latestGameNumber)
@@ -94,6 +111,9 @@ function MatchesListRoute() {
             console.error('Failed to reconstruct match:', match.id, err)
             latestGameNumber = undefined
             actualPlayerNames = undefined
+            gamesWonA = undefined
+            gamesWonB = undefined
+            totalGames = undefined
           }
 
           return {
@@ -101,6 +121,9 @@ function MatchesListRoute() {
             displayStatus,
             latestGameNumber,
             actualPlayerNames,
+            gamesWonA,
+            gamesWonB,
+            totalGames,
           }
         }),
       )
@@ -201,6 +224,28 @@ function MatchesListRoute() {
                             ).join(', ')}
                           </span>
                         </div>
+
+                        {/* Game Stats */}
+                        {match.totalGames !== undefined &&
+                          match.totalGames > 0 && (
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="badge badge-outline">
+                                {match.totalGames} game
+                                {match.totalGames !== 1 ? 's' : ''} played
+                              </div>
+                              {isComplete && (
+                                <div className="text-sm font-mono">
+                                  <span className="font-bold">
+                                    {match.gamesWonA}
+                                  </span>
+                                  {' - '}
+                                  <span className="font-bold">
+                                    {match.gamesWonB}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                         {/* Dates */}
                         <div className="flex items-center gap-2 text-xs text-base-content/70">

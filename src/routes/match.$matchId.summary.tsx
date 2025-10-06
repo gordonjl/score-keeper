@@ -20,12 +20,22 @@ function MatchSummaryRoute() {
       }
     : null
 
-  // Redirect if not in matchComplete state after loading completes
+  // Check if match is actually complete by counting wins
+  const isActuallyComplete = matchData
+    ? matchData.games.filter(
+        (g) => g.status === 'completed' && g.winner === 'A',
+      ).length >= 3 ||
+      matchData.games.filter(
+        (g) => g.status === 'completed' && g.winner === 'B',
+      ).length >= 3
+    : false
+
+  // Redirect if match is not complete after loading completes
   useEffect(() => {
-    if (!isLoading && !matchData?.isMatchComplete) {
+    if (!isLoading && !isActuallyComplete) {
       navigate({ to: '/match/$matchId/setup', params: { matchId } })
     }
-  }, [isLoading, matchData?.isMatchComplete, matchId, navigate])
+  }, [isLoading, isActuallyComplete, matchId, navigate])
 
   // Show loading while initializing
   if (isLoading) {
@@ -39,7 +49,7 @@ function MatchSummaryRoute() {
     )
   }
 
-  if (!matchData || !matchData.isMatchComplete) {
+  if (!matchData || !isActuallyComplete) {
     return <div className="p-4">Loading...</div>
   }
 
