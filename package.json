@@ -13,6 +13,7 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
+    "@effect/schema": "^0.75.5",
     "@latest": "link:xstate/@latest",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
@@ -25,11 +26,13 @@
     "@tanstack/react-start": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
     "@xstate/react": "^6.0.0",
+    "dexie": "^4.2.0",
     "effect": "^3.18.1",
     "lucide-react": "^0.544.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.6",
+    "uuid": "^13.0.0",
     "vite-tsconfig-paths": "^5.1.4",
     "xstate": "^5.22.1",
     "zod": "^4.1.11"
@@ -42,6 +45,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "daisyui": "^5.1.26",
     "jsdom": "^27.0.0",

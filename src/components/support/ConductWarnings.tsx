@@ -9,12 +9,18 @@ interface WarningRecord {
   timestamp: Date
 }
 
-const players: Array<Player> = ['Player A1', 'Player A2', 'Player B1', 'Player B2']
+const players: Array<Player> = [
+  'Player A1',
+  'Player A2',
+  'Player B1',
+  'Player B2',
+]
 
 export function ConductWarnings() {
   const [warnings, setWarnings] = useState<Array<WarningRecord>>([])
   const [selectedPlayer, setSelectedPlayer] = useState<Player>(players[0])
-  const [selectedWarning, setSelectedWarning] = useState<WarningType>('Conduct Warning')
+  const [selectedWarning, setSelectedWarning] =
+    useState<WarningType>('Conduct Warning')
 
   const handleAddWarning = () => {
     const newWarning: WarningRecord = {
@@ -27,7 +33,9 @@ export function ConductWarnings() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Conduct Warnings & Strokes</h2>
+      <h2 className="text-2xl font-semibold mb-4">
+        Conduct Warnings & Strokes
+      </h2>
       <div className="p-4 bg-base-200 rounded-box">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div className="form-control">
@@ -53,14 +61,19 @@ export function ConductWarnings() {
             <select
               className="select select-bordered"
               value={selectedWarning}
-              onChange={(e) => setSelectedWarning(e.target.value as WarningType)}
+              onChange={(e) =>
+                setSelectedWarning(e.target.value as WarningType)
+              }
             >
               <option>Conduct Warning</option>
               <option>Conduct Stroke</option>
             </select>
           </div>
         </div>
-        <button className="btn btn-primary w-full mb-4" onClick={handleAddWarning}>
+        <button
+          className="btn btn-primary w-full mb-4"
+          onClick={handleAddWarning}
+        >
           Record Action
         </button>
 
