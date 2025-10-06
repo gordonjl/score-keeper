@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Moon, Sun, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ACTIVE_MATCH_KEY } from '../utils/matchPersistence'
 import { LetStrokeModal } from './modals/LetStrokeModal'
 import { TimersModal } from './modals/TimersModal'
 
@@ -8,10 +9,41 @@ export default function Header() {
   const [theme, setTheme] = useState<'pcsquash' | 'pcsquash-dark'>('pcsquash')
   const [isLetStrokeModalOpen, setIsLetStrokeModalOpen] = useState(false)
   const [isTimersModalOpen, setIsTimersModalOpen] = useState(false)
+  const [hasActiveGame, setHasActiveGame] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     setTheme(mq.matches ? 'pcsquash-dark' : 'pcsquash')
+  }, [])
+
+  // Check for active game in localStorage
+  useEffect(() => {
+    const checkActiveGame = () => {
+      try {
+        const persistedState = localStorage.getItem(ACTIVE_MATCH_KEY)
+        if (persistedState) {
+          const state = JSON.parse(persistedState)
+          // Check if there's an active game (inGame state)
+          setHasActiveGame(state?.value === 'inGame')
+        } else {
+          setHasActiveGame(false)
+        }
+      } catch {
+        setHasActiveGame(false)
+      }
+    }
+
+    checkActiveGame()
+
+    // Listen for storage events to update when match state changes
+    window.addEventListener('storage', checkActiveGame)
+    // Also check periodically in case localStorage changes in same tab
+    const interval = setInterval(checkActiveGame, 1000)
+
+    return () => {
+      window.removeEventListener('storage', checkActiveGame)
+      clearInterval(interval)
+    }
   }, [])
 
   const toggleTheme = () => {
@@ -76,11 +108,13 @@ export default function Header() {
                 Home
               </Link>
             </li>
-            <li>
-              <Link to="/game" onClick={closeDropdown}>
-                Current Game
-              </Link>
-            </li>
+            {hasActiveGame && (
+              <li>
+                <Link to="/game" onClick={closeDropdown}>
+                  Current Game
+                </Link>
+              </li>
+            )}
             <li>
               Referee Tools
               <ul>
