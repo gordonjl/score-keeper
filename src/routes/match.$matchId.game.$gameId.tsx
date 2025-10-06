@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 import { useEventSourcedGameActor } from '../hooks/useEventSourcedGame'
@@ -27,6 +27,7 @@ export const Route = createFileRoute('/match/$matchId/game/$gameId')({
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
   const { matchId } = Route.useParams()
+  const navigate = useNavigate({ from: Route.fullPath })
   const { actor, isLoading } = useEventSourcedMatch()
   const gameActor = useEventSourcedGameActor()
 
@@ -40,16 +41,16 @@ function GameRouteWrapper() {
   // If match is complete, redirect to summary
   useEffect(() => {
     if (matchData.isMatchComplete) {
-      window.location.href = `/match/${matchId}/summary`
+      navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
-  }, [matchData.isMatchComplete, matchId])
+  }, [matchData.isMatchComplete, matchId, navigate])
 
   // If no game actor after loading completes, redirect to setup
   useEffect(() => {
     if (!isLoading && !gameActor && !matchData.isMatchComplete) {
-      window.location.href = `/match/${matchId}/setup`
+      navigate({ to: '/match/$matchId/setup', params: { matchId } })
     }
-  }, [isLoading, gameActor, matchData.isMatchComplete, matchId])
+  }, [isLoading, gameActor, matchData.isMatchComplete, matchId, navigate])
 
   // Show loading while initializing
   if (isLoading) {
@@ -80,6 +81,7 @@ function GameRoute({
   matchGames: Array<GameResult>
 }) {
   const { matchId } = Route.useParams()
+  const navigate = useNavigate({ from: Route.fullPath })
   const { actor: matchActorRef } = useEventSourcedMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
   const [matchStartTime] = useState(Date.now())
@@ -221,7 +223,7 @@ function GameRoute({
 
               // If match is complete, navigate to summary immediately
               if (willCompleteMatch) {
-                window.location.href = `/match/${matchId}/summary`
+                navigate({ to: '/match/$matchId/summary', params: { matchId } })
               }
             }}
             onNextGame={() => {
@@ -266,6 +268,17 @@ function GameRoute({
                 teamASide: config.teamASide,
                 teamBSide: config.teamBSide,
               })
+
+              // Get the new game ID and navigate to it
+              const newGameId =
+                matchActorRef?.getSnapshot().context.currentGameId
+              if (newGameId) {
+                navigate({
+                  to: '/match/$matchId/game/$gameId',
+                  params: { matchId, gameId: newGameId },
+                })
+              }
+
               setShowNextGameSetup(false)
             }}
           />
@@ -283,7 +296,7 @@ function GameRoute({
             onEndMatch={() => {
               matchActorRef?.send({ type: 'END_MATCH' })
               // Match is automatically persisted in IndexedDB
-              window.location.href = '/'
+              navigate({ to: '/' })
             }}
           />
         )}
