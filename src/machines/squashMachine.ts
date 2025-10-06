@@ -1,4 +1,5 @@
 import { assign, setup } from 'xstate'
+import type { MatchId } from '../db/types'
 
 // ===== Types =====
 export type Team = 'A' | 'B'
@@ -59,6 +60,8 @@ export type Context = {
   grid: ActivityGrid
   firstHandUsed: boolean // relevant only at 0–0 for the initial serving team
   history: Array<Snapshot>
+  matchId: MatchId | null // For persistence
+  gameId: string | null // For persistence
 }
 
 export type Events =
@@ -170,10 +173,13 @@ export const squashMachine = setup({
   types: {
     context: {} as Context,
     events: {} as Events,
+    input: {} as { matchId?: MatchId; gameId?: string },
   },
   actions: {
-    assignTeams: assign((_, { players }: { players: PlayerNameMap }) => ({
+    assignTeams: assign(({ context }, { players }: { players: PlayerNameMap }) => ({
       players,
+      matchId: context.matchId, // Preserve
+      gameId: context.gameId, // Preserve
     })),
 
     startGame: assign(
@@ -206,6 +212,8 @@ export const squashMachine = setup({
           grid,
           firstHandUsed: false,
           history: [],
+          matchId: context.matchId, // Preserve
+          gameId: context.gameId, // Preserve
         }
       },
     ),
@@ -398,7 +406,7 @@ export const squashMachine = setup({
   /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBaCA9mgEYA2cAxAKoByAIgPIDaADALqKgAOBsAlgBc+BAHacQAD0QBmAOwA6AIwsArABYAbAA5ZKgDQgAnjI0r5LAJxzTAJhU6tFlhoC+Lg6kw58RMpQBKAKIAyoEAKqwcSCA8-EKi4lIIuBqK5po6+kaIKorS8tJaNkWyug4Wim4e6Fh4hCTksPJ8EOQUoWFUAAoA+mGBAIIAssGR4rGCwmLRSTYa+bIW2roGxghqWlryThpzKnblzlUgnrU+DXDyAE5gGBCG7WED-mE9AOLDgWPRE-HToEl1Pl9tI1HIsmsNlsdnsDrJHEd3Ccat56n4mnwRF1SBgHv4BgAZAkATR6AHUGDRvtxeJMEjMcvN5LIWNJFHZVog8ix5CpjqdUb5Gs0sTiHgBhAkASXFAGkev4GGTqTFaX9EogtIoFKyYRDEDYbAoNIsWUb7PCdvyUXUhZdMdjcRQCeEVb8phqEA55FppDZWez9etdttlNrFCoWIdXEiBbaLk0AMbYMCJgDWFDdao9DIQQN5NlB4M5XrUvOtXnj6PkydTGaYiiiNLiOYBOTBBaLK2yCDsaRhtgtCJjSJEBAgcHEcfO6PG2fpbeSygs6WWQZSFbOaOFLXIc5bC8kXK0PJsS0yJdyNgKRRKZUtlVjNpnwpudzWzbp-yP62kZhULJshyPZXjexRGvejiPtUlYvvaoq4vuX6erIahlmodjwoGJZyGkEa7IO0aboKCY1im6ZIequZgjyAEBsBayFiuxTsoRlqIjBW52k0UAYAAtmADAAG5gFclGtj+shzOY6hriWWrlm4LhAA */
   id: 'squash-doubles',
   initial: 'idle',
-  context: () => ({
+  context: ({ input }) => ({
     players: {
       A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
       A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
@@ -414,10 +422,17 @@ export const squashMachine = setup({
     grid: initialGrid(),
     firstHandUsed: false,
     history: [],
+    matchId: input.matchId ?? null,
+    gameId: input.gameId ?? null,
   }),
   on: {
-    UNDO: { actions: 'undoOnce', target: '.inPlay' },
-    RESET: { target: '.idle' },
+    UNDO: {
+      actions: ['undoOnce'],
+      target: '.inPlay',
+    },
+    RESET: {
+      target: '.idle',
+    },
   },
   states: {
     idle: {
@@ -481,7 +496,9 @@ export const squashMachine = setup({
     },
     awaitingConfirmation: {
       on: {
-        CONFIRM_GAME_OVER: { target: 'gameOver' },
+        CONFIRM_GAME_OVER: {
+          target: 'gameOver',
+        },
         // UNDO is handled globally and will transition back to inPlay
       },
     },

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 import { useEventSourcedGameActor } from '../hooks/useEventSourcedGame'
@@ -20,16 +20,16 @@ import type { ActorRefFrom } from 'xstate'
 import type { GameResult } from '../machines/matchMachine'
 import type { PlayerName, squashMachine } from '../machines/squashMachine'
 
-export const Route = createFileRoute('/_match/game')({
+export const Route = createFileRoute('/match/$matchId/game/$gameId')({
   component: GameRouteWrapper,
 })
 
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
-  const navigate = useNavigate()
-  const { actor } = useEventSourcedMatch()
+  const { matchId } = Route.useParams()
+  const { actor, isLoading } = useEventSourcedMatch()
   const gameActor = useEventSourcedGameActor()
-  
+
   const matchData = actor
     ? {
         games: actor.getSnapshot().context.games,
@@ -40,16 +40,28 @@ function GameRouteWrapper() {
   // If match is complete, redirect to summary
   useEffect(() => {
     if (matchData.isMatchComplete) {
-      navigate({ to: '/summary' })
+      window.location.href = `/match/${matchId}/summary`
     }
-  }, [matchData.isMatchComplete, navigate])
+  }, [matchData.isMatchComplete, matchId])
 
-  // If no game actor, redirect to setup
+  // If no game actor after loading completes, redirect to setup
   useEffect(() => {
-    if (!gameActor && !matchData.isMatchComplete) {
-      navigate({ to: '/setup', search: {} })
+    if (!isLoading && !gameActor && !matchData.isMatchComplete) {
+      window.location.href = `/match/${matchId}/setup`
     }
-  }, [gameActor, matchData.isMatchComplete, navigate])
+  }, [isLoading, gameActor, matchData.isMatchComplete, matchId])
+
+  // Show loading while initializing
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="loading loading-spinner loading-lg"></div>
+          <p className="mt-4">Loading match...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Conditionally render GameRoute only when actor exists
   if (!gameActor || matchData.isMatchComplete) {
@@ -67,7 +79,7 @@ function GameRoute({
   gameActor: ActorRefFrom<typeof squashMachine>
   matchGames: Array<GameResult>
 }) {
-  const navigate = useNavigate()
+  const { matchId } = Route.useParams()
   const { actor: matchActorRef } = useEventSourcedMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
   const [matchStartTime] = useState(Date.now())
@@ -201,11 +213,15 @@ function GameRoute({
               gameActor.send({ type: 'CONFIRM_GAME_OVER' })
               const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-              matchActorRef?.send({ type: 'GAME_COMPLETED', winner, finalScore })
+              matchActorRef?.send({
+                type: 'GAME_COMPLETED',
+                winner,
+                finalScore,
+              })
 
               // If match is complete, navigate to summary immediately
               if (willCompleteMatch) {
-                navigate({ to: '/summary' })
+                window.location.href = `/match/${matchId}/summary`
               }
             }}
             onNextGame={() => {
@@ -225,7 +241,11 @@ function GameRoute({
               gameActor.send({ type: 'CONFIRM_GAME_OVER' })
               const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-              matchActorRef?.send({ type: 'GAME_COMPLETED', winner, finalScore })
+              matchActorRef?.send({
+                type: 'GAME_COMPLETED',
+                winner,
+                finalScore,
+              })
 
               // Start new game immediately
               const pick = (
@@ -263,7 +283,7 @@ function GameRoute({
             onEndMatch={() => {
               matchActorRef?.send({ type: 'END_MATCH' })
               // Match is automatically persisted in IndexedDB
-              navigate({ to: '/' })
+              window.location.href = '/'
             }}
           />
         )}

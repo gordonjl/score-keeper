@@ -73,6 +73,47 @@ export const EventSourcedMatchProvider = ({
           }),
         onSuccess: (reconstructedActor) =>
           Effect.sync(() => {
+            // Set up inspection to persist new events
+            reconstructedActor.system.inspect((inspectionEvent) => {
+              // Only persist actual events, not internal XState events
+              if (inspectionEvent.type === '@xstate.event') {
+                const event = inspectionEvent.event
+                const actorRef = inspectionEvent.actorRef
+
+                // Skip internal XState events
+                const eventType = (event as { type: string }).type
+                if (eventType.startsWith('xstate.')) return
+
+                // Determine event type prefix based on actor
+                let persistEventType: string
+                if (actorRef === reconstructedActor) {
+                  // Root match actor event - always persist
+                  persistEventType = eventType
+                } else {
+                  // Child game actor event - persist with game ID prefix
+                  const gameId = (actorRef as any).id || 'unknown'
+                  persistEventType = `GAME:${gameId}:${eventType}`
+                }
+
+                // Persist the event
+                const persistProgram = EventStore.appendEvent(
+                  matchId,
+                  persistEventType,
+                  event,
+                )
+
+                Runtime.runPromise(runtime)(
+                  Effect.matchEffect(persistProgram, {
+                    onFailure: (err) =>
+                      Effect.sync(() => {
+                        console.error('Failed to persist event:', err)
+                      }),
+                    onSuccess: () => Effect.void,
+                  }),
+                )
+              }
+            })
+
             setActor(reconstructedActor)
             setIsLoading(false)
             lastEventCountRef.current = countMatchEvents(reconstructedActor)
@@ -81,34 +122,11 @@ export const EventSourcedMatchProvider = ({
     )
   }, [matchId])
 
-  // Subscribe to state changes and persist events
+  // Create snapshots periodically (persistence is now handled by machine actions)
   useEffect(() => {
     if (!actor) return
 
-    const subscription = actor.subscribe((snapshot) => {
-      // XState v5: events are not directly on snapshot
-      // We need to track transitions differently
-      // For now, persist on any state change
-      const currentState = snapshot.value
-
-      // Persist state changes (simplified approach)
-      // Store the entire snapshot as the event payload
-      const program = EventStore.appendEvent(
-        matchId,
-        'STATE_CHANGE',
-        { state: currentState, context: snapshot.context }
-      )
-
-      Runtime.runPromise(runtime)(
-        Effect.matchEffect(program, {
-          onFailure: (err) =>
-            Effect.sync(() => {
-              console.error('Failed to persist event:', err)
-            }),
-          onSuccess: () => Effect.void,
-        }),
-      )
-
+    const subscription = actor.subscribe(() => {
       // Check if we should create a snapshot
       const currentEventCount = countMatchEvents(actor)
       if (

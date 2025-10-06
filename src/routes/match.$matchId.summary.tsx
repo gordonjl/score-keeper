@@ -1,16 +1,16 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 
-export const Route = createFileRoute('/_match/summary')({
+export const Route = createFileRoute('/match/$matchId/summary')({
   component: MatchSummaryRoute,
 })
 
 function MatchSummaryRoute() {
-  const navigate = useNavigate()
+  const { matchId } = Route.useParams()
   const { actor: matchActorRef } = useEventSourcedMatch()
-  
+
   const matchData = matchActorRef
     ? {
         games: matchActorRef.getSnapshot().context.games,
@@ -22,11 +22,11 @@ function MatchSummaryRoute() {
   // Redirect if not in matchComplete state
   useEffect(() => {
     if (!matchData?.isMatchComplete) {
-      navigate({ to: '/setup', search: {} })
+      window.location.href = `/match/${matchId}/setup`
     }
-  }, [matchData?.isMatchComplete, navigate])
+  }, [matchData?.isMatchComplete, matchId])
 
-  if (!matchData || !matchData.isMatchComplete || !matchData.players) {
+  if (!matchData || !matchData.isMatchComplete) {
     return <div className="p-4">Loading...</div>
   }
 
@@ -38,24 +38,21 @@ function MatchSummaryRoute() {
 
   const handleStartNewMatch = () => {
     matchActorRef?.send({ type: 'RESET' })
-    navigate({
-      to: '/setup',
-      search: {
-        teamA: matchData.players.teamA,
-        teamB: matchData.players.teamB,
-        A1: matchData.players.A1.fullName,
-        A2: matchData.players.A2.fullName,
-        B2: matchData.players.B2.fullName,
-      },
+    const params = new URLSearchParams({
+      teamA: matchData.players.teamA,
+      teamB: matchData.players.teamB,
+      A1: matchData.players.A1.fullName,
+      A2: matchData.players.A2.fullName,
+      B1: matchData.players.B1.fullName,
+      B2: matchData.players.B2.fullName,
     })
+    window.location.href = `/match/${matchId}/setup?${params.toString()}`
   }
 
   const handleFinishAndExit = () => {
     // Match is automatically persisted in IndexedDB
-    // Clear the active match ID to allow creating a new match
-    localStorage.removeItem('squash-active-match-id')
     // Navigate to root
-    navigate({ to: '/' })
+    window.location.href = '/'
   }
 
   return (

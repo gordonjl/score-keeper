@@ -6,6 +6,13 @@ import { StateReconstructionError } from './types'
 import type { ActorRefFrom, Snapshot } from 'xstate'
 import type { MatchEvent, MatchId } from './types'
 
+// Parse game event prefix (e.g., "GAME:game-1:RALLY_WON" -> { gameId: "game-1", type: "RALLY_WON" })
+const parseGameEvent = (eventType: string): { gameId: string; type: string } | null => {
+  const match = eventType.match(/^GAME:([^:]+):(.+)$/)
+  if (!match) return null
+  return { gameId: match[1], type: match[2] }
+}
+
 // XState event mapping - we trust the event payload structure
 const mapEventToXState = (event: MatchEvent): unknown => ({
   type: event.type,
@@ -14,16 +21,40 @@ const mapEventToXState = (event: MatchEvent): unknown => ({
     : {}),
 })
 
-// Apply single event to actor
+// Apply single event to actor (match or game)
 const applyEvent = (
-  actor: ActorRefFrom<typeof matchMachine>,
+  matchActor: ActorRefFrom<typeof matchMachine>,
   event: MatchEvent,
 ): Effect.Effect<void, StateReconstructionError> =>
   Effect.try({
     try: () => {
-      const xstateEvent = mapEventToXState(event)
-       
-      actor.send(xstateEvent as any)
+      const gameEvent = parseGameEvent(event.type)
+      
+      if (gameEvent) {
+        // This is a game event - send to child actor
+        const snapshot = matchActor.getSnapshot()
+        const childActor = snapshot.children[gameEvent.gameId]
+        
+        if (childActor) {
+          // Extract the original event from payload
+          const xstateEvent = typeof event.payload === 'object' && event.payload !== null
+            ? event.payload
+            : { type: gameEvent.type }
+          childActor.send(xstateEvent as any)
+        } else {
+          // Child actor doesn't exist - this is expected for completed games
+          // Only log if it's for the current game
+          const currentGameId = snapshot.context.currentGameId
+          if (gameEvent.gameId === currentGameId) {
+            console.warn(`Child actor ${gameEvent.gameId} not found for event ${event.type}`)
+          }
+          // Skip events for old/completed games silently
+        }
+      } else {
+        // This is a match event - send to match actor
+        const xstateEvent = mapEventToXState(event)
+        matchActor.send(xstateEvent as any)
+      }
     },
     catch: (error) =>
       new StateReconstructionError({
@@ -57,12 +88,30 @@ export const reconstructMatchState = (
       const actor = snapshot
         ? createActor(matchMachine, {
             snapshot: snapshot.state as Snapshot<unknown>,
+            input: { matchId }, // Always provide input
           })
-        : createActor(matchMachine)
+        : createActor(matchMachine, {
+            input: { matchId }, // Inject matchId via input
+          })
 
       return pipe(
         Effect.sync(() => {
           actor.start()
+          // If we restored from snapshot, inject matchId into context
+          if (snapshot && actor.getSnapshot().context.matchId !== matchId) {
+            // Update context with matchId
+            const currentSnapshot = actor.getSnapshot()
+            actor.send({
+              type: 'xstate.snapshot',
+              snapshot: {
+                ...currentSnapshot,
+                context: {
+                  ...currentSnapshot.context,
+                  matchId,
+                },
+              },
+            } as any)
+          }
           return actor
         }),
         Effect.flatMap((startedActor) =>

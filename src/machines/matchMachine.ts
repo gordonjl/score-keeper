@@ -1,6 +1,6 @@
 import { assign, sendTo, setup, spawnChild } from 'xstate'
-
 import { squashMachine } from './squashMachine'
+import type { MatchId } from '../db/types'
 import type { PlayerName, PlayerNameMap, Team } from './squashMachine'
 
 // Match-level types
@@ -16,6 +16,7 @@ export type MatchContext = {
   teamBFirstServer: 1 | 2
   games: Array<GameResult>
   currentGameId: string | null
+  matchId: MatchId | null // Track match ID for persistence
 }
 
 export type MatchEvents =
@@ -49,12 +50,13 @@ export const matchMachine = setup({
   types: {
     context: {} as MatchContext,
     events: {} as MatchEvents,
+    input: {} as { matchId?: MatchId },
   },
   actors: {
     squashGame: squashMachine,
   },
   actions: {
-    setupMatch: assign(({ event }) => {
+    setupMatch: assign(({ event, context }) => {
       if (event.type !== 'SETUP_MATCH') return {}
       return {
         players: event.players,
@@ -62,11 +64,16 @@ export const matchMachine = setup({
         teamBFirstServer: event.teamBFirstServer,
         games: [],
         currentGameId: null,
+        matchId: context.matchId, // Preserve matchId
       }
     }),
     spawnGameActor: spawnChild('squashGame', {
       id: ({ context }) => `game-${context.games.length + 1}`,
       syncSnapshot: true,
+      input: ({ context }) => ({
+        matchId: context.matchId ?? undefined,
+        gameId: `game-${context.games.length + 1}`,
+      }),
     }),
     updatePlayersAndGameId: assign(({ context, event }) => {
       if (event.type !== 'START_NEW_GAME') return {}
@@ -158,7 +165,7 @@ export const matchMachine = setup({
   /** @xstate-layout N4IgpgJg5mDOIC5QFsCGAXAxgCwHQEsIAbMAYgGUBRAFQFUAFAfQFkBBagYQAkBtABgC6iUAAcA9rHzp8YgHbCQAD0QB2ABwA2XCoCcGlQCYDAFgDMagIwbjxgDQgAnolM6ArLguuNB0wb6udC1NjAwBfUPs0LDwAJzBUCAcKalYAJWpGADlKAHVGAHFWZkp+ISQQcUlpOQVlBAt-Y1wNPh0DDUsDQzVjNXsnBGMLFVwdY1dTPg1zYw6DV3DIjBwCWXzUZDJC4sYOAHlmegAZGkoAEVKFSqkZeXK6htcmlraOiy6DHr7HREtcYx0gLUplcKg6vVMFkWICiKygGzAHDEyBEJHQZHIKXSWVyBSKJUEVwkNxq90QRj4uD4kIMFkBfE0xl03wGXSaximRg5Jg0rgMY2hsLw8M2SJRaLIlEyZxY7G4l3K12qd1AdQpVJpdJ0DOszP6iCGIzGEymMzmCwiMOWeCFYtRYHRpFSlCo1AVomJytqiACBmaHNcgeCelMGn1g2Go3Gk2mPXN4UtsjEEDgCiFRKqt29CAAtGGfrmtHxiyXS6WVILrQRiGAMySVUpVHw-bp9IHadMnnYC0M1P9o6a42p5pXorg4gkBh7M6TVYg3DpRrSVKYXBC1IHw73+xNAxYrHwQoHRyt8GsEXWvWT6u0LLhTCoAXw6bNefnWRNRpy+Oo1CpQSoP4nsKCJ2hKl5ZteIThu8WjRg05jFv+UzAbgtrIva6IQbOjaDCY-xTHSUz6ACOgsgaFh9jYfKgryq5chWCZAA */
   id: 'match',
   initial: 'idle',
-  context: {
+  context: ({ input }) => ({
     players: {
       A1: { firstName: '', lastName: '', fullName: '' },
       A2: { firstName: '', lastName: '', fullName: '' },
@@ -171,7 +178,8 @@ export const matchMachine = setup({
     teamBFirstServer: 1,
     games: [],
     currentGameId: null,
-  },
+    matchId: input.matchId ?? null,
+  }),
   states: {
     idle: {
       on: {

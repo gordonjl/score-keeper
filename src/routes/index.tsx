@@ -1,11 +1,29 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { Play, Target, Trophy, Users } from 'lucide-react'
+import { useState } from 'react'
+import { useCreateEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
 
 export const Route = createFileRoute('/')({
   component: App,
 })
 
 function App() {
+  const { createMatch, isCreating, error } = useCreateEventSourcedMatch()
+  const [isStarting, setIsStarting] = useState(false)
+
+  const handleStartNewMatch = async () => {
+    setIsStarting(true)
+    const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
+    const matchId = await createMatch(playerNames)
+
+    if (matchId) {
+      // Navigate using string path with matchId interpolated
+      window.location.href = `/match/${matchId}/setup`
+    } else {
+      setIsStarting(false)
+    }
+  }
+
   return (
     <div className="min-h-full bg-gradient-to-br from-base-200 to-base-300">
       <div className="container mx-auto px-4 py-8 sm:py-12 lg:py-16">
@@ -27,13 +45,28 @@ function App() {
             Professional scoring system for doubles squash matches using PAR-15
             rules
           </p>
-          <Link
-            to="/setup"
+          <button
+            onClick={handleStartNewMatch}
+            disabled={isCreating || isStarting}
             className="btn btn-primary btn-lg gap-2 shadow-xl hover:shadow-2xl transition-all"
           >
-            <Play className="w-5 h-5" />
-            Start New Match
-          </Link>
+            {isCreating || isStarting ? (
+              <>
+                <span className="loading loading-spinner loading-sm"></span>
+                Creating Match...
+              </>
+            ) : (
+              <>
+                <Play className="w-5 h-5" />
+                Start New Match
+              </>
+            )}
+          </button>
+          {error && (
+            <div className="alert alert-error max-w-md mx-auto mt-4">
+              <span>Error creating match: {error}</span>
+            </div>
+          )}
         </div>
 
         {/* Features Grid */}

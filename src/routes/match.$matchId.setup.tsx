@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -21,7 +21,7 @@ type SetupSearch = {
   B2?: string
 }
 
-export const Route = createFileRoute('/_match/setup')({
+export const Route = createFileRoute('/match/$matchId/setup')({
   component: SetupRoute,
   validateSearch: (search: Record<string, unknown>): SetupSearch => {
     return {
@@ -36,10 +36,10 @@ export const Route = createFileRoute('/_match/setup')({
 })
 
 function SetupRoute() {
+  const { matchId } = Route.useParams()
   const { actor, isLoading } = useEventSourcedMatch()
-  const navigate = useNavigate()
   const searchParams = Route.useSearch()
-  
+
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -166,7 +166,7 @@ function SetupRoute() {
 
       // Setup the match
       if (!actor) return
-      
+
       actor.send({
         type: 'SETUP_MATCH',
         players,
@@ -180,7 +180,11 @@ function SetupRoute() {
         firstServingTeam: parsed.firstServingTeam,
       })
 
-      navigate({ to: '/game' })
+      // Navigate to the game route with the current game ID
+      const currentGameId = actor.getSnapshot().context.currentGameId
+      if (currentGameId) {
+        window.location.href = `/match/${matchId}/game/${currentGameId}`
+      }
     },
   })
 
@@ -588,7 +592,9 @@ function SetupRoute() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => navigate({ to: '/' })}
+              onClick={() => {
+                window.location.href = '/'
+              }}
             >
               Cancel
             </button>
