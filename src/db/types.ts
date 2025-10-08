@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 // Core event structure with Effect Schema validation
 export const MatchEventSchema = Schema.Struct({
