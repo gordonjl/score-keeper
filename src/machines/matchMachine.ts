@@ -71,7 +71,14 @@ export const matchMachine = setup({
   types: {
     context: {} as MatchContext,
     events: {} as MatchEvents,
-    input: {} as { matchId?: MatchId; store?: any },
+    input: {} as {
+      matchId?: MatchId
+      store?: any
+      // Restoration data from LiveStore
+      existingGames?: Array<GameResult>
+      hasPlayers?: boolean
+      currentGameId?: string
+    },
   },
   actors: {
     squashGame: squashMachine,
@@ -122,7 +129,7 @@ export const matchMachine = setup({
       syncSnapshot: true,
       input: ({ context }) => ({
         matchId: context.matchId ?? undefined,
-        gameId: `${context.matchId}-game-${context.games.length + 1}`,
+        gameId: `${context.games.length + 1}`, // Just use the game number
         store: context.store ?? undefined,
       }),
     }),
@@ -184,8 +191,8 @@ export const matchMachine = setup({
 
       // Emit LiveStore gameStarted event
       if (context.store && context.matchId) {
-        const gameId = `${context.matchId}-game-${context.games.length + 1}`
         const gameNumber = context.games.length + 1
+        const gameId = `${gameNumber}` // Just use the game number as string
 
         // Determine first server side
         const firstServerSide = event.teamASide || event.teamBSide || 'R'
@@ -222,7 +229,7 @@ export const matchMachine = setup({
 
       // Emit LiveStore gameCompleted event
       if (context.store && context.matchId) {
-        const gameId = `${context.matchId}-game-${context.games.length}`
+        const gameId = `${context.games.length}` // Just use the game number as string
 
         context.store.commit(
           events.gameCompleted({
@@ -272,8 +279,8 @@ export const matchMachine = setup({
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QFsCGAXAxgCwHQEsIAbMAYgGUBRAFQFUAFAfQFkBBagYQAkBtABgC6iUAAcA9rHzp8YgHbCQAD0QB2ABwA2XCoCcGlQCYDAFgDMagIwbjxgDQgAnolM6ArLguuNB0wb6udC1NjAwBfUPs0LDwAJzBUCAcKalYAJWpGADlKAHVGAHFWZkp+ISQQcUlpOQVlBAt-Y1wNPh0DDUsDQzVjNXsnBGMLFVwdY1dTPg1zYw6DV3DIjBwCWXzUZDJC4sYOAHlmegAZGkoAEVKFSqkZeXK6htcmlraOiy6DHr7HREtcYx0gLUplcKg6vVMFkWICiKygGzAHDEyBEJHQZHIKXSWVyBSKJUEVwkNxq90QRj4uD4kIMFkBfE0xl03wGXSaximRg5Jg0rgMY2hsLw8M2SJRaLIlEyZxY7G4l3K12qd1AdQpVJpdJ0DOszP6iCGIzGEymMzmCwiMOWeCFYtRYHRpFSlCo1AVomJytqiACBmaHNcgeCelMGn1g2Go3Gk2mPXN4UtsjEEDgCiFRKqt29CAAtGGfrmtHxiyXS6WVILrQRiGAMySVUpVHw-bp9IHadMnnYC0M1P9o6a42p5pXorg4gkBh7M6TVYg3DpRrSVKYXBC1IHw73+xNAxYrHwQoHRyt8GsEXWvWT6u0LLhTCoAXw6bNefnWRNRpy+Oo1CpQSoP4nsKCJ2hKl5ZteIThu8WjRg05jFv+UzAbgtrIva6IQbOjaDCY-xTHSUz6ACOgsgaFh9jYfKgryq5chWCZAA */
-  id: 'match',
+  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBaCA9mgEYA2cAxAKoByAIgPIDaADALqKgAOBsAlgBc+BAHacQAD0QBmAOwA6AIwsArABYAbAA5ZKgDQgAnjI0r5LAJxzTAJhU6tFlhoC+Lg6kw58RMpQBKAKIAyoEAKqwcSCA8-EKi4lIIuBqK5po6+kaIKorS8tJaNkWyug4Wim4e6Fh4hCTksPJ8EOQUoWFUAAoA+mGBAIIAssGR4rGCwmLRSTYa+bIW2roGxghqWlryThpzKnblzlUgnrU+DXDyAE5gGBCG7WED-mE9AOLDgWPRE-HToEl1Pl9tI1HIsmsNlsdnsDrJHEd3Cdat56n4mnwRF1SBgHv4BgAZAkATR6AHUGDRvtxeJMEjMcvN5LIWNJFHZVog8ix5CpjqdUb5Gs0sTiHgBhAkASXFAGkev4GGTqTFaX9EogtIoFKyYRDEDYbAoNIsWUb7PCdvyUXUhZdMdjcRQCeEVb8phqEA55FppDZWez9etdttlNrFCoWIdXEiBbaLk0AMbYMCJgDWFDdao9DIQQN5NlB4M5XrUvOtXnj6PkydTGaYii */
+  id: 'matchMachine',
   initial: 'idle',
   context: ({ input }) => ({
     players: {
@@ -286,7 +293,7 @@ export const matchMachine = setup({
     },
     teamAFirstServer: 1,
     teamBFirstServer: 1,
-    games: [],
+    games: input.existingGames ?? [], // Restore from LiveStore
     matchId: input.matchId ?? null,
     store: input.store ?? null,
   }),

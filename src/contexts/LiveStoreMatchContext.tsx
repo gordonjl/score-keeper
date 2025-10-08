@@ -1,11 +1,16 @@
 import { useStore } from '@livestore/react'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { events } from '../livestore/schema'
-import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
+import {
+  gamesByMatch$,
+  matchById$,
+  ralliesByGame$,
+} from '../livestore/squash-queries'
 import { matchMachine } from '../machines/matchMachine'
 import type { MatchId } from '../db/types'
 import type { ActorRefFrom } from 'xstate'
+import type { Team } from '../machines/squashMachine'
 
 // Context type
 type LiveStoreMatchContextType = {
@@ -52,15 +57,22 @@ export const LiveStoreMatchProvider = ({
     input: { matchId, store },
   })
 
+  // Track if we've already restored state to prevent infinite loops
+  const hasRestoredRef = useRef(false)
+
   // Restore match state from LiveStore when data is loaded
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!match || !games) return
+    if (!match || !games || !store) return
 
     const snapshot = actor.getSnapshot()
 
     // Only restore if we're in idle state (haven't been set up yet)
     if (snapshot.value !== 'idle') return
+
+    // Prevent multiple restorations
+    if (hasRestoredRef.current) return
+    hasRestoredRef.current = true
 
     // If match is already set up in LiveStore, send SETUP_MATCH event
     if (match.playerA1FirstName) {
@@ -94,12 +106,50 @@ export const LiveStoreMatchProvider = ({
         teamBFirstServer: match.teamBFirstServer as 1 | 2,
       })
 
-      // TODO: Restore games state
-      // For each completed game, we should send GAME_COMPLETED events
-      // For in-progress game, we should send START_NEW_GAME and restore rallies
-      // This is Phase 3 work - for now, machine starts fresh
+      // Restore games state
+      // Sort games by game number to restore in order
+      const sortedGames = [...games].sort((a, b) => a.gameNumber - b.gameNumber)
+
+      for (const game of sortedGames) {
+        // Start the game
+        actor.send({
+          type: 'START_NEW_GAME',
+          firstServingTeam: game.firstServingTeam as Team,
+        })
+
+        // If game is completed, send GAME_COMPLETED event
+        if (game.status === 'completed' && game.winner) {
+          actor.send({
+            type: 'GAME_COMPLETED',
+            winner: game.winner as Team,
+            finalScore: { A: game.scoreA, B: game.scoreB },
+          })
+        } else if (game.status === 'in_progress') {
+          // For in-progress game, we need to replay rallies
+          // Query rallies for this game synchronously
+          const ralliesQuery = ralliesByGame$(game.id)
+          const ralliesResult = store.query(ralliesQuery)
+
+          // Get the game actor that was just spawned
+          // We need to get a fresh snapshot after sending START_NEW_GAME
+          const currentSnapshot = actor.getSnapshot()
+          const gameActorId = game.id
+          const gameActor = currentSnapshot.children[gameActorId]
+
+          if (gameActor) {
+            // Replay each rally to restore game state
+            for (const rally of ralliesResult) {
+              // Send RALLY_WON event to the game actor
+              gameActor.send({
+                type: 'RALLY_WON',
+                winner: rally.winner as Team,
+              })
+            }
+          }
+        }
+      }
     }
-  }, [match, games, actor])
+  }, [match, games, actor, store])
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const isLoading = Boolean(!match || !games)
