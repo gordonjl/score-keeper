@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 
 export const Route = createFileRoute('/match/$matchId/summary')({
   component: MatchSummaryRoute,
@@ -9,7 +9,7 @@ export const Route = createFileRoute('/match/$matchId/summary')({
 
 function MatchSummaryRoute() {
   const { matchId } = Route.useParams()
-  const { actor: matchActorRef, isLoading } = useEventSourcedMatch()
+  const { actor: matchActorRef, isLoading } = useLiveStoreMatch()
   const navigate = useNavigate({ from: Route.fullPath })
 
   const matchData = matchActorRef

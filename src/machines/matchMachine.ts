@@ -1,4 +1,5 @@
 import { assign, sendTo, setup, spawnChild } from 'xstate'
+import { events } from '../livestore/schema'
 import { squashMachine } from './squashMachine'
 import type { MatchId } from '../db/types'
 import type { PlayerName, PlayerNameMap, Team } from './squashMachine'
@@ -17,6 +18,7 @@ export type MatchContext = {
   teamBFirstServer: 1 | 2
   games: Array<GameResult>
   matchId: MatchId | null // Track match ID for persistence
+  store: any | null // LiveStore instance for event emission
 }
 
 // Derived selector: currentGameId is games.length when in inGame state, null otherwise
@@ -69,7 +71,7 @@ export const matchMachine = setup({
   types: {
     context: {} as MatchContext,
     events: {} as MatchEvents,
-    input: {} as { matchId?: MatchId },
+    input: {} as { matchId?: MatchId; store?: any },
   },
   actors: {
     squashGame: squashMachine,
@@ -77,12 +79,42 @@ export const matchMachine = setup({
   actions: {
     setupMatch: assign(({ event, context }) => {
       if (event.type !== 'SETUP_MATCH') return {}
+
+      // Emit LiveStore event
+      if (context.store && context.matchId) {
+        context.store.commit(
+          events.matchSetup({
+            matchId: context.matchId,
+            playerA1: {
+              firstName: event.players.A1.firstName,
+              lastName: event.players.A1.lastName,
+            },
+            playerA2: {
+              firstName: event.players.A2.firstName,
+              lastName: event.players.A2.lastName,
+            },
+            playerB1: {
+              firstName: event.players.B1.firstName,
+              lastName: event.players.B1.lastName,
+            },
+            playerB2: {
+              firstName: event.players.B2.firstName,
+              lastName: event.players.B2.lastName,
+            },
+            teamAFirstServer: event.teamAFirstServer,
+            teamBFirstServer: event.teamBFirstServer,
+            timestamp: new Date(),
+          }),
+        )
+      }
+
       return {
         players: event.players,
         teamAFirstServer: event.teamAFirstServer,
         teamBFirstServer: event.teamBFirstServer,
         games: [],
         matchId: context.matchId, // Preserve matchId
+        store: context.store, // Preserve store
       }
     }),
     spawnGameActor: spawnChild('squashGame', {
@@ -90,7 +122,8 @@ export const matchMachine = setup({
       syncSnapshot: true,
       input: ({ context }) => ({
         matchId: context.matchId ?? undefined,
-        gameId: `${context.games.length + 1}`,
+        gameId: `${context.matchId}-game-${context.games.length + 1}`,
+        store: context.store ?? undefined,
       }),
     }),
     updatePlayers: assign(({ context, event }) => {
@@ -146,7 +179,32 @@ export const matchMachine = setup({
         }
       },
     ),
-    createGameEntry: assign(({ context }) => {
+    createGameEntry: assign(({ context, event }) => {
+      if (event.type !== 'START_NEW_GAME') return {}
+
+      // Emit LiveStore gameStarted event
+      if (context.store && context.matchId) {
+        const gameId = `${context.matchId}-game-${context.games.length + 1}`
+        const gameNumber = context.games.length + 1
+
+        // Determine first server side
+        const firstServerSide = event.teamASide || event.teamBSide || 'R'
+
+        context.store.commit(
+          events.gameStarted({
+            gameId,
+            matchId: context.matchId,
+            gameNumber,
+            firstServingTeam: event.firstServingTeam,
+            firstServingPlayer: 1, // Always player 1 after reordering
+            firstServingSide: firstServerSide,
+            maxPoints: 15,
+            winBy: 1,
+            timestamp: new Date(),
+          }),
+        )
+      }
+
       return {
         games: [
           ...context.games,
@@ -161,6 +219,23 @@ export const matchMachine = setup({
     }),
     recordGameResult: assign(({ context, event }) => {
       if (event.type !== 'GAME_COMPLETED') return {}
+
+      // Emit LiveStore gameCompleted event
+      if (context.store && context.matchId) {
+        const gameId = `${context.matchId}-game-${context.games.length}`
+
+        context.store.commit(
+          events.gameCompleted({
+            gameId,
+            matchId: context.matchId,
+            winner: event.winner,
+            finalScoreA: event.finalScore.A,
+            finalScoreB: event.finalScore.B,
+            timestamp: new Date(),
+          }),
+        )
+      }
+
       // Update the last game (which should be in_progress) with the result
       const updatedGames = [...context.games]
       const lastGameIndex = updatedGames.length - 1
@@ -213,6 +288,7 @@ export const matchMachine = setup({
     teamBFirstServer: 1,
     games: [],
     matchId: input.matchId ?? null,
+    store: input.store ?? null,
   }),
   states: {
     idle: {

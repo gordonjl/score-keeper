@@ -2,8 +2,8 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useEffect, useRef, useState } from 'react'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { getCurrentGameId } from '../machines/matchMachine'
 import type { PlayerName } from '../machines/squashMachine'
 
@@ -38,12 +38,13 @@ export const Route = createFileRoute('/match/$matchId/setup')({
 
 function SetupRoute() {
   const { matchId } = Route.useParams()
-  const { actor, isLoading } = useEventSourcedMatch()
+  const { actor, isLoading } = useLiveStoreMatch()
   const searchParams = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const hasPopulatedForm = useRef(false)
 
   // Get match data from actor
   const matchData = actor
@@ -196,6 +197,9 @@ function SetupRoute() {
 
   // Populate form with search params (priority) or existing match data on mount
   useEffect(() => {
+    // Only populate once
+    if (hasPopulatedForm.current) return
+
     console.log('Setup: Search params:', searchParams)
     console.log('Setup: Match data:', matchData)
 
@@ -225,9 +229,10 @@ function SetupRoute() {
       form.setFieldValue('B1Last', b1.last)
       form.setFieldValue('B2First', b2.first)
       form.setFieldValue('B2Last', b2.last)
+      hasPopulatedForm.current = true
     }
     // Priority 2: Existing match context data
-    else {
+    else if (matchData.players.A1.firstName) {
       console.log('Setup: Populating form with existing data')
       form.setFieldValue('A1First', matchData.players.A1.firstName)
       form.setFieldValue('A1Last', matchData.players.A1.lastName)
@@ -239,6 +244,7 @@ function SetupRoute() {
       form.setFieldValue('B2Last', matchData.players.B2.lastName)
       form.setFieldValue('teamAFirstServer', matchData.teamAFirstServer)
       form.setFieldValue('teamBFirstServer', matchData.teamBFirstServer)
+      hasPopulatedForm.current = true
     }
   }, [matchData, searchParams, form])
 

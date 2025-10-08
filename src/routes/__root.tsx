@@ -133,12 +133,25 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 const getStoreId = () => {
   if (typeof window === 'undefined') return 'unused'
 
+  const STORE_ID_KEY = 'livestore-storeId'
+
+  // Priority 1: Check URL query parameter (for sharing/debugging)
   const searchParams = new URLSearchParams(window.location.search)
-  const storeId = searchParams.get('storeId')
-  if (storeId !== null) return storeId
+  const urlStoreId = searchParams.get('storeId')
+  if (urlStoreId !== null) {
+    // Save to localStorage for persistence
+    localStorage.setItem(STORE_ID_KEY, urlStoreId)
+    return urlStoreId
+  }
 
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
+  // Priority 2: Check localStorage
+  const savedStoreId = localStorage.getItem(STORE_ID_KEY)
+  if (savedStoreId !== null) {
+    return savedStoreId
+  }
 
-  window.location.search = searchParams.toString()
+  // Priority 3: Generate new storeId and save it
+  const newStoreId = crypto.randomUUID()
+  localStorage.setItem(STORE_ID_KEY, newStoreId)
+  return newStoreId
 }

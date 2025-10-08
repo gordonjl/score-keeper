@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useEventSourcedGameActor } from '../hooks/useEventSourcedGame'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/match/$matchId/game/$gameId')({
 function GameRouteWrapper() {
   const { matchId, gameId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { actor, isLoading } = useEventSourcedMatch()
+  const { actor, isLoading } = useLiveStoreMatch()
   const gameActor = useEventSourcedGameActor(gameId)
 
   const matchData = actor
@@ -83,7 +83,7 @@ function GameRoute({
 }) {
   const { matchId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { actor: matchActorRef } = useEventSourcedMatch()
+  const { actor: matchActorRef } = useLiveStoreMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
   const [matchStartTime] = useState(Date.now())
 

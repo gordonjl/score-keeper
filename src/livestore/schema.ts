@@ -1,9 +1,9 @@
 import {
   Events,
-  makeSchema,
   Schema,
   SessionIdSymbol,
   State,
+  makeSchema,
 } from '@livestore/livestore'
 import {
   createSquashMaterializers,

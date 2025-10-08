@@ -1,4 +1,5 @@
 import { assign, setup } from 'xstate'
+import { events } from '../livestore/schema'
 import type { MatchId } from '../db/types'
 
 // ===== Types =====
@@ -62,6 +63,8 @@ export type Context = {
   history: Array<Snapshot>
   matchId: MatchId | null // For persistence
   gameId: string | null // For persistence
+  store: any | null // LiveStore instance for event emission
+  rallyCount: number // Track rally number for events
 }
 
 export type Events =
@@ -173,7 +176,7 @@ export const squashMachine = setup({
   types: {
     context: {} as Context,
     events: {} as Events,
-    input: {} as { matchId?: MatchId; gameId?: string },
+    input: {} as { matchId?: MatchId; gameId?: string; store?: any },
   },
   actions: {
     assignTeams: assign(
@@ -181,6 +184,7 @@ export const squashMachine = setup({
         players,
         matchId: context.matchId, // Preserve
         gameId: context.gameId, // Preserve
+        store: context.store, // Preserve
       }),
     ),
 
@@ -216,6 +220,8 @@ export const squashMachine = setup({
           history: [],
           matchId: context.matchId, // Preserve
           gameId: context.gameId, // Preserve
+          store: context.store, // Preserve
+          rallyCount: 0, // Initialize rally count
         }
       },
     ),
@@ -261,9 +267,30 @@ export const squashMachine = setup({
 
     rallyWon: assign(({ context }, { winner }: { winner: Team }) => {
       const cur = context.server
-      // Column where this serve was recorded
       const col = colForTeamServe(context, cur.team)
       let grid = context.grid
+      const rallyNumber = context.rallyCount + 1
+
+      // Emit LiveStore rallyWon event
+      if (context.store && context.gameId) {
+        context.store.commit(
+          events.rallyWon({
+            rallyId: crypto.randomUUID(),
+            gameId: context.gameId,
+            rallyNumber,
+            winner,
+            serverTeam: cur.team,
+            serverPlayer: cur.player,
+            serverSide: cur.side,
+            serverHandIndex: cur.handIndex,
+            scoreABefore: context.score.A,
+            scoreBBefore: context.score.B,
+            scoreAAfter: winner === 'A' ? context.score.A + 1 : context.score.A,
+            scoreBAfter: winner === 'B' ? context.score.B + 1 : context.score.B,
+            timestamp: new Date(),
+          }),
+        )
+      }
 
       // If server won, R/L is already written, just update score and flip side
       if (winner === cur.team) {
@@ -282,7 +309,12 @@ export const squashMachine = setup({
           nextCol,
           nextServer.side,
         )
-        return { score: nextScore, server: nextServer, grid }
+        return {
+          score: nextScore,
+          server: nextServer,
+          grid,
+          rallyCount: rallyNumber,
+        }
       } else {
         // Receiving team won
         // Add slash to existing R/L in server row at current column
@@ -346,6 +378,7 @@ export const squashMachine = setup({
             server: nextServer,
             grid,
             firstHandUsed: true,
+            rallyCount: rallyNumber,
           }
         } else if (cur.handIndex === 0) {
           // Not first hand, partner still to serve (second hand)
@@ -371,6 +404,7 @@ export const squashMachine = setup({
             server: partner,
             grid,
             firstHandUsed: true,
+            rallyCount: rallyNumber,
           }
         } else {
           // Second hand lost → hand-out to other team
@@ -389,12 +423,33 @@ export const squashMachine = setup({
             server: nextServer,
             grid,
             firstHandUsed: true,
+            rallyCount: rallyNumber,
           }
         }
       }
     }),
 
-    undoOnce: assign(({ context }) => popSnapshot(context)),
+    undoOnce: assign(({ context }) => {
+      // Emit LiveStore rallyUndone event for the last rally
+      if (context.store && context.gameId && context.rallyCount > 0) {
+        // Note: We don't have the rallyId stored in history, so we'll need to query it
+        // For now, we'll emit the event with a placeholder and let the materializer handle it
+        // This is a limitation - ideally we'd store rallyIds in history or query from LiveStore
+        context.store.commit(
+          events.rallyUndone({
+            gameId: context.gameId,
+            rallyId: '', // Will need to be queried by materializer based on rallyNumber
+            timestamp: new Date(),
+          }),
+        )
+      }
+
+      const result = popSnapshot(context)
+      return {
+        ...result,
+        rallyCount: Math.max(0, context.rallyCount - 1),
+      }
+    }),
   },
   guards: {
     gameEnded: ({ context }) => {
@@ -426,6 +481,8 @@ export const squashMachine = setup({
     history: [],
     matchId: input.matchId ?? null,
     gameId: input.gameId ?? null,
+    store: input.store ?? null,
+    rallyCount: 0,
   }),
   on: {
     UNDO: {

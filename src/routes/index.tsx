@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Check, Play, Target, Trash2, Trophy, Users, X } from 'lucide-react'
 import { useState } from 'react'
-import { useCreateEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useCreateLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { events } from '../livestore/schema'
 import { uiState$, visibleTodos$ } from '../livestore/queries'
 
@@ -11,16 +11,16 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
-  const { createMatch, isCreating, error } = useCreateEventSourcedMatch()
+  const { createMatch, isCreating, error } = useCreateLiveStoreMatch()
   const [isStarting, setIsStarting] = useState(false)
   const navigate = useNavigate({ from: Route.fullPath })
 
   const { store } = useStore()
 
-  const handleStartNewMatch = async () => {
+  const handleStartNewMatch = () => {
     setIsStarting(true)
     const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
-    const matchId = await createMatch(playerNames)
+    const matchId = createMatch(playerNames)
 
     if (matchId) {
       navigate({ to: '/match/$matchId/setup', params: { matchId } })

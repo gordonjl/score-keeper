@@ -1,14 +1,14 @@
 import { getCurrentGameId } from '../machines/matchMachine'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 
 /**
- * Hook to get the current game actor from the event-sourced match machine.
+ * Hook to get the current game actor from the LiveStore match machine.
  * This is compatible with the existing useCurrentGameActor hook.
  *
  * @param gameId - Optional game ID to retrieve. If not provided, derives currentGameId from state.
  */
 export const useEventSourcedGameActor = (gameId?: string) => {
-  const { actor } = useEventSourcedMatch()
+  const { actor } = useLiveStoreMatch()
 
   if (!actor) return null
 
@@ -22,10 +22,10 @@ export const useEventSourcedGameActor = (gameId?: string) => {
 }
 
 /**
- * Hook to send events to the event-sourced match actor.
+ * Hook to send events to the LiveStore match actor.
  */
 export const useEventSourcedMatchSend = () => {
-  const { actor } = useEventSourcedMatch()
+  const { actor } = useLiveStoreMatch()
 
   return (event: unknown) => {
     if (!actor) {
@@ -38,10 +38,10 @@ export const useEventSourcedMatchSend = () => {
 }
 
 /**
- * Hook to get the match context from the event-sourced actor.
+ * Hook to get the match context from the LiveStore actor.
  */
 export const useEventSourcedMatchContext = () => {
-  const { actor } = useEventSourcedMatch()
+  const { actor } = useLiveStoreMatch()
 
   if (!actor) return null
 
@@ -52,7 +52,7 @@ export const useEventSourcedMatchContext = () => {
  * Hook to get the match state value.
  */
 export const useEventSourcedMatchState = () => {
-  const { actor } = useEventSourcedMatch()
+  const { actor } = useLiveStoreMatch()
 
   if (!actor) return null
 

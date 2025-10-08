@@ -311,28 +311,40 @@ export const createSquashMaterializers = () => ({
       })
       .where({ id: matchId }),
 
-  'v1.GameStarted': ({
-    gameId,
-    matchId,
-    gameNumber,
-    firstServingTeam,
-    firstServingPlayer,
-    firstServingSide,
-    maxPoints,
-    winBy,
-    timestamp,
-  }: {
-    gameId: string
-    matchId: string
-    gameNumber: number
-    firstServingTeam: 'A' | 'B'
-    firstServingPlayer: 1 | 2
-    firstServingSide: 'R' | 'L'
-    maxPoints: number
-    winBy: number
-    timestamp: Date
-  }) =>
-    squashTables.games.insert({
+  'v1.GameStarted': (
+    {
+      gameId,
+      matchId,
+      gameNumber,
+      firstServingTeam,
+      firstServingPlayer,
+      firstServingSide,
+      maxPoints,
+      winBy,
+      timestamp,
+    }: {
+      gameId: string
+      matchId: string
+      gameNumber: number
+      firstServingTeam: 'A' | 'B'
+      firstServingPlayer: 1 | 2
+      firstServingSide: 'R' | 'L'
+      maxPoints: number
+      winBy: number
+      timestamp: Date
+    },
+    // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
+    ctx,
+  ) => {
+    // Check if game already exists to avoid duplicate insert
+    const existingGames = ctx.query(
+      squashTables.games.where({ id: gameId }),
+    ) as Array<{ id: string }>
+
+    // If game already exists, skip insert (idempotent)
+    if (existingGames.length > 0) return []
+
+    return squashTables.games.insert({
       id: gameId,
       matchId,
       gameNumber,
@@ -347,7 +359,8 @@ export const createSquashMaterializers = () => ({
       firstServingTeam,
       firstServingPlayer,
       firstServingSide,
-    }),
+    })
+  },
 
   'v1.GameCompleted': ({
     gameId,
@@ -428,27 +441,41 @@ export const createSquashMaterializers = () => ({
   ],
 
   'v1.RallyUndone': (
-    { gameId, rallyId, timestamp }: { gameId: string; rallyId: string; timestamp: Date },
+    {
+      gameId,
+      rallyId,
+      timestamp,
+    }: { gameId: string; rallyId: string; timestamp: Date },
     // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
     ctx,
   ) => {
-    // Query the rally to undo - ctx.query accepts QueryBuilder directly
-    const rally = ctx.query(
-      squashTables.rallies.where({ id: rallyId, deletedAt: null }).first(),
-    ) as
-      | {
-          scoreABefore: number
-          scoreBBefore: number
-        }
+    // Query the last rally for this game (if rallyId is empty, find the most recent)
+    let rally:
+      | { id: string; scoreABefore: number; scoreBBefore: number }
       | undefined
 
+    if (rallyId) {
+      const rallies = ctx.query(
+        squashTables.rallies.where({ id: rallyId, deletedAt: null }),
+      ) as Array<{ id: string; scoreABefore: number; scoreBBefore: number }>
+      rally = rallies[0]
+    } else {
+      const rallies = ctx.query(
+        squashTables.rallies
+          .where({ gameId, deletedAt: null })
+          .orderBy('rallyNumber', 'desc'),
+      ) as Array<{ id: string; scoreABefore: number; scoreBBefore: number }>
+      rally = rallies[0]
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!rally) return []
 
     return [
       // Soft delete the rally
       squashTables.rallies
         .update({ deletedAt: timestamp })
-        .where({ id: rallyId }),
+        .where({ id: rally.id }),
       // Restore previous score
       squashTables.games
         .update({
