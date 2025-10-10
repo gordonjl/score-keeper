@@ -34,6 +34,26 @@ const RootComponent = () => {
     sharedWorker: LiveStoreSharedWorker,
   })
 
+  // If no valid store ID found, show error page
+  if (!storeId) {
+    return (
+      <RootDocument>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md px-4">
+            <h1 className="text-4xl font-bold mb-4">Address Not Found</h1>
+            <p className="text-lg mb-6">
+              Sorry, we couldn't find the address you were looking for.
+            </p>
+            <p className="text-sm text-gray-600">
+              Please check the URL and try again. Make sure you're accessing the
+              site with a valid subdomain.
+            </p>
+          </div>
+        </div>
+      </RootDocument>
+    )
+  }
+
   return (
     <RootDocument>
       <ErrorBoundary fallback={<div>Something went wrong</div>}>
@@ -129,29 +149,31 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   }),
   component: RootComponent,
 })
-
-const getStoreId = () => {
+const getStoreId = (): string | null => {
   if (typeof window === 'undefined') return 'unused'
 
-  const STORE_ID_KEY = 'livestore-storeId'
+  const hostname = window.location.hostname
+  const parts = hostname.split('.')
 
-  // Priority 1: Check URL query parameter (for sharing/debugging)
-  const searchParams = new URLSearchParams(window.location.search)
-  const urlStoreId = searchParams.get('storeId')
-  if (urlStoreId !== null) {
-    // Save to localStorage for persistence
-    localStorage.setItem(STORE_ID_KEY, urlStoreId)
-    return urlStoreId
+  // Handle different hostname patterns:
+  // - pcs.localhost -> 'pcs'
+  // - pcs.score-keeper.gordonjl.com -> 'pcs'
+  // - localhost -> no valid subdomain, return null
+  // - score-keeper.gordonjl.com -> no valid subdomain, return null
+
+  if (parts.length > 1) {
+    const potentialSubdomain = parts[0]
+
+    // Exclude 'www', 'localhost', and 'score-keeper' as valid store IDs
+    if (
+      potentialSubdomain !== 'www' &&
+      potentialSubdomain !== 'localhost' &&
+      potentialSubdomain !== 'score-keeper'
+    ) {
+      return potentialSubdomain
+    }
   }
 
-  // Priority 2: Check localStorage
-  const savedStoreId = localStorage.getItem(STORE_ID_KEY)
-  if (savedStoreId !== null) {
-    return savedStoreId
-  }
-
-  // Priority 3: Generate new storeId and save it
-  const newStoreId = crypto.randomUUID()
-  localStorage.setItem(STORE_ID_KEY, newStoreId)
-  return newStoreId
+  // No valid subdomain found
+  return null
 }
