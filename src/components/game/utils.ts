@@ -1,4 +1,4 @@
-import type { ActivityGrid, RowKey } from '../../machines/squashMachine.types'
+import type { RowKey } from '../../machines/squashMachine.types'
 
 export const toWords = (n: number): string => {
   const words = [
@@ -20,10 +20,6 @@ export const toWords = (n: number): string => {
     'Fifteen',
   ]
   return words[n] ?? String(n)
-}
-
-export const determineFirstServingTeam = (grid: ActivityGrid): 'A' | 'B' => {
-  return grid.A1[0] || grid.A2[0] ? 'A' : 'B'
 }
 
 export const getOrderedRows = (firstServingTeam: 'A' | 'B'): Array<RowKey> => {

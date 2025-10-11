@@ -8,7 +8,7 @@ import {
   ralliesByGame$,
 } from '../livestore/squash-queries'
 import { squashGameMachine } from '../machines/squashGameMachine'
-import type { PlayerNameMap, Team } from '../machines/squashMachine.types'
+import type { PlayerNameMap } from '../machines/squashMachine.types'
 
 /**
  * Hook to instantiate and manage squashGameMachine lifecycle with LiveStore integration.
@@ -17,8 +17,8 @@ import type { PlayerNameMap, Team } from '../machines/squashMachine.types'
  * - LiveStore is the source of truth for persistent data
  * - XState manages UI state transitions
  * - Creates a new machine actor for each game (when gameId changes)
- * - Reactively queries game and rallies from LiveStore
- * - Replays rallies to reconstruct grid state on machine creation
+ * - Reactively queries game data from LiveStore
+ * - Server state is read directly from game table (no rally replay needed)
  */
 export const useSquashGameMachine = (
   matchId: string,
@@ -60,16 +60,12 @@ export const useSquashGameMachine = (
   // We intentionally capture gameData, players, ralliesData from closure
   // to avoid re-running when rallies update during gameplay (would cause infinite loop)
   useEffect(() => {
-    // Load game data with rallies for replay
-    // The machine will handle replaying rallies internally via configureGameState action
+    // Load game data - server state is already in the game table (no replay needed!)
     actorRef.send({
       type: 'GAME_LOADED',
       game: gameData,
       players,
-      rallies: ralliesData.map((rally) => ({
-        winner: rally.winner as Team,
-        rallyNumber: rally.rallyNumber,
-      })),
+      rallyCount: ralliesData.length,
     })
   }, [actorRef])
 

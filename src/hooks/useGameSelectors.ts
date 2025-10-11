@@ -17,7 +17,6 @@ export const useGameSelectors = (
 ) => {
   // Individual selectors for fine-grained reactivity
   const score = useSelector(actor, (s) => s.context.score)
-  const grid = useSelector(actor, (s) => s.context.grid)
   const players = useSelector(actor, (s) => s.context.players)
   const server = useSelector(actor, (s) => s.context.server)
   const rallyCount = useSelector(actor, (s) => s.context.rallyCount)
@@ -53,7 +52,6 @@ export const useGameSelectors = (
     score,
     scoreA,
     scoreB,
-    grid,
     players,
     server,
     serverRowKey,

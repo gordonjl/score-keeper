@@ -2,7 +2,6 @@ import { assign, setup } from 'xstate'
 import {
   configureGameState,
   gameEnded,
-  initialGrid,
   rallyWon,
   snapshot,
   toggleServeSide,
@@ -11,13 +10,7 @@ import {
 import type { Snapshot } from './squashGameMachine.actions'
 import type { Store } from '@livestore/livestore'
 import type { schema } from '../livestore/schema'
-import type {
-  ActivityGrid,
-  PlayerNameMap,
-  Score,
-  Server,
-  Team,
-} from './squashMachine.types'
+import type { PlayerNameMap, Score, Server, Team } from './squashMachine.types'
 
 // ===== LiveStore Game Type =====
 export type Game = {
@@ -32,9 +25,16 @@ export type Game = {
   winBy: number
   createdAt: Date
   completedAt: Date | null
+  // Initial server (immutable)
   firstServingTeam: string
   firstServingPlayer: number
   firstServingSide: string
+  // Current server state (updated after each rally)
+  currentServerTeam: string
+  currentServerPlayer: number
+  currentServerSide: string
+  currentServerHandIndex: number
+  firstHandUsed: boolean
 }
 
 // ===== Context =====
@@ -51,7 +51,6 @@ export type Context = {
   // Game state (UI state machine manages this)
   score: Score
   server: Server
-  grid: ActivityGrid
   firstHandUsed: boolean
 
   // History for undo
@@ -62,19 +61,13 @@ export type Context = {
   rallyCount: number
 }
 
-// ===== Rally Data Type =====
-export type RallyData = {
-  winner: Team
-  rallyNumber: number
-}
-
 // ===== Events =====
 export type Events =
   | {
       type: 'GAME_LOADED'
       game: Game
       players: PlayerNameMap
-      rallies: ReadonlyArray<RallyData>
+      rallyCount: number
     }
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'TOGGLE_SERVE_SIDE' }
@@ -98,7 +91,7 @@ export const squashGameMachine = setup({
         params: {
           game: Game
           players: PlayerNameMap
-          rallies: ReadonlyArray<RallyData>
+          rallyCount: number
         },
       ) => configureGameState(context, params),
     ),
@@ -131,7 +124,6 @@ export const squashGameMachine = setup({
     },
     score: { A: 0, B: 0 },
     server: { team: 'A', player: 1, side: 'R', handIndex: 0 as const },
-    grid: initialGrid(),
     firstHandUsed: false,
     history: [],
     store: input.store,
@@ -153,7 +145,7 @@ export const squashGameMachine = setup({
             params: ({ event }) => ({
               game: event.game,
               players: event.players,
-              rallies: event.rallies,
+              rallyCount: event.rallyCount,
             }),
           },
         },

@@ -1,9 +1,20 @@
 import { useMemo } from 'react'
 import { useSelector } from '@xstate/react'
+import { useStore } from '@livestore/react'
+import { ralliesByGame$ } from '../../livestore/squash-queries'
 import { getOrderedRows } from './utils'
 import type { ActorRefFrom } from 'xstate'
 import type { squashGameMachine } from '../../machines/squashGameMachine'
-import type { RowKey } from '../../machines/squashMachine.types'
+import type {
+  ActivityGrid,
+  Cell,
+  PlayerRow,
+  RowKey,
+  Score,
+  Server,
+  Side,
+  Team,
+} from '../../machines/squashMachine.types'
 
 type ScoreGridProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
@@ -13,22 +24,303 @@ type ScoreGridProps = {
 
 const MAX_COLS = 15
 
+// ===== Grid Building Utilities =====
+const makeEmptyCols = (n = 30): Array<Cell> =>
+  Array.from({ length: n }, () => '')
+
+const initialGrid = (cols = 30): ActivityGrid => ({
+  A1: makeEmptyCols(cols),
+  A2: makeEmptyCols(cols),
+  B1: makeEmptyCols(cols),
+  B2: makeEmptyCols(cols),
+  A: makeEmptyCols(cols),
+  B: makeEmptyCols(cols),
+})
+
+const writeCell = (
+  grid: ActivityGrid,
+  key: RowKey | 'A' | 'B',
+  col: number,
+  value: Cell,
+): ActivityGrid => {
+  const next: ActivityGrid = {
+    A1: [...grid.A1],
+    A2: [...grid.A2],
+    B1: [...grid.B1],
+    B2: [...grid.B2],
+    A: [...grid.A],
+    B: [...grid.B],
+  }
+  next[key][col] = value
+  return next
+}
+
+const rowKey = (team: Team, player: PlayerRow): RowKey => `${team}${player}`
+
+const flip = (side: Side): Side => (side === 'R' ? 'L' : 'R')
+
+const otherTeam = (team: Team): Team => (team === 'A' ? 'B' : 'A')
+
+const colForTeamServe = (score: Score, team: Team): number => score[team]
+
+type RallyState = {
+  score: Score
+  server: Server
+  grid: ActivityGrid
+  firstHandUsed: boolean
+}
+
+type RallyData = {
+  winner: Team
+  rallyNumber: number
+  serverTeam: Team
+  serverPlayer: PlayerRow
+  serverSide: Side
+  serverHandIndex: 0 | 1
+}
+
+/**
+ * Process a single rally and return the next grid state.
+ * Pure function that takes current state and rally data.
+ */
+const processRally = (state: RallyState, rally: RallyData): RallyState => {
+  const cur = state.server
+  const col = colForTeamServe(state.score, cur.team)
+  const currentRow = rowKey(cur.team, cur.player)
+  const winner = rally.winner
+
+  // Server won the rally
+  if (winner === cur.team) {
+    const nextScore: Score = {
+      ...state.score,
+      [winner]: state.score[winner] + 1,
+    }
+    const nextServer: Server = { ...cur, side: flip(cur.side) }
+    const nextCol = nextScore[cur.team]
+    const nextGrid = writeCell(state.grid, currentRow, nextCol, nextServer.side)
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: nextGrid,
+      firstHandUsed: state.firstHandUsed,
+    }
+  }
+
+  // Receiving team won - add slash to current cell
+  const existingCell = state.grid[currentRow][col]
+  const slashedCell: Cell = `${existingCell}/` as Cell
+  const gridWithSlash = writeCell(state.grid, currentRow, col, slashedCell)
+
+  const nextScore: Score = {
+    A: winner === 'A' ? state.score.A + 1 : state.score.A,
+    B: winner === 'B' ? state.score.B + 1 : state.score.B,
+  }
+
+  // First-hand exception at 0-0
+  const isStartOfGame = state.score.A === 0 && state.score.B === 0
+  if (isStartOfGame && !state.firstHandUsed) {
+    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, 0, '/')
+
+    const t = otherTeam(cur.team)
+    const nextServer: Server = {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+    }
+    const nextCol = nextScore[t]
+    const finalGrid = writeCell(
+      gridWithPartnerSlash,
+      rowKey(t, 1),
+      nextCol,
+      nextServer.side,
+    )
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost (not start of game)
+  if (cur.handIndex === 0 && !state.firstHandUsed) {
+    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, col, '/')
+
+    const t = otherTeam(cur.team)
+    const nextServer: Server = {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+    }
+    const nextCol = nextScore[t]
+    const finalGrid = writeCell(
+      gridWithPartnerSlash,
+      rowKey(t, 1),
+      nextCol,
+      nextServer.side,
+    )
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost, partner serves (second hand)
+  if (cur.handIndex === 0) {
+    const xCol = nextScore[winner]
+    const gridWithX = writeCell(gridWithSlash, winner, xCol, 'X')
+
+    const partner: Server = {
+      team: cur.team,
+      player: cur.player === 1 ? 2 : 1,
+      side: flip(cur.side),
+      handIndex: 1,
+    }
+    const nextCol = state.score[cur.team]
+    const finalGrid = writeCell(
+      gridWithX,
+      rowKey(partner.team, partner.player),
+      nextCol,
+      partner.side,
+    )
+
+    return {
+      score: nextScore,
+      server: partner,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // Second hand lost - hand-out to other team
+  const t = otherTeam(cur.team)
+  const nextServer: Server = {
+    team: t,
+    player: 1,
+    side: 'R',
+    handIndex: 0,
+  }
+  const nextCol = nextScore[t]
+  const finalGrid = writeCell(
+    gridWithSlash,
+    rowKey(t, 1),
+    nextCol,
+    nextServer.side,
+  )
+
+  return {
+    score: nextScore,
+    server: nextServer,
+    grid: finalGrid,
+    firstHandUsed: true,
+  }
+}
+
+/**
+ * Build grid from rallies by replaying them sequentially.
+ */
+const buildGridFromRallies = (
+  rallies: ReadonlyArray<RallyData>,
+  initialServer: Server,
+  firstHandUsed: boolean,
+): ActivityGrid => {
+  // Write initial serve position to column 0
+  const gridWithInitialServe = writeCell(
+    initialGrid(),
+    rowKey(initialServer.team, initialServer.player),
+    0,
+    initialServer.side,
+  )
+
+  const initialState: RallyState = {
+    grid: gridWithInitialServe,
+    score: { A: 0, B: 0 },
+    server: initialServer,
+    firstHandUsed,
+  }
+
+  // Replay all rallies
+  const finalState = rallies.reduce(
+    (state, rally) => processRally(state, rally),
+    initialState,
+  )
+
+  return finalState.grid
+}
+
 export const ScoreGrid = ({
   actorRef,
   firstServingTeam,
   playerLabels,
 }: ScoreGridProps) => {
-  // Use a single selector for all state this component needs
-  const { grid, scoreA, scoreB, server, isGameOver } = useSelector(
-    actorRef,
-    (s) => ({
-      grid: s.context.grid,
+  const { store } = useStore()
+
+  // Get state machine data
+  const { gameId, scoreA, scoreB, server, isGameOver, firstHandUsed } =
+    useSelector(actorRef, (s) => ({
+      gameId: s.context.gameId,
       scoreA: s.context.score.A,
       scoreB: s.context.score.B,
       server: s.context.server,
       isGameOver: s.status === 'done',
-    }),
-  )
+      firstHandUsed: s.context.firstHandUsed,
+    }))
+
+  // Query rallies from LiveStore
+  const ralliesData = store.useQuery(ralliesByGame$(gameId ?? ''))
+
+  // Build grid from rallies
+  const grid = useMemo(() => {
+    if (!gameId || ralliesData.length === 0) {
+      // No rallies yet - show initial serve position
+      const initialServer: Server = {
+        team: firstServingTeam,
+        player: 1,
+        side: 'R',
+        handIndex: 0,
+      }
+      return writeCell(
+        initialGrid(),
+        rowKey(initialServer.team, initialServer.player),
+        0,
+        initialServer.side,
+      )
+    }
+
+    // Map rallies to the format needed for processing
+    const processableRallies: Array<RallyData> = ralliesData.map((rally) => ({
+      winner: rally.winner as Team,
+      rallyNumber: rally.rallyNumber,
+      serverTeam: rally.serverTeam as Team,
+      serverPlayer: rally.serverPlayer as PlayerRow,
+      serverSide: rally.serverSide as Side,
+      serverHandIndex: rally.serverHandIndex as 0 | 1,
+    }))
+
+    // Get initial server from first rally or use game context
+    const firstRally = processableRallies[0]
+    const initialServer: Server = {
+      team: firstRally.serverTeam,
+      player: firstRally.serverPlayer,
+      side: firstRally.serverSide,
+      handIndex: 0,
+    }
+
+    return buildGridFromRallies(
+      processableRallies,
+      initialServer,
+      firstHandUsed,
+    )
+  }, [gameId, ralliesData, firstServingTeam, firstHandUsed])
 
   // Compute derived values
   const rows = useMemo(

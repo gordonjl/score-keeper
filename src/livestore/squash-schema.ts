@@ -46,10 +46,16 @@ export const squashTables = {
         nullable: true,
         schema: Schema.DateFromNumber,
       }),
-      // First server info
+      // First server info (immutable after game creation)
       firstServingTeam: State.SQLite.text({ default: 'A' }),
       firstServingPlayer: State.SQLite.integer({ default: 1 }),
       firstServingSide: State.SQLite.text({ default: 'R' }),
+      // Current server state (updated after each rally)
+      currentServerTeam: State.SQLite.text({ default: 'A' }), // 'A' | 'B'
+      currentServerPlayer: State.SQLite.integer({ default: 1 }), // 1 | 2
+      currentServerSide: State.SQLite.text({ default: 'R' }), // 'R' | 'L'
+      currentServerHandIndex: State.SQLite.integer({ default: 0 }), // 0 | 1
+      firstHandUsed: State.SQLite.boolean({ default: false }),
     },
   }),
 
@@ -231,6 +237,91 @@ export const squashEvents = {
 // MATERIALIZERS
 // ============================================================================
 
+// Helper to compute next server state after a rally
+type ServerState = {
+  team: 'A' | 'B'
+  player: 1 | 2
+  side: 'R' | 'L'
+  handIndex: 0 | 1
+  firstHandUsed: boolean
+}
+
+const computeNextServerState = (params: {
+  currentServer: {
+    team: 'A' | 'B'
+    player: 1 | 2
+    side: 'R' | 'L'
+    handIndex: 0 | 1
+  }
+  firstHandUsed: boolean
+  scoreBefore: { A: number; B: number }
+  winner: 'A' | 'B'
+}): ServerState => {
+  const { currentServer, firstHandUsed, scoreBefore, winner } = params
+
+  const flip = (side: 'R' | 'L'): 'R' | 'L' => (side === 'R' ? 'L' : 'R')
+  const otherTeam = (team: 'A' | 'B'): 'A' | 'B' => (team === 'A' ? 'B' : 'A')
+
+  // Server won the rally
+  if (winner === currentServer.team) {
+    return {
+      team: currentServer.team,
+      player: currentServer.player,
+      side: flip(currentServer.side),
+      handIndex: currentServer.handIndex,
+      firstHandUsed,
+    }
+  }
+
+  // Receiving team won
+  const isStartOfGame = scoreBefore.A === 0 && scoreBefore.B === 0
+
+  // First-hand exception at 0-0
+  if (isStartOfGame && !firstHandUsed) {
+    const t = otherTeam(currentServer.team)
+    return {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost (not start of game)
+  if (currentServer.handIndex === 0 && !firstHandUsed) {
+    const t = otherTeam(currentServer.team)
+    return {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost, partner serves (second hand)
+  if (currentServer.handIndex === 0) {
+    return {
+      team: currentServer.team,
+      player: currentServer.player === 1 ? 2 : 1,
+      side: flip(currentServer.side),
+      handIndex: 1,
+      firstHandUsed: true,
+    }
+  }
+
+  // Second hand lost - hand-out to other team
+  const t = otherTeam(currentServer.team)
+  return {
+    team: t,
+    player: 1,
+    side: 'R',
+    handIndex: 0,
+    firstHandUsed: true,
+  }
+}
+
 // Note: Materializers are created inline in the consuming schema file
 // to enable proper type inference from State.SQLite.materializers()
 export const createSquashMaterializers = () => ({
@@ -361,6 +452,12 @@ export const createSquashMaterializers = () => ({
           firstServingTeam,
           firstServingPlayer,
           firstServingSide,
+          // Initialize current server state
+          currentServerTeam: firstServingTeam,
+          currentServerPlayer: firstServingPlayer,
+          currentServerSide: firstServingSide,
+          currentServerHandIndex: 0,
+          firstHandUsed: false,
         })
         .where({ id: gameId })
     }
@@ -380,6 +477,12 @@ export const createSquashMaterializers = () => ({
       firstServingTeam,
       firstServingPlayer,
       firstServingSide,
+      // Initialize current server state
+      currentServerTeam: firstServingTeam,
+      currentServerPlayer: firstServingPlayer,
+      currentServerSide: firstServingSide,
+      currentServerHandIndex: 0,
+      firstHandUsed: false,
     })
   },
 
@@ -406,38 +509,9 @@ export const createSquashMaterializers = () => ({
       })
       .where({ id: gameId }),
 
-  'v1.RallyWon': ({
-    rallyId,
-    gameId,
-    rallyNumber,
-    winner,
-    serverTeam,
-    serverPlayer,
-    serverSide,
-    serverHandIndex,
-    scoreABefore,
-    scoreBBefore,
-    scoreAAfter,
-    scoreBAfter,
-    timestamp,
-  }: {
-    rallyId: string
-    gameId: string
-    rallyNumber: number
-    winner: 'A' | 'B'
-    serverTeam: 'A' | 'B'
-    serverPlayer: 1 | 2
-    serverSide: 'R' | 'L'
-    serverHandIndex: 0 | 1
-    scoreABefore: number
-    scoreBBefore: number
-    scoreAAfter: number
-    scoreBAfter: number
-    timestamp: Date
-  }) => [
-    // Insert rally record
-    squashTables.rallies.insert({
-      id: rallyId,
+  'v1.RallyWon': (
+    {
+      rallyId,
       gameId,
       rallyNumber,
       winner,
@@ -450,16 +524,75 @@ export const createSquashMaterializers = () => ({
       scoreAAfter,
       scoreBAfter,
       timestamp,
-      deletedAt: null,
-    }),
-    // Update game score
-    squashTables.games
-      .update({
-        scoreA: scoreAAfter,
-        scoreB: scoreBAfter,
-      })
-      .where({ id: gameId }),
-  ],
+    }: {
+      rallyId: string
+      gameId: string
+      rallyNumber: number
+      winner: 'A' | 'B'
+      serverTeam: 'A' | 'B'
+      serverPlayer: 1 | 2
+      serverSide: 'R' | 'L'
+      serverHandIndex: 0 | 1
+      scoreABefore: number
+      scoreBBefore: number
+      scoreAAfter: number
+      scoreBAfter: number
+      timestamp: Date
+    },
+    // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
+    ctx,
+  ) => {
+    // Query current game state to get firstHandUsed
+    const games = ctx.query(squashTables.games.where({ id: gameId })) as Array<{
+      firstHandUsed: boolean
+    }>
+    const currentFirstHandUsed = games[0]?.firstHandUsed ?? false
+
+    // Compute next server state
+    const nextServerState = computeNextServerState({
+      currentServer: {
+        team: serverTeam,
+        player: serverPlayer,
+        side: serverSide,
+        handIndex: serverHandIndex,
+      },
+      firstHandUsed: currentFirstHandUsed,
+      scoreBefore: { A: scoreABefore, B: scoreBBefore },
+      winner,
+    })
+
+    return [
+      // Insert rally record
+      squashTables.rallies.insert({
+        id: rallyId,
+        gameId,
+        rallyNumber,
+        winner,
+        serverTeam,
+        serverPlayer,
+        serverSide,
+        serverHandIndex,
+        scoreABefore,
+        scoreBBefore,
+        scoreAAfter,
+        scoreBAfter,
+        timestamp,
+        deletedAt: null,
+      }),
+      // Update game score and current server state
+      squashTables.games
+        .update({
+          scoreA: scoreAAfter,
+          scoreB: scoreBAfter,
+          currentServerTeam: nextServerState.team,
+          currentServerPlayer: nextServerState.player,
+          currentServerSide: nextServerState.side,
+          currentServerHandIndex: nextServerState.handIndex,
+          firstHandUsed: nextServerState.firstHandUsed,
+        })
+        .where({ id: gameId }),
+    ]
+  },
 
   'v1.RallyUndone': (
     {
@@ -472,36 +605,81 @@ export const createSquashMaterializers = () => ({
   ) => {
     // Query the last rally for this game (if rallyId is empty, find the most recent)
     let rally:
-      | { id: string; scoreABefore: number; scoreBBefore: number }
+      | {
+          id: string
+          rallyNumber: number
+          scoreABefore: number
+          scoreBBefore: number
+          serverTeam: string
+          serverPlayer: number
+          serverSide: string
+          serverHandIndex: number
+        }
       | undefined
 
     if (rallyId) {
       const rallies = ctx.query(
         squashTables.rallies.where({ id: rallyId, deletedAt: null }),
-      ) as Array<{ id: string; scoreABefore: number; scoreBBefore: number }>
+      ) as Array<{
+        id: string
+        rallyNumber: number
+        scoreABefore: number
+        scoreBBefore: number
+        serverTeam: string
+        serverPlayer: number
+        serverSide: string
+        serverHandIndex: number
+      }>
       rally = rallies[0]
     } else {
       const rallies = ctx.query(
         squashTables.rallies
           .where({ gameId, deletedAt: null })
           .orderBy('rallyNumber', 'desc'),
-      ) as Array<{ id: string; scoreABefore: number; scoreBBefore: number }>
+      ) as Array<{
+        id: string
+        rallyNumber: number
+        scoreABefore: number
+        scoreBBefore: number
+        serverTeam: string
+        serverPlayer: number
+        serverSide: string
+        serverHandIndex: number
+      }>
       rally = rallies[0]
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!rally) return []
 
+    // Query previous rally to determine what firstHandUsed should be
+    const previousRallies = ctx.query(
+      squashTables.rallies
+        .where({ gameId, deletedAt: null })
+        .orderBy('rallyNumber', 'desc'),
+    ) as Array<{ rallyNumber: number }>
+
+    // Filter out the rally we're about to delete
+    const remainingRallies = previousRallies.filter(
+      (r) => r.rallyNumber < rally.rallyNumber,
+    )
+    const firstHandUsed = remainingRallies.length > 0
+
     return [
       // Soft delete the rally
       squashTables.rallies
         .update({ deletedAt: timestamp })
         .where({ id: rally.id }),
-      // Restore previous score
+      // Restore previous score and server state
       squashTables.games
         .update({
           scoreA: rally.scoreABefore,
           scoreB: rally.scoreBBefore,
+          currentServerTeam: rally.serverTeam,
+          currentServerPlayer: rally.serverPlayer,
+          currentServerSide: rally.serverSide,
+          currentServerHandIndex: rally.serverHandIndex,
+          firstHandUsed,
         })
         .where({ id: gameId }),
     ]

@@ -29,6 +29,11 @@ const mockGame = {
   firstServingTeam: 'A',
   firstServingPlayer: 1,
   firstServingSide: 'R',
+  currentServerTeam: 'A',
+  currentServerPlayer: 1,
+  currentServerSide: 'R',
+  currentServerHandIndex: 0,
+  firstHandUsed: false,
 }
 
 describe('squashGameMachine', () => {
@@ -52,7 +57,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       const snapshot = actor.getSnapshot()
@@ -74,7 +79,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Team A serves and wins
@@ -96,7 +101,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Team A serves, Team B wins (first hand)
@@ -120,7 +125,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Play one rally
@@ -143,7 +148,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Simulate game to 15-0
@@ -166,7 +171,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Simulate game to 15-0
@@ -192,7 +197,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Play two rallies
@@ -219,7 +224,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallies: [],
+        rallyCount: 0,
       })
 
       // Try to undo with no rallies played

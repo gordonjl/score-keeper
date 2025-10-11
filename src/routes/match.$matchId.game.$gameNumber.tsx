@@ -11,7 +11,6 @@ import { RallyButtons } from '../components/game/RallyButtons'
 import { ScoreGrid } from '../components/game/ScoreGrid'
 import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
-import { determineFirstServingTeam } from '../components/game/utils'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
 import { events } from '../livestore/schema'
@@ -138,7 +137,6 @@ function GameRoute() {
     scoreB,
     teamAName,
     teamBName,
-    grid,
   } = useSelector(actorRef, (s) => ({
     isGameOver: s.status === 'done', // XState v5: Use status === 'done' for final state
     isAwaitingConfirmation: s.matches('awaitingConfirmation'),
@@ -146,14 +144,10 @@ function GameRoute() {
     scoreB: s.context.score.B,
     teamAName: s.context.players.teamA,
     teamBName: s.context.players.teamB,
-    grid: s.context.grid,
   }))
 
-  // Computed values needed by route component for conditional logic
-  const firstServingTeam = useMemo(
-    () => determineFirstServingTeam(grid),
-    [grid],
-  )
+  // Get firstServingTeam from game data (source of truth)
+  const firstServingTeam = game.firstServingTeam as 'A' | 'B'
 
   const winnerTeam = useMemo(
     () => (scoreA > scoreB ? teamAName : teamBName),
