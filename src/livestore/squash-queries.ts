@@ -71,18 +71,19 @@ export const currentGameByMatch$ = (matchId: string) =>
 export const gameById$ = (gameId: string) =>
   queryDb(() => squashTables.games.where({ id: gameId }).first(), {
     label: `game-${gameId}`,
+    deps: [gameId],
   })
 
 export const gameByNumber = (matchId: string, gameNumber: number) =>
   queryDb(
-    () =>
-      squashTables.games.where({ matchId, gameNumber }).first({
-        fallback() {
-          return null
-        },
-      }),
+    () => squashTables.games.where({ matchId, gameNumber }).first({
+      fallback() {
+        return null
+      },
+    }),
     {
       label: `game-${matchId}-${gameNumber}`,
+      deps: [matchId, gameNumber], // 👈 Critical: React to changes in gameNumber
     },
   )
 
@@ -111,7 +112,10 @@ export const ralliesByGame$ = (gameId: string) =>
       squashTables.rallies
         .where({ gameId, deletedAt: null })
         .orderBy('rallyNumber', 'asc'),
-    { label: `rallies-${gameId}` },
+    { 
+      label: `rallies-${gameId}`,
+      deps: [gameId],
+    },
   )
 
 /**
