@@ -267,6 +267,9 @@ function GameRoute() {
             players={matchPlayers}
             onCancel={() => setShowNextGameSetup(false)}
             onStartGame={(config) => {
+              // Hide the dialog immediately
+              setShowNextGameSetup(false)
+              
               // Confirm game over and record result
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
