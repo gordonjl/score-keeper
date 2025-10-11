@@ -26,7 +26,7 @@ export const ScoreGrid = ({
       scoreA: s.context.score.A,
       scoreB: s.context.score.B,
       server: s.context.server,
-      isGameOver: s.matches('complete'),
+      isGameOver: s.status === 'done',
     }),
   )
 

@@ -1,10 +1,9 @@
-import { assign, log, setup } from 'xstate'
+import { assign, setup } from 'xstate'
 import {
   configureGameState,
   gameEnded,
   initialGrid,
   rallyWon,
-  resetGameState,
   snapshot,
   toggleServeSide,
   undoOnce,
@@ -75,7 +74,6 @@ export type Events =
   | { type: 'CONFIRM_GAME_OVER' }
   | { type: 'LET' }
   | { type: 'UNDO' }
-  | { type: 'RESET' }
 
 // ===== State Machine =====
 export const squashGameMachine = setup({
@@ -97,7 +95,6 @@ export const squashGameMachine = setup({
       rallyWon(context, params),
     ),
     undoOnce: assign(({ context }) => undoOnce(context)),
-    resetGameState: assign(() => resetGameState()),
   },
   guards: {
     gameEnded,
@@ -131,10 +128,6 @@ export const squashGameMachine = setup({
     UNDO: {
       actions: ['undoOnce'],
       target: '.active',
-    },
-    RESET: {
-      actions: [log('resetGameState'), 'resetGameState'],
-      target: '.notConfigured',
     },
   },
   states: {
@@ -194,8 +187,8 @@ export const squashGameMachine = setup({
       },
     },
     complete: {
-      // Not a final state - machine persists across games
-      // Will be reset via RESET event when new game starts
+      type: 'final',
+      // Machine lifecycle now managed by React - new game = new machine instance
     },
   },
 })

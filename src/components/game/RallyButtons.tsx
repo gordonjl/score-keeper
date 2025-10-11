@@ -12,7 +12,7 @@ export const RallyButtons = ({ actorRef }: RallyButtonsProps) => {
   const { isGameOver, isAwaitingConfirmation, players } = useSelector(
     actorRef,
     (s) => ({
-      isGameOver: s.matches('complete'),
+      isGameOver: s.status === 'done',
       isAwaitingConfirmation: s.matches('awaitingConfirmation'),
       players: s.context.players,
     }),

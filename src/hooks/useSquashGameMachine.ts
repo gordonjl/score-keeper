@@ -1,6 +1,7 @@
 import { useStore } from '@livestore/react'
-import { useMachine } from '@xstate/react'
-import { useEffect } from 'react'
+import { useSelector } from '@xstate/react'
+import { useMemo } from 'react'
+import { createActor } from 'xstate'
 import { gameByNumber, gameWithRallies$ } from '../livestore/squash-queries'
 import { squashGameMachine } from '../machines/squashGameMachine'
 import type { PlayerNameMap, Team } from '../machines/squashMachine.types'
@@ -11,9 +12,9 @@ import type { PlayerNameMap, Team } from '../machines/squashMachine.types'
  * Following XState + LiveStore best practices:
  * - LiveStore is the source of truth for persistent data
  * - XState manages UI state transitions
- * - Uses useMachine() for standard XState React integration
+ * - Creates a new machine actor for each game (when gameId changes)
  * - Reactively queries game and rallies from LiveStore
- * - Replays rallies to reconstruct grid state
+ * - Replays rallies to reconstruct grid state on machine creation
  */
 export const useSquashGameMachine = (
   matchId: string,
@@ -39,34 +40,44 @@ export const useSquashGameMachine = (
   const gameData = store.useQuery(game)
   const ralliesData = store.useQuery(rallies)
 
-  // Create machine with store as input
-  const [state, send, actorRef] = useMachine(squashGameMachine, {
-    // @ts-expect-error - LiveStore type compatibility issue
-    input: { store },
-  })
+  // Create a new machine actor when gameId changes
+  // This ensures each game gets a fresh machine instance
+  const actorRef = useMemo(() => {
+    const actor = createActor(squashGameMachine, {
+      // @ts-expect-error - LiveStore type compatibility with XState
+      input: { store },
+    })
 
-  // Load game data when the gameId (UUID) changes
-  // gameId is stable and only changes when navigating to a different game
-  useEffect(() => {
-    // Reset machine and load new game data
-    send({ type: 'RESET' })
-    send({
+    actor.start()
+
+    // Load game data
+    actor.send({
       type: 'GAME_LOADED',
       game: gameData,
       players,
     })
 
-    // Replay rallies if needed
+    // Replay rallies to reconstruct grid state
     if (gameData.status === 'in_progress' && ralliesData.length > 0) {
       ralliesData.forEach((rally) => {
-        send({
+        actor.send({
           type: 'RALLY_WON',
           winner: rally.winner as Team,
         })
       })
     }
-    // Only depend on gameId - game, players, rallies are derived from it
-  }, [gameId])
 
-  return { actorRef, state, send, game: gameData, rallies: ralliesData }
+    return actor
+  }, [gameId, store])
+
+  // Get current state snapshot for convenience
+  const state = useSelector(actorRef, (s) => s)
+
+  return {
+    actorRef,
+    state,
+    send: actorRef.send,
+    game: gameData,
+    rallies: ralliesData,
+  }
 }

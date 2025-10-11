@@ -10,7 +10,7 @@ export const ActionButtons = ({ actorRef }: ActionButtonsProps) => {
   // Use a single selector for all state this component needs
   const { isGameOver, isActive, isAwaitingConfirmation, rallyCount } =
     useSelector(actorRef, (s) => ({
-      isGameOver: s.matches('complete'),
+      isGameOver: s.status === 'done',
       isActive: s.matches('active'),
       isAwaitingConfirmation: s.matches('awaitingConfirmation'),
       rallyCount: s.context.rallyCount,

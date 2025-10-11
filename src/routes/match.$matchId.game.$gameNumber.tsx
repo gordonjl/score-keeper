@@ -139,7 +139,7 @@ function GameRoute() {
     teamBName,
     grid,
   } = useSelector(actorRef, (s) => ({
-    isGameOver: s.matches('complete'),
+    isGameOver: s.status === 'done', // XState v5: Use status === 'done' for final state
     isAwaitingConfirmation: s.matches('awaitingConfirmation'),
     scoreA: s.context.score.A,
     scoreB: s.context.score.B,

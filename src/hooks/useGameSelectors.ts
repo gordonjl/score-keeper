@@ -23,7 +23,7 @@ export const useGameSelectors = (
   const rallyCount = useSelector(actor, (s) => s.context.rallyCount)
 
   // State checks
-  const isGameOver = useSelector(actor, (s) => s.matches('complete'))
+  const isGameOver = useSelector(actor, (s) => s.status === 'done')
   const isAwaitingConfirmation = useSelector(actor, (s) =>
     s.matches('awaitingConfirmation'),
   )
