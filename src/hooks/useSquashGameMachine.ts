@@ -59,14 +59,9 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
       matchId: gameData.matchId,
       maxPoints: gameData.maxPoints,
       winBy: gameData.winBy,
+      game: gameData,
     })
-  }, [
-    actorRef,
-    gameData.id,
-    gameData.matchId,
-    gameData.maxPoints,
-    gameData.winBy,
-  ])
+  }, [actorRef, gameData])
 
   // Get current state snapshot for convenience
   const state = useSelector(actorRef, (s) => s)

@@ -64,6 +64,7 @@ export const rallyWon = ({
  * Toggle serve side action - emits event to LiveStore
  */
 export const toggleServeSide = ({
+  context,
   event,
 }: {
   context: Context
@@ -76,18 +77,16 @@ export const toggleServeSide = ({
   // Only toggle if first hand (handIndex === 0)
   if (game.currentServerHandIndex !== 0) return
 
-  // TODO: Emit event to LiveStore when serverSideToggled event is added to schema
-  // For now, this is a client-only toggle - no action needed
-  // const newSide = game.currentServerSide === 'L' ? 'R' : 'L'
-  // if (context.store && context.gameId) {
-  //   context.store.commit(
-  //     events.serverSideToggled({
-  //       gameId: context.gameId,
-  //       newSide,
-  //       timestamp: new Date(),
-  //     }),
-  //   )
-  // }
+  const newSide = game.currentServerSide === 'L' ? 'R' : 'L'
+  if (context.store && context.gameId) {
+    context.store.commit(
+      events.serverSideToggled({
+        gameId: context.gameId,
+        newSide,
+        timestamp: new Date(),
+      }),
+    )
+  }
 }
 
 /**
@@ -135,6 +134,7 @@ export const gameEnded = ({
   let game: Game | undefined
 
   if (
+    event.type === 'INITIALIZE' ||
     event.type === 'RALLY_WON' ||
     event.type === 'TOGGLE_SERVE_SIDE' ||
     event.type === 'UNDO'
@@ -143,6 +143,21 @@ export const gameEnded = ({
   }
 
   if (!game) return false
+
+  // For INITIALIZE event, check if game is already completed
+  if (event.type === 'INITIALIZE') {
+    // If game status is 'completed', transition to awaitingConfirmation
+    if (game.status === 'completed') {
+      return true
+    }
+    // Otherwise check if score indicates game should end
+    const { scoreA, scoreB } = game
+    const { maxPoints, winBy } = context
+    if (scoreA >= maxPoints || scoreB >= maxPoints) {
+      return Math.abs(scoreA - scoreB) >= winBy
+    }
+    return false
+  }
 
   let { scoreA, scoreB } = game
   const { maxPoints, winBy } = context

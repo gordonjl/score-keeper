@@ -282,23 +282,16 @@ const ScoreGridContent = ({
     side: gameData.currentServerSide as Side,
     handIndex: gameData.currentServerHandIndex as 0 | 1,
   }
-  const firstHandUsed = gameData.firstHandUsed
 
   // Build grid from rallies
   const grid = useMemo(() => {
     if (ralliesData.length === 0) {
-      // No rallies yet - show initial serve position
-      const initialServer: Server = {
-        team: firstServingTeam,
-        player: 1,
-        side: 'R',
-        handIndex: 0,
-      }
+      // No rallies yet - show current server position from game state
       return writeCell(
         initialGrid(),
-        rowKey(initialServer.team, initialServer.player),
+        rowKey(server.team, server.player),
         0,
-        initialServer.side,
+        server.side,
       )
     }
 
@@ -321,12 +314,17 @@ const ScoreGridContent = ({
       handIndex: 0,
     }
 
-    return buildGridFromRallies(
-      processableRallies,
-      initialServer,
-      firstHandUsed,
-    )
-  }, [gameId, ralliesData, firstServingTeam, firstHandUsed])
+    // When replaying rallies, always start with firstHandUsed: false
+    // The flag will be computed correctly during replay
+    return buildGridFromRallies(processableRallies, initialServer, false)
+  }, [
+    gameId,
+    ralliesData,
+    firstServingTeam,
+    server.side,
+    server.team,
+    server.player,
+  ])
 
   // Compute derived values
   const rows = useMemo(
@@ -342,11 +340,10 @@ const ScoreGridContent = ({
   }
   const renderCell = (row: RowKey, col: number) => {
     const cell = grid[row][col]
-    const isCurrentServer =
-      row === serverRowKey && col === scoreA && row.startsWith('A')
-    const isCurrentServerB =
-      row === serverRowKey && col === scoreB && row.startsWith('B')
-    const isActive = isCurrentServer || isCurrentServerB
+    // Highlight the cell at the current server's position
+    // Use the serving team's score as the column
+    const serverScore = serverTeam === 'A' ? scoreA : scoreB
+    const isActive = row === serverRowKey && col === serverScore
 
     // Cell is clickable only at hand-in (handIndex === 0 AND this is the first serve of the hand)
     // We check if the previous column is empty to determine if this is truly the first serve

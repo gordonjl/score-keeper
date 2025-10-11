@@ -229,6 +229,15 @@ export const squashEvents = {
     }),
   }),
 
+  serverSideToggled: Events.synced({
+    name: 'v1.ServerSideToggled',
+    schema: Schema.Struct({
+      gameId: Schema.String,
+      newSide: Schema.Literal('R', 'L'),
+      timestamp: Schema.Date,
+    }),
+  }),
+
   // ===== UI state events (client-only) =====
   gameUiStateSet: squashTables.gameUiState.set,
 }
@@ -684,4 +693,17 @@ export const createSquashMaterializers = () => ({
         .where({ id: gameId }),
     ]
   },
+
+  'v1.ServerSideToggled': ({
+    gameId,
+    newSide,
+  }: {
+    gameId: string
+    newSide: 'R' | 'L'
+  }) =>
+    squashTables.games
+      .update({
+        currentServerSide: newSide,
+      })
+      .where({ id: gameId }),
 })

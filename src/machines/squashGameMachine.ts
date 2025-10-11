@@ -1,4 +1,4 @@
-import { assign, setup } from 'xstate'
+import { assign, not, setup } from 'xstate'
 import {
   gameEnded,
   initialize,
@@ -57,6 +57,7 @@ export type Events =
       matchId: string
       maxPoints: number
       winBy: number
+      game: Game
     }
   | { type: 'RALLY_WON'; winner: Team; game: Game }
   | { type: 'TOGGLE_SERVE_SIDE'; game: Game }
@@ -125,6 +126,12 @@ export const squashGameMachine = setup({
       },
     },
     awaitingConfirmation: {
+      always: [
+        {
+          guard: not('gameEnded'),
+          target: 'active',
+        },
+      ],
       on: {
         CONFIRM_GAME_OVER: {
           target: 'complete',
