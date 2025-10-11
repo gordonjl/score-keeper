@@ -11,7 +11,7 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
-  const { createMatch, isCreating, error } = useCreateLiveStoreMatch()
+  const { createMatch } = useCreateLiveStoreMatch()
   const [isStarting, setIsStarting] = useState(false)
   const navigate = useNavigate({ from: Route.fullPath })
 
@@ -22,11 +22,7 @@ function App() {
     const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
     const matchId = createMatch(playerNames)
 
-    if (matchId) {
-      navigate({ to: '/match/$matchId/setup', params: { matchId } })
-    } else {
-      setIsStarting(false)
-    }
+    navigate({ to: '/match/$matchId/setup', params: { matchId } })
   }
 
   return (
@@ -52,10 +48,10 @@ function App() {
           </p>
           <button
             onClick={handleStartNewMatch}
-            disabled={isCreating || isStarting}
+            disabled={isStarting}
             className="btn btn-primary btn-lg gap-2 shadow-xl hover:shadow-2xl transition-all"
           >
-            {isCreating || isStarting ? (
+            {isStarting ? (
               <>
                 <span className="loading loading-spinner loading-sm"></span>
                 Creating Match...
@@ -67,11 +63,6 @@ function App() {
               </>
             )}
           </button>
-          {error && (
-            <div className="alert alert-error max-w-md mx-auto mt-4">
-              <span>Error creating match: {error}</span>
-            </div>
-          )}
         </div>
 
         {/* Features Grid */}

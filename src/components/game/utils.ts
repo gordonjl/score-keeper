@@ -1,4 +1,4 @@
-import type { ActivityGrid, RowKey } from '../../machines/squashMachine'
+import type { ActivityGrid, RowKey } from '../../machines/squashMachine.types'
 
 export const toWords = (n: number): string => {
   const words = [

@@ -18,7 +18,7 @@ import type {
   Score,
   Server,
   Team,
-} from './squashMachine'
+} from './squashMachine.types'
 
 // ===== LiveStore Game Type =====
 export type Game = {
@@ -83,9 +83,7 @@ export const squashGameMachine = setup({
     events: {} as Events,
     context: {} as Context,
     input: {} as {
-      matchId?: string
-      gameId?: string
-      store?: Store<typeof schema> | null
+      store: Store<typeof schema> | null
     },
   },
   actions: {
@@ -105,12 +103,12 @@ export const squashGameMachine = setup({
     gameEnded,
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgDEAqgHIAiA8gNoAMAuoqAAcA9rEoAXSkOr8QAD0QAWAEwAaEAE9EADgCMAOgCsAXyNrUmHPiKkKNegCUAogGVHAFW58kIYaIlSZeQRlNU0EJQUAdj1IrgBmHSVjUxBzLDxCEnIqWj1qITEAYSkAM0ooNAAnSDpcAEFiRwB9ABk2OpZHFk8ZX3FJaW8guIN9SJ0tcYBOBS0IpR0p0MQlCL0pyIA2A02kkzN0dKss21zyCQA3BzqWloBNJoB1NiYe7z7-QdBhqc29LSmXAMM1m80WywQcSUXHWSl+k2SBwsGWs2TsenOlCudDcbFwuBazVc9gAakSAJKdN6CET9AJDRAGHZ6CJTKYGZRKOKbKFaCE6AxKf5xEWisUihT7VKHSyZGw5MAYsiXeiEjy8Xq0z6BRC7GFTLQKKECmZcrRxflcIXim0SqVpWWo06KihgMgAazo1J8WoGOshoxiE2moOU4I0igBehFwLikUR0uRx3l6NdHq9Oi8NL8foZAbGwcWoYWSwjwSN0ZGUzjCYdKJOCoxAHcMP1qFBitQypUCBhPnRCi8AGLk+zEJr1RpNNhk+zej6576ISLjdZs6sAzazI18suzaJcLSx+MmFL5CBwGR15No2ianP0pcIAC0mwhr-tMvrKdy+SKpXKKpIHvOkvjkRAJiFOFNiPDYFESHQuBmCEIi0Fl4kSWsvxvZ0lRVEDtTzTYdAUdYSK4JCkOUOJzRQgw4hiLQtwMc0bUlFJrzlW8XWwN13QIxdwPCGiYm2YEFGLCZdzCbkDBiAxIl0PYOOwrjcIwFs2w7ACez7QSF0fISdn0Vl2U5bleQhfdDFgmtPyTNTGzIIQCAEAAbMAxDAATDKCRD4n+YE4UmLhNiBKIrKYytj2SEwgA */
+  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgDEAqgHIAiA8gNoAMAuoqAAcA9rEoAXSkOr8QAD0QAWAEwAaEAE9EADgCMAOgCsAXyNrUmHPiKkKNegCUAogGVHAFW58kIYaIlSZeQRlNU0EJQUAdj1IrgBmHSVjUxBzLDxCEnIqWj1qITEAYSkAM0ooNAAnSDpcAEFiRwB9ABk2OpZHFk8ZX3FJaW8guIN9SJ0tcYBOBS0IpR0p0MQlCL0pyIA2A02kkzN0dKss21zyCQA3BzqWloBNJoB1NiYe7z7-QdBhqc29LSmXAMM1m80WywQcSUXHWSl+k2SBwsGWs2TsenOlCudDcbFwuBazVc9gAakSAJKdN6CET9AJDRAGHZ6CJTKYGZRKOKbKFaCE6AxKf5xEWisUihT7VKHSyZMAYsiXeiEjy8Xq0z6BRC7GFTLQKKECmZcrRxflcIXim0SqVpWWo06KihgMgAazo1J8WoGOshoxiE2moOU4I0igBehFwLikUR0uRx3l6NdHq9Oi8NL8foZAbGwcWoYWSwjwSN0ZGUzjCYdKJOCoxAHcMP1qFBitQypUCBhPnRCi8AGLk+zEJr1RpNNhk+zej6576ISLjdZs6sAzazI18suzaJcLSx+MmFL5CBwGR15No2ianP0pcIAC0mwhr-tMvrKdy+SKpXKKpIHvOkvjkRAJiFOFNiPDYFESHQuBmCEIi0Fl4kSWsvxvZ0lRVEDtTzTYdAUdYSK4JCkOUOJzRQgw4hiLQtwMc0bUlFJrzlW8XWwN13QIxdwPCGiYm2YEFGLCZdzCbkDBiAxIl0PYOOwrjcIwFs2w7ACez7QSF0fISdn0Vl2U5bleQhfdDFgmtPyTNTGzIIQCAEAAbMAxDAATDKCRD4n+YE4UmLhNiBKIrKYytj2SEwgA */
   id: 'squashGameMachine',
   initial: 'notConfigured',
   context: ({ input }) => ({
-    gameId: input.gameId ?? null,
-    matchId: input.matchId ?? null,
+    gameId: null,
+    matchId: null,
     maxPoints: 15,
     winBy: 1,
     players: {
@@ -126,7 +124,7 @@ export const squashGameMachine = setup({
     grid: initialGrid(),
     firstHandUsed: false,
     history: [],
-    store: input.store ?? null,
+    store: input.store,
     rallyCount: 0,
   }),
   on: {

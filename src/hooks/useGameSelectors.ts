@@ -2,7 +2,7 @@ import { useSelector } from '@xstate/react'
 import { toWords } from '../components/game/utils'
 import type { ActorRefFrom } from 'xstate'
 import type { squashGameMachine } from '../machines/squashGameMachine'
-import type { RowKey } from '../machines/squashMachine'
+import type { RowKey } from '../machines/squashMachine.types'
 
 /**
  * Hook to expose squashGameMachine state to components using useSelector() for fine-grained reactivity.

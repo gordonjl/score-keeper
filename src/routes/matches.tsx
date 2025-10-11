@@ -1,323 +1,71 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { Calendar, List, Play, Trophy, Users } from 'lucide-react'
-import { Effect, pipe } from 'effect'
-import { MatchManager } from '../db/matchManager'
-import { StateReconstructor } from '../db/stateReconstructor'
-import type { Match } from '../db/types'
+import { useStore } from '@livestore/react'
+import { Calendar, Play } from 'lucide-react'
+import { allMatches$ } from '../livestore/squash-queries'
 
 export const Route = createFileRoute('/matches')({
   component: MatchesListRoute,
 })
 
-type MatchWithStatus = Match & {
-  displayStatus: 'In Progress' | 'Complete' | 'Archived'
-  latestGameNumber?: number
-  actualPlayerNames?: ReadonlyArray<string>
-  gamesWonA?: number
-  gamesWonB?: number
-  totalGames?: number
-}
-
 function MatchesListRoute() {
-  const [matches, setMatches] = useState<ReadonlyArray<MatchWithStatus>>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { store } = useStore()
+  const matches = store.useQuery(allMatches$)
 
-  useEffect(() => {
-    const loadMatches = async () => {
-      const matchList = await pipe(
-        MatchManager.listMatches(),
-        Effect.runPromise,
-      )
-
-      console.log('Loaded matches:', matchList)
-
-      // For each match, reconstruct state to get the latest game number
-      const matchesWithStatus = await Promise.all(
-        matchList.map(async (match): Promise<MatchWithStatus> => {
-          const displayStatus =
-            match.status === 'completed'
-              ? 'Complete'
-              : match.status === 'archived'
-                ? 'Archived'
-                : 'In Progress'
-
-          // Get latest game number and actual player names by reconstructing state
-          let latestGameNumber: number | undefined
-          let actualPlayerNames: ReadonlyArray<string> | undefined
-          let gamesWonA: number | undefined
-          let gamesWonB: number | undefined
-          let totalGames: number | undefined
-
-          try {
-            const actor = await pipe(
-              StateReconstructor.reconstructMatchState(match.id),
-              Effect.runPromise,
-            )
-            const snapshot = actor.getSnapshot()
-            const games = snapshot.context.games
-            const players = snapshot.context.players
-
-            console.log(
-              'Match:',
-              match.id,
-              'Games:',
-              games,
-              'State:',
-              snapshot.value,
-              'Players:',
-              players,
-            )
-
-            // Get highest game number from games array (now includes in-progress games)
-            if (games.length > 0) {
-              const gameNumbers = games.map((g) => g.gameNumber)
-              latestGameNumber = Math.max(...gameNumbers)
-
-              // Calculate game stats
-              const completedGames = games.filter(
-                (g) => g.status === 'completed',
-              )
-              totalGames = completedGames.length
-              gamesWonA = completedGames.filter((g) => g.winner === 'A').length
-              gamesWonB = completedGames.filter((g) => g.winner === 'B').length
-            } else {
-              latestGameNumber = undefined
-              totalGames = 0
-              gamesWonA = 0
-              gamesWonB = 0
-            }
-
-            console.log('Latest game number:', latestGameNumber)
-
-            // Get actual player names from the machine context
-            actualPlayerNames = [
-              players.A1.fullName || 'Player 1',
-              players.A2.fullName || 'Player 2',
-              players.B1.fullName || 'Player 3',
-              players.B2.fullName || 'Player 4',
-            ]
-
-            console.log(
-              'Latest game number:',
-              latestGameNumber,
-              'Player names:',
-              actualPlayerNames,
-            )
-            actor.stop()
-          } catch (err) {
-            // If reconstruction fails, we'll use defaults
-            console.error('Failed to reconstruct match:', match.id, err)
-            latestGameNumber = undefined
-            actualPlayerNames = undefined
-            gamesWonA = undefined
-            gamesWonB = undefined
-            totalGames = undefined
-          }
-
-          return {
-            ...match,
-            displayStatus,
-            latestGameNumber,
-            actualPlayerNames,
-            gamesWonA,
-            gamesWonB,
-            totalGames,
-          }
-        }),
-      )
-
-      setMatches(matchesWithStatus)
-      setIsLoading(false)
-    }
-
-    loadMatches().catch((err) => {
-      setError(String(err))
-      setIsLoading(false)
-    })
-  }, [])
-
-  if (isLoading) {
+  if (!matches || matches.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg"></div>
-          <p className="mt-4">Loading matches...</p>
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Match History</h1>
+          <Link to="/" className="btn btn-primary">
+            <Play className="w-4 h-4 mr-2" />
+            New Match
+          </Link>
         </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-full bg-gradient-to-br from-base-200 to-base-300 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="alert alert-error">
-            <span>Error loading matches: {error}</span>
-          </div>
+        <div className="text-center py-12">
+          <p className="text-base-content/60">No matches found. Start a new match to get started!</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-base-200 to-base-300 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <List className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold">All Matches</h1>
-        </div>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Match History</h1>
+        <Link to="/" className="btn btn-primary">
+          <Play className="w-4 h-4 mr-2" />
+          New Match
+        </Link>
+      </div>
 
-        {/* Matches List */}
-        {matches.length === 0 ? (
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body items-center text-center">
-              <Trophy className="w-16 h-16 text-base-300 mb-4" />
-              <h2 className="card-title">No matches yet</h2>
-              <p className="text-base-content/70">
-                Start a new match to see it appear here
-              </p>
-              <Link to="/" className="btn btn-primary mt-4">
-                Start New Match
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {matches.map((match) => {
-              const isComplete = match.displayStatus === 'Complete'
-              const isInProgress = match.displayStatus === 'In Progress'
-              const createdDate = new Date(match.createdAt).toLocaleDateString()
-              const updatedDate = new Date(match.updatedAt).toLocaleDateString()
-
-              return (
-                <div
-                  key={match.id}
-                  className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all border border-base-300"
-                >
-                  <div className="card-body">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        {/* Status Badge */}
-                        <div className="mb-3">
-                          <span
-                            className={`badge ${
-                              isComplete
-                                ? 'badge-success'
-                                : isInProgress
-                                  ? 'badge-warning'
-                                  : 'badge-ghost'
-                            } badge-lg`}
-                          >
-                            {match.displayStatus}
-                          </span>
-                        </div>
-
-                        {/* Players */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <Users className="w-4 h-4 text-base-content/70" />
-                          <span className="text-sm font-semibold">
-                            {(
-                              match.actualPlayerNames || match.playerNames
-                            ).join(', ')}
-                          </span>
-                        </div>
-
-                        {/* Game Stats */}
-                        {match.totalGames !== undefined &&
-                          match.totalGames > 0 && (
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="badge badge-outline">
-                                {match.totalGames} game
-                                {match.totalGames !== 1 ? 's' : ''} played
-                              </div>
-                              {isComplete && (
-                                <div className="text-sm font-mono">
-                                  <span className="font-bold">
-                                    {match.gamesWonA}
-                                  </span>
-                                  {' - '}
-                                  <span className="font-bold">
-                                    {match.gamesWonB}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                        {/* Dates */}
-                        <div className="flex items-center gap-2 text-xs text-base-content/70">
-                          <Calendar className="w-3 h-3" />
-                          <span>
-                            Created: {createdDate}
-                            {createdDate !== updatedDate &&
-                              ` • Updated: ${updatedDate}`}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <div className="flex gap-2">
-                        {(() => {
-                          console.log(
-                            'Rendering match:',
-                            match.id,
-                            'isInProgress:',
-                            isInProgress,
-                            'latestGameNumber:',
-                            match.latestGameNumber,
-                          )
-                          return null
-                        })()}
-                        {isComplete ? (
-                          <Link
-                            to="/match/$matchId/summary"
-                            params={{ matchId: match.id }}
-                            className="btn btn-primary gap-2"
-                          >
-                            <Trophy className="w-4 h-4" />
-                            View Summary
-                          </Link>
-                        ) : isInProgress && match.latestGameNumber ? (
-                          <Link
-                            to="/match/$matchId/game/$gameId"
-                            params={{
-                              matchId: match.id,
-                              gameId: match.latestGameNumber.toString(),
-                            }}
-                            className="btn btn-primary gap-2"
-                          >
-                            <Play className="w-4 h-4" />
-                            Continue Match
-                          </Link>
-                        ) : isInProgress ? (
-                          <Link
-                            to="/match/$matchId/setup"
-                            params={{ matchId: match.id }}
-                            className="btn btn-primary gap-2"
-                          >
-                            <Play className="w-4 h-4" />
-                            Continue Match
-                          </Link>
-                        ) : (
-                          <Link
-                            to="/match/$matchId/setup"
-                            params={{ matchId: match.id }}
-                            className="btn btn-ghost gap-2"
-                          >
-                            View Match
-                          </Link>
-                        )}
-                      </div>
-                    </div>
+      <div className="grid gap-4">
+        {matches.map((match) => (
+          <Link
+            key={match.id}
+            to="/match/$matchId/summary"
+            params={{ matchId: match.id }}
+            className="card bg-base-200 hover:bg-base-300 transition-colors"
+          >
+            <div className="card-body">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h2 className="card-title text-lg mb-2">
+                    {match.playerA1FirstName && match.playerA1LastName
+                      ? `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`
+                      : 'Match'}
+                  </h2>
+                  <p className="text-sm text-base-content/60">
+                    vs {match.playerB1FirstName} {match.playerB1LastName} & {match.playerB2FirstName} {match.playerB2LastName}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2 text-sm text-base-content/60">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(match.createdAt).toLocaleDateString()}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              </div>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   )

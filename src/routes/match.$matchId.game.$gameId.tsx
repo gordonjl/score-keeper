@@ -16,7 +16,7 @@ import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { determineFirstServingTeam } from '../components/game/utils'
 import { getCurrentGameId } from '../machines/matchMachine'
 import type { GameResult } from '../machines/matchMachine'
-import type { PlayerName } from '../machines/squashMachine'
+import type { PlayerName } from '../machines/squashMachine.types'
 
 export const Route = createFileRoute('/match/$matchId/game/$gameId')({
   component: GameRouteWrapper,
@@ -65,6 +65,7 @@ function GameRouteWrapper() {
 // Main component that requires a game actor
 function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
   const { matchId, gameId } = Route.useParams()
+  const gameNumber = parseInt(gameId, 10)
   const navigate = useNavigate({ from: Route.fullPath })
   const { actor: matchActorRef } = useLiveStoreMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
@@ -82,7 +83,7 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
       }
 
   // Use squashGameMachine hook to create and manage machine
-  const { actorRef } = useSquashGameMachine(gameId, matchPlayers)
+  const { actorRef } = useSquashGameMachine(matchId, gameNumber, matchPlayers)
 
   // Only select state that the route component DIRECTLY uses for its own logic
   // Use a single selector to get multiple values efficiently

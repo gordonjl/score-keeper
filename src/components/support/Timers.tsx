@@ -12,7 +12,7 @@ export function Timers() {
   const [isActive, setIsActive] = useState(false)
 
   useEffect(() => {
-    let interval: number | undefined = undefined
+    let interval: ReturnType<typeof setInterval> | undefined = undefined
 
     if (isActive && time > 0) {
       interval = setInterval(() => {
@@ -22,7 +22,9 @@ export function Timers() {
       setIsActive(false)
     }
 
-    return () => clearInterval(interval)
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [isActive, time])
 
   const startTimer = (type: 'warm-up' | 'between-game' | 'injury') => {

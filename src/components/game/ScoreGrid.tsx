@@ -3,7 +3,7 @@ import { useSelector } from '@xstate/react'
 import { getOrderedRows } from './utils'
 import type { ActorRefFrom } from 'xstate'
 import type { squashGameMachine } from '../../machines/squashGameMachine'
-import type { RowKey } from '../../machines/squashMachine'
+import type { RowKey } from '../../machines/squashMachine.types'
 
 type ScoreGridProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
@@ -31,7 +31,10 @@ export const ScoreGrid = ({
   )
 
   // Compute derived values
-  const rows = useMemo(() => getOrderedRows(firstServingTeam), [firstServingTeam])
+  const rows = useMemo(
+    () => getOrderedRows(firstServingTeam),
+    [firstServingTeam],
+  )
   const serverRowKey = `${server.team}${server.player}` as RowKey
   const serverTeam = server.team
   const handIndex = server.handIndex

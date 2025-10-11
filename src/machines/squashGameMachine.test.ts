@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createActor } from 'xstate'
 import { squashGameMachine } from './squashGameMachine'
 import { flip, gameEnded, otherTeam } from './squashGameMachine.actions'
-import type { PlayerNameMap } from './squashMachine'
+import type { PlayerNameMap } from './squashMachine.types'
 
 // Test helpers
 const mockPlayers: PlayerNameMap = {
@@ -35,7 +35,7 @@ describe('squashGameMachine', () => {
   describe('initialization', () => {
     it('should start in notConfigured state', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -44,7 +44,7 @@ describe('squashGameMachine', () => {
 
     it('should transition to active after GAME_LOADED', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -65,7 +65,7 @@ describe('squashGameMachine', () => {
   describe('rally scoring', () => {
     it('should increment score when server wins rally', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -86,7 +86,7 @@ describe('squashGameMachine', () => {
 
     it('should handle hand-out when receiver wins rally', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -109,7 +109,7 @@ describe('squashGameMachine', () => {
 
     it('should not end game before reaching maxPoints', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -131,7 +131,7 @@ describe('squashGameMachine', () => {
   describe('game ending', () => {
     it('should transition to awaitingConfirmation when game ends', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -153,7 +153,7 @@ describe('squashGameMachine', () => {
 
     it('should transition to complete after CONFIRM_GAME_OVER', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -178,7 +178,7 @@ describe('squashGameMachine', () => {
   describe('undo functionality', () => {
     it('should undo last rally', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 
@@ -204,7 +204,7 @@ describe('squashGameMachine', () => {
 
     it('should not undo when no history exists', () => {
       const actor = createActor(squashGameMachine, {
-        input: { gameId: 'test-game', store: null },
+        input: { store: null },
       })
       actor.start()
 

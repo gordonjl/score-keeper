@@ -5,7 +5,7 @@ import { Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { getCurrentGameId } from '../machines/matchMachine'
-import type { PlayerName } from '../machines/squashMachine'
+import type { PlayerName } from '../machines/squashMachine.types'
 
 // Effect Schema for setup form (no Zod)
 const Team = S.Literal('A', 'B')

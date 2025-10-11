@@ -1,5 +1,7 @@
 import { getCurrentGameId } from '../machines/matchMachine'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
+import type { squashGameMachine } from '../machines/squashGameMachine'
+import type { ActorRefFrom } from 'xstate'
 
 /**
  * Hook to get the current game actor from the LiveStore match machine.
@@ -18,7 +20,14 @@ export const useEventSourcedGameActor = (gameId?: string) => {
   if (!targetGameId) return null
 
   // Access the spawned game actor from snapshot.children
-  return snapshot.children[targetGameId] ?? null
+  const gameActor = (
+    snapshot.children as Record<
+      string,
+      ActorRefFrom<typeof squashGameMachine> | undefined
+    >
+  )[targetGameId]
+
+  return gameActor ?? null
 }
 
 /**

@@ -17,7 +17,10 @@ export const matchById$ = (matchId: string) =>
  * Get all active matches
  */
 export const activeMatches$ = queryDb(
-  () => squashTables.matches.where({ status: 'active' }).orderBy('updatedAt', 'desc'),
+  () =>
+    squashTables.matches
+      .where({ status: 'active' })
+      .orderBy('updatedAt', 'desc'),
   { label: 'active-matches' },
 )
 
@@ -26,7 +29,9 @@ export const activeMatches$ = queryDb(
  */
 export const completedMatches$ = queryDb(
   () =>
-    squashTables.matches.where({ status: 'completed' }).orderBy('updatedAt', 'desc'),
+    squashTables.matches
+      .where({ status: 'completed' })
+      .orderBy('updatedAt', 'desc'),
   { label: 'completed-matches' },
 )
 
@@ -68,6 +73,19 @@ export const gameById$ = (gameId: string) =>
     label: `game-${gameId}`,
   })
 
+export const gameByNumber = (matchId: string, gameNumber: number) =>
+  queryDb(
+    () =>
+      squashTables.games.where({ matchId, gameNumber }).first({
+        fallback() {
+          return null
+        },
+      }),
+    {
+      label: `game-${matchId}-${gameNumber}`,
+    },
+  )
+
 /**
  * Get completed games for a match
  */
@@ -100,13 +118,10 @@ export const ralliesByGame$ = (gameId: string) =>
  * Get rally count for a game
  */
 export const rallyCountByGame$ = (gameId: string) =>
-  queryDb(
-    () => squashTables.rallies.where({ gameId, deletedAt: null }),
-    { 
-      label: `rally-count-${gameId}`,
-      map: (rows) => rows.length,
-    },
-  )
+  queryDb(() => squashTables.rallies.where({ gameId, deletedAt: null }), {
+    label: `rally-count-${gameId}`,
+    map: (rows) => rows.length,
+  })
 
 /**
  * Get last rally for a game (for undo)
@@ -158,7 +173,12 @@ export const gameWithRallies$ = (gameId: string) => ({
  * This is a helper function, not a reactive query
  */
 export const computeMatchStats = (
-  games: ReadonlyArray<{ status: string; winner: string | null; scoreA: number; scoreB: number }>,
+  games: ReadonlyArray<{
+    status: string
+    winner: string | null
+    scoreA: number
+    scoreB: number
+  }>,
 ) => {
   const completedGames = games.filter((g) => g.status === 'completed')
 
@@ -175,7 +195,8 @@ export const computeMatchStats = (
     totalPointsB,
     gamesPlayed: completedGames.length,
     matchComplete: gamesWonA >= 3 || gamesWonB >= 3,
-    matchWinner: gamesWonA >= 3 ? ('A' as const) : gamesWonB >= 3 ? ('B' as const) : null,
+    matchWinner:
+      gamesWonA >= 3 ? ('A' as const) : gamesWonB >= 3 ? ('B' as const) : null,
   }
 }
 

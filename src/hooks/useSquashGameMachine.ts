@@ -1,9 +1,9 @@
 import { useStore } from '@livestore/react'
-import { useActorRef } from '@xstate/react'
-import { useEffect, useMemo } from 'react'
+import { useMachine } from '@xstate/react'
+import { useEffect } from 'react'
+import { gameByNumber, gameWithRallies$ } from '../livestore/squash-queries'
 import { squashGameMachine } from '../machines/squashGameMachine'
-import { gameById$, ralliesByGame$ } from '../livestore/squash-queries'
-import type { PlayerNameMap, Team } from '../machines/squashMachine'
+import type { PlayerNameMap, Team } from '../machines/squashMachine.types'
 
 /**
  * Hook to instantiate and manage squashGameMachine lifecycle with LiveStore integration.
@@ -11,82 +11,62 @@ import type { PlayerNameMap, Team } from '../machines/squashMachine'
  * Following XState + LiveStore best practices:
  * - LiveStore is the source of truth for persistent data
  * - XState manages UI state transitions
- * - Uses useActorRef() for better performance (no re-renders on every state change)
+ * - Uses useMachine() for standard XState React integration
  * - Reactively queries game and rallies from LiveStore
  * - Replays rallies to reconstruct grid state
  */
 export const useSquashGameMachine = (
-  gameId: string,
+  matchId: string,
+  gameNumber: number,
   players: PlayerNameMap,
 ) => {
   const { store } = useStore()
 
-  const actorInput = useMemo(() => ({ gameId, store }), [gameId, store])
+  // Step 1: Use gameByNumber to get the game UUID (does the join once)
+  const gameByNumberResult = store.useQuery(gameByNumber(matchId, gameNumber))
 
-  // Create actor ref (doesn't cause re-renders on state changes)
-  const actorRef = useActorRef(squashGameMachine, {
+  // Throw error if game not found - indicates bad route parameter
+  if (!gameByNumberResult) {
+    throw new Error(
+      `Game not found: matchId=${matchId}, gameNumber=${gameNumber}. Invalid route parameter.`,
+    )
+  }
+
+  const gameId = gameByNumberResult.id
+
+  // Step 2: Use composite query to get game and rallies together
+  const { game, rallies } = gameWithRallies$(gameId)
+  const gameData = store.useQuery(game)
+  const ralliesData = store.useQuery(rallies)
+
+  // Create machine with store as input
+  const [state, send, actorRef] = useMachine(squashGameMachine, {
     // @ts-expect-error - LiveStore type compatibility issue
-    input: actorInput,
+    input: { store },
   })
 
-  // Query game data from LiveStore (reactive)
-  const game = store.useQuery(gameById$(gameId))
-  const rallies = store.useQuery(ralliesByGame$(gameId))
-
-  // Reset machine when gameId changes
+  // Load game data when the gameId (UUID) changes
+  // gameId is stable and only changes when navigating to a different game
   useEffect(() => {
-    const snapshot = actorRef.getSnapshot()
-    const currentGameId = snapshot.context.gameId
-
-    // If gameId changed, reset the machine
-    if (currentGameId && currentGameId !== gameId) {
-      console.log('[useSquashGameMachine] gameId changed - resetting', {
-        from: currentGameId,
-        to: gameId,
-      })
-      actorRef.send({ type: 'RESET' })
-    }
-  }, [gameId, actorRef])
-
-  // Load game data when available and machine is ready
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!game) return
-
-    const snapshot = actorRef.getSnapshot()
-
-    // Only load if machine is in notConfigured state
-    if (!snapshot.matches('notConfigured')) {
-      console.log(
-        '[useSquashGameMachine] Skipping load - not in notConfigured state',
-        {
-          currentState: snapshot.value,
-          gameId,
-        },
-      )
-      return
-    }
-
-    console.log('[useSquashGameMachine] Loading game', gameId)
-
-    // Send GAME_LOADED event
-    actorRef.send({
+    // Reset machine and load new game data
+    send({ type: 'RESET' })
+    send({
       type: 'GAME_LOADED',
-      game,
+      game: gameData,
       players,
     })
 
     // Replay rallies if needed
-    if (game.status === 'in_progress' && rallies.length > 0) {
-      console.log('[useSquashGameMachine] Replaying', rallies.length, 'rallies')
-      for (const rally of rallies) {
-        actorRef.send({
+    if (gameData.status === 'in_progress' && ralliesData.length > 0) {
+      ralliesData.forEach((rally) => {
+        send({
           type: 'RALLY_WON',
           winner: rally.winner as Team,
         })
-      }
+      })
     }
-  }, [game, rallies, actorRef, players, gameId])
+    // Only depend on gameId - game, players, rallies are derived from it
+  }, [gameId])
 
-  return { actorRef, game, rallies }
+  return { actorRef, state, send, game: gameData, rallies: ralliesData }
 }

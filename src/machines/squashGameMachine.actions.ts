@@ -1,4 +1,5 @@
 import { events } from '../livestore/schema'
+import { flip, otherTeam, rowKey } from './squashMachine.types'
 import type {
   ActivityGrid,
   Cell,
@@ -9,15 +10,12 @@ import type {
   Server,
   Side,
   Team,
-} from './squashMachine'
-import type { Game } from './squashGameMachine'
-import type { Context } from './squashGameMachine'
+} from './squashMachine.types'
+import type { Context, Game } from './squashGameMachine'
 
 // ===== Helper Functions =====
-export const otherTeam = (t: Team): Team => (t === 'A' ? 'B' : 'A')
-export const flip = (s: Side): Side => (s === 'R' ? 'L' : 'R')
-export const rowKey = (team: Team, player: PlayerRow): RowKey =>
-  `${team}${player}` as RowKey
+// Re-export helpers for convenience
+export { flip, otherTeam, rowKey }
 
 const makeEmptyCols = (n = 30): Array<Cell> =>
   Array.from({ length: n }, () => '')
@@ -62,7 +60,7 @@ export type Snapshot = {
 // ===== Actions =====
 export const configureGameState = (
   context: Context,
-  params: { game: Game; players: PlayerNameMap }
+  params: { game: Game; players: PlayerNameMap },
 ): Partial<Context> => {
   const { game, players } = params
 
@@ -98,9 +96,7 @@ export const configureGameState = (
   }
 }
 
-export const snapshot = (
-  context: Context
-): Partial<Context> => ({
+export const snapshot = (context: Context): Partial<Context> => ({
   history: [
     ...context.history,
     {
@@ -112,9 +108,7 @@ export const snapshot = (
   ],
 })
 
-export const toggleServeSide = (
-  context: Context
-): Partial<Context> => {
+export const toggleServeSide = (context: Context): Partial<Context> => {
   if (context.server.handIndex !== 0) return {}
 
   const newSide = flip(context.server.side)
@@ -130,7 +124,7 @@ export const toggleServeSide = (
 
 export const rallyWon = (
   context: Context,
-  params: { winner: Team }
+  params: { winner: Team },
 ): Partial<Context> => {
   const { winner } = params
   const cur = context.server
@@ -309,9 +303,7 @@ export const rallyWon = (
   }
 }
 
-export const undoOnce = (
-  context: Context
-): Partial<Context> => {
+export const undoOnce = (context: Context): Partial<Context> => {
   const prev = context.history.at(-1)
   if (!prev) return {}
 
