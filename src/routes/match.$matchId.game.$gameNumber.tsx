@@ -24,27 +24,12 @@ export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
   const { matchId, gameNumber } = Route.useParams()
-  console.log('🎁 [GameRouteWrapper] Rendered with params:', {
-    matchId,
-    gameNumber,
-  })
   const navigate = useNavigate({ from: Route.fullPath })
   const { store } = useStore()
   const { isLoading } = useLiveStoreMatch()
 
   // Query games from LiveStore
   const games = store.useQuery(gamesByMatch$(matchId))
-  const gamesDetails = games.map((g) => ({
-    id: g.id,
-    gameNumber: g.gameNumber,
-    status: g.status,
-    winner: g.winner,
-    scoreA: g.scoreA,
-    scoreB: g.scoreB,
-  }))
-  console.log('🎮 [GameRouteWrapper] Games query result:', gamesDetails)
-  console.log('🎮 [GameRouteWrapper] Unique game IDs:', [...new Set(games.map(g => g.id))])
-  console.log('🎮 [GameRouteWrapper] Game numbers:', games.map(g => g.gameNumber))
 
   // Check if match is complete (3 games won)
   const gamesWonA = games.filter(
@@ -54,18 +39,10 @@ function GameRouteWrapper() {
     (g) => g.status === 'completed' && g.winner === 'B',
   ).length
   const isMatchComplete = gamesWonA >= 3 || gamesWonB >= 3
-  console.log('🏁 [GameRouteWrapper] Match status:', {
-    gamesWonA,
-    gamesWonB,
-    isMatchComplete,
-  })
 
   // If match is complete, redirect to summary
   useEffect(() => {
     if (isMatchComplete) {
-      console.log(
-        '🏆 [GameRouteWrapper] Match complete, redirecting to summary',
-      )
       navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
   }, [isMatchComplete, matchId, navigate])
@@ -95,13 +72,6 @@ function GameRouteWrapper() {
 function GameRoute() {
   const { matchId, gameNumber: gameNumberStr } = Route.useParams()
   const gameNumber = Number.parseInt(gameNumberStr, 10)
-  console.log('🎯 [GameRoute] Rendered with params:', {
-    matchId,
-    gameNumberStr,
-    gameNumber,
-    gameNumberType: typeof gameNumber,
-    isNaN: Number.isNaN(gameNumber),
-  })
   const navigate = useNavigate({ from: Route.fullPath })
   const { store } = useStore()
   const { actor: matchActorRef } = useLiveStoreMatch()
@@ -295,36 +265,19 @@ function GameRoute() {
           />
         )}
 
-        {showNextGameSetup && (() => {
-          console.log('📺 [GameRoute] Rendering NextGameSetup modal, showNextGameSetup=', showNextGameSetup)
-          return <NextGameSetup
+        {showNextGameSetup && (
+          <NextGameSetup
             isFirstGame={false}
             lastWinner={gameStats.currentWinner as 'A' | 'B'}
             players={matchPlayers}
-            onCancel={() => {
-              console.log('❌ [NextGameSetup] onCancel called')
-              setShowNextGameSetup(false)
-            }}
+            onCancel={() => setShowNextGameSetup(false)}
             onStartGame={async (config) => {
-              console.log(
-                '🎬 [GameRoute] onStartGame callback START - config:',
-                config,
-              )
-
               // Hide the dialog immediately
               setShowNextGameSetup(false)
 
               // Confirm game over and record result
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-
-              console.log('📝 [NextGameSetup] Completing game:', {
-                gameId,
-                gameNumber,
-                winner,
-                scoreA,
-                scoreB,
-              })
 
               // Emit gameCompleted event to LiveStore
               await store.commit(
@@ -337,29 +290,18 @@ function GameRoute() {
                   timestamp: new Date(),
                 }),
               )
-              console.log('✅ [NextGameSetup] Game completed event committed')
 
               matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
 
               // Create new game in LiveStore
               const newGameId = crypto.randomUUID()
-              
-              // Calculate next game number based on the HIGHEST game number, not games.length
-              // This is more robust in case games get out of sync
-              const maxGameNumber = games.length > 0 
-                ? Math.max(...games.map(g => g.gameNumber))
-                : 0
-              const newGameNumber = maxGameNumber + 1
 
-              console.log('🆕 [NextGameSetup] Creating new game:', {
-                newGameId,
-                newGameNumber,
-                maxGameNumber,
-                gamesLength: games.length,
-                existingGames: games.map(g => ({ id: g.id, gameNumber: g.gameNumber, status: g.status, winner: g.winner })),
-              })
-              
-              console.log('📝 [NextGameSetup] About to commit gameStarted event with gameNumber:', newGameNumber)
+              // Calculate next game number based on the highest game number
+              const maxGameNumber =
+                games.length > 0
+                  ? Math.max(...games.map((g) => g.gameNumber))
+                  : 0
+              const newGameNumber = maxGameNumber + 1
 
               await store.commit(
                 events.gameStarted({
@@ -375,32 +317,19 @@ function GameRoute() {
                   timestamp: new Date(),
                 }),
               )
-              console.log('✅ [NextGameSetup] New game started event committed')
 
               // Give LiveStore a brief moment to propagate the event
-              // This is a workaround for LiveStore query cache staleness
-              await new Promise(resolve => setTimeout(resolve, 50))
+              await new Promise((resolve) => setTimeout(resolve, 50))
 
               // Update machine UI state and navigate
               matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
-              console.log('🚀 [NextGameSetup] About to navigate:', {
-                to: '/match/$matchId/game/$gameNumber',
-                params: { matchId, gameNumber: String(newGameNumber) },
-                matchId,
-                newGameNumber,
-                newGameId,
-              })
-              const navigateResult = navigate({
+              navigate({
                 to: '/match/$matchId/game/$gameNumber',
                 params: { matchId, gameNumber: String(newGameNumber) },
               })
-              console.log(
-                '✅ [NextGameSetup] Navigation called, result:',
-                navigateResult,
-              )
             }}
           />
-        })()}
+        )}
 
         {isGameOver && !showNextGameSetup && matchActorRef && (
           <MatchSummary

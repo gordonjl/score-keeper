@@ -39,12 +39,6 @@ export const NextGameSetup = ({
   onCancel,
   onStartGame,
 }: NextGameSetupProps) => {
-  console.log('🔄 [NextGameSetup] Component rendering with props:', {
-    isFirstGame,
-    lastWinner,
-    hasOnStartGame: typeof onStartGame === 'function',
-  })
-  
   // Default serving team: winning team serves first
   const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
 
@@ -61,7 +55,6 @@ export const NextGameSetup = ({
   }, [lastWinner, isFirstGame])
 
   const handleStartGame = () => {
-    console.log('🎬 [NextGameSetup] handleStartGame called')
     // Reorder players based on who serves first on hand-in
     // The first server becomes A1/B1 for this game
     const gamePlayers: PlayerPositions = {
@@ -71,11 +64,6 @@ export const NextGameSetup = ({
       B2: teamBFirstServer === 1 ? players.B2.fullName : players.B1.fullName,
     }
 
-    console.log('📞 [NextGameSetup] About to call onStartGame with:', {
-      firstServingTeam,
-      gamePlayers,
-    })
-
     // Default both teams to start serving from right side
     // Side can be toggled during gameplay by clicking the cell
     onStartGame({
@@ -84,8 +72,6 @@ export const NextGameSetup = ({
       teamASide: 'R',
       teamBSide: 'R',
     })
-    
-    console.log('✅ [NextGameSetup] onStartGame callback called')
   }
 
   return (
@@ -208,10 +194,7 @@ export const NextGameSetup = ({
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => {
-              console.log('🖱️  [NextGameSetup] Start Game button clicked')
-              handleStartGame()
-            }}
+            onClick={handleStartGame}
           >
             Start Game
           </button>
