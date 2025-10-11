@@ -32,7 +32,6 @@
     "@tanstack/react-start": "^1.132.48",
     "@tanstack/router-plugin": "^1.132.47",
     "@xstate/react": "^6.0.0",
-    "dexie": "^4.2.1",
     "effect": "^3.18.4",
     "lucide-react": "^0.544.0",
     "react": "^19.2.0",

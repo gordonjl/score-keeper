@@ -1,21 +1,25 @@
+import { useStore } from '@livestore/react'
 import { useSelector } from '@xstate/react'
+import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
+import { gamesByMatch$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
 import type { squashGameMachine } from '../../machines/squashGameMachine'
-import type { matchMachine } from '../../machines/matchMachine'
 
 type TeamKey = 'teamA' | 'teamB'
 
 type ScoreHeaderProps = {
   gameActorRef: ActorRefFrom<typeof squashGameMachine>
-  matchActorRef: ActorRefFrom<typeof matchMachine>
+  matchActorRef: unknown // Not used, kept for compatibility
   firstServingTeam: 'A' | 'B'
 }
 
 export const ScoreHeader = ({
   gameActorRef,
-  matchActorRef,
   firstServingTeam,
 }: ScoreHeaderProps) => {
+  const { store } = useStore()
+  const { matchId } = useLiveStoreMatch()
+
   // Select scores from game actor
   const { scoreA, scoreB, teamNames } = useSelector(gameActorRef, (s) => ({
     scoreA: s.context.score.A,
@@ -26,11 +30,12 @@ export const ScoreHeader = ({
     },
   }))
 
-  // Select match data from match actor
-  const games = useSelector(matchActorRef, (s) => s.context.games)
+  // Query games from LiveStore
+  const games = store.useQuery(gamesByMatch$(matchId))
 
   // Compute derived values from games
-  const currentGameNumber = games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
+  const currentGameNumber =
+    games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
   const gamesWonA = games.filter(
     (g) => g.status === 'completed' && g.winner === 'A',
   ).length

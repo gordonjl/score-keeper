@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useActor, useMachine, useSelector } from '@xstate/react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useActor, useSelector } from '@xstate/react'
 import { useEffect } from 'react'
 import { v4 as uuid } from 'uuid'
 import { assign, setup } from 'xstate'

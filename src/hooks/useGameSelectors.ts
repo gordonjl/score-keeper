@@ -44,9 +44,8 @@ export const useGameSelectors = (
       : `${toWords(serverScore)}–${toWords(receiverScore)}`
 
   const serverPlayer = players[serverRowKey]
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const serverName =
-    serverPlayer?.lastName || serverPlayer?.firstName || serverRowKey
+    serverPlayer.lastName || serverPlayer.firstName || serverRowKey
   const sideName = server.side === 'R' ? 'Right' : 'Left'
   const announcement = `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
 

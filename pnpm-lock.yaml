@@ -62,9 +62,6 @@ dependencies:
   '@xstate/react':
     specifier: ^6.0.0
     version: 6.0.0(@types/react@19.2.2)(react@19.2.0)(xstate@5.22.1)
-  dexie:
-    specifier: ^4.2.1
-    version: 4.2.1
   effect:
     specifier: ^3.18.4
     version: 3.18.4
@@ -5516,10 +5513,6 @@ packages:
 
   /devalue@5.3.2:
     resolution: {integrity: sha512-UDsjUbpQn9kvm68slnrs+mfxwFkIflOhkanmyabZ8zOYk8SMEIbJ3TK+88g70hSIeytu4y18f0z/hYHMTrXIWw==}
-    dev: false
-
-  /dexie@4.2.1:
-    resolution: {integrity: sha512-Ckej0NS6jxQ4Po3OrSQBFddayRhTCic2DoCAG5zacOfOVB9P2Q5Xc5uL/nVa7ZVs+HdMnvUPzLFCB/JwpB6Csg==}
     dev: false
 
   /diff@8.0.2:

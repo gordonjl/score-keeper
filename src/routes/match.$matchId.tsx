@@ -1,6 +1,5 @@
 import { ClientOnly, Outlet, createFileRoute } from '@tanstack/react-router'
 import { LiveStoreMatchProvider } from '../contexts/LiveStoreMatchContext'
-import type { MatchId } from '../db/types'
 
 export const Route = createFileRoute('/match/$matchId')({
   component: MatchRoute,
@@ -11,7 +10,7 @@ function MatchRoute() {
 
   return (
     <ClientOnly fallback={null}>
-      <LiveStoreMatchProvider matchId={matchId as MatchId}>
+      <LiveStoreMatchProvider matchId={matchId}>
         <Outlet />
       </LiveStoreMatchProvider>
     </ClientOnly>

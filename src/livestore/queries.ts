@@ -2,10 +2,9 @@ import { queryDb } from '@livestore/livestore'
 import { tables } from './schema'
 
 // Query for UI state (client-only)
-export const uiState$ = queryDb(
-  () => tables.uiState.get(),
-  { label: 'uiState' },
-)
+export const uiState$ = queryDb(() => tables.uiState.get(), {
+  label: 'uiState',
+})
 
 // Query for all active todos
 export const activeTodos$ = queryDb(

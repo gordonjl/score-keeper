@@ -10,11 +10,11 @@ import { schema } from '../../livestore/schema'
 // In production: Each user should have their own storeId (e.g., based on user ID)
 const getStoreId = () => {
   if (typeof window === 'undefined') return 'ssr-placeholder'
-  
+
   // Fixed storeId for testing cross-browser sync
   // TODO: In production, use user-specific ID like: `user-${userId}`
   return 'test-store-shared'
-  
+
   // Original code for unique per-browser storeId:
   // const key = 'livestore-store-id'
   // let storeId = localStorage.getItem(key)
@@ -31,7 +31,7 @@ let storeIdInstance: string | null = null
 
 const getAdapter = () => {
   if (typeof window === 'undefined') return null
-  
+
   if (!adapterInstance) {
     adapterInstance = makePersistedAdapter({
       storage: { type: 'opfs' }, // Origin Private File System for persistence
@@ -39,17 +39,17 @@ const getAdapter = () => {
       sharedWorker: LiveStoreSharedWorker, // For cross-tab sync
     })
   }
-  
+
   return adapterInstance
 }
 
 const getOrCreateStoreId = () => {
   if (typeof window === 'undefined') return 'ssr-placeholder'
-  
+
   if (!storeIdInstance) {
     storeIdInstance = getStoreId()
   }
-  
+
   return storeIdInstance
 }
 

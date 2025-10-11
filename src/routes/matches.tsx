@@ -11,6 +11,7 @@ function MatchesListRoute() {
   const { store } = useStore()
   const matches = store.useQuery(allMatches$)
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!matches || matches.length === 0) {
     return (
       <div className="container mx-auto p-4">
@@ -22,7 +23,9 @@ function MatchesListRoute() {
           </Link>
         </div>
         <div className="text-center py-12">
-          <p className="text-base-content/60">No matches found. Start a new match to get started!</p>
+          <p className="text-base-content/60">
+            No matches found. Start a new match to get started!
+          </p>
         </div>
       </div>
     )
@@ -55,7 +58,8 @@ function MatchesListRoute() {
                       : 'Match'}
                   </h2>
                   <p className="text-sm text-base-content/60">
-                    vs {match.playerB1FirstName} {match.playerB1LastName} & {match.playerB2FirstName} {match.playerB2LastName}
+                    vs {match.playerB1FirstName} {match.playerB1LastName} &{' '}
+                    {match.playerB2FirstName} {match.playerB2LastName}
                   </p>
                   <div className="flex items-center gap-2 mt-2 text-sm text-base-content/60">
                     <Calendar className="w-4 h-4" />

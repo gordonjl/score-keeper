@@ -4,7 +4,7 @@ import { useMachine } from '@xstate/react'
 import { events } from '../livestore/schema'
 import { matchById$ } from '../livestore/squash-queries'
 import { matchMachine } from '../machines/matchMachine'
-import type { MatchId } from '../db/types'
+import type { MatchId } from '../types'
 import type { ActorRefFrom } from 'xstate'
 
 // Context type - just provides the actor and matchId
@@ -41,10 +41,10 @@ export const LiveStoreMatchProvider = ({
   children,
 }: LiveStoreMatchProviderProps) => {
   const { store } = useStore()
-  
+
   // Query match data to check if loaded
   const match = store.useQuery(matchById$(matchId))
-  
+
   // Create the UI state machine
   const [, , actor] = useMachine(matchMachine, {
     input: { matchId, currentGameId: null },
@@ -52,6 +52,7 @@ export const LiveStoreMatchProvider = ({
 
   // Simple initialization: just mark as loaded when match data arrives
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (match && actor.getSnapshot().value === 'loading') {
       actor.send({ type: 'MATCH_LOADED' })
     }
