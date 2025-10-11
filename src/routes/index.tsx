@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Check, Play, Target, Trash2, Trophy, Users, X } from 'lucide-react'
 import { useState } from 'react'
-import { useCreateEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useCreateLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { events } from '../livestore/schema'
 import { uiState$, visibleTodos$ } from '../livestore/queries'
 
@@ -11,22 +11,18 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
-  const { createMatch, isCreating, error } = useCreateEventSourcedMatch()
+  const { createMatch } = useCreateLiveStoreMatch()
   const [isStarting, setIsStarting] = useState(false)
   const navigate = useNavigate({ from: Route.fullPath })
 
   const { store } = useStore()
 
-  const handleStartNewMatch = async () => {
+  const handleStartNewMatch = () => {
     setIsStarting(true)
     const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
-    const matchId = await createMatch(playerNames)
+    const matchId = createMatch(playerNames)
 
-    if (matchId) {
-      navigate({ to: '/match/$matchId/setup', params: { matchId } })
-    } else {
-      setIsStarting(false)
-    }
+    navigate({ to: '/match/$matchId/setup', params: { matchId } })
   }
 
   return (
@@ -52,10 +48,10 @@ function App() {
           </p>
           <button
             onClick={handleStartNewMatch}
-            disabled={isCreating || isStarting}
+            disabled={isStarting}
             className="btn btn-primary btn-lg gap-2 shadow-xl hover:shadow-2xl transition-all"
           >
-            {isCreating || isStarting ? (
+            {isStarting ? (
               <>
                 <span className="loading loading-spinner loading-sm"></span>
                 Creating Match...
@@ -67,11 +63,6 @@ function App() {
               </>
             )}
           </button>
-          {error && (
-            <div className="alert alert-error max-w-md mx-auto mt-4">
-              <span>Error creating match: {error}</span>
-            </div>
-          )}
         </div>
 
         {/* Features Grid */}

@@ -1,31 +1,39 @@
-type Game = {
-  gameNumber: number
-  winner: 'A' | 'B' | null
-  finalScore: { A: number; B: number } | null
-  status: 'in_progress' | 'completed'
-}
+import { useStore } from '@livestore/react'
+import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
+import { gamesByMatch$, matchById$ } from '../../livestore/squash-queries'
 
 type MatchSummaryProps = {
-  games: Array<Game>
-  players: Record<string, string>
-  currentGameNumber: number
+  matchActorRef: unknown // Not used, kept for compatibility
   currentWinner: string
   onStartNewGame: () => void
   onEndMatch: () => void
 }
 
 export const MatchSummary = ({
-  games,
-  players,
-  currentGameNumber,
   currentWinner,
   onStartNewGame,
   onEndMatch,
 }: MatchSummaryProps) => {
+  const { store } = useStore()
+  const { matchId } = useLiveStoreMatch()
+
+  // Query from LiveStore
+  const match = store.useQuery(matchById$(matchId))
+  const games = store.useQuery(gamesByMatch$(matchId))
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const players = match
+    ? {
+        teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
+        teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
+      }
+    : { teamA: 'Team A', teamB: 'Team B' }
+
+  // Compute derived values
+  const currentGameNumber =
+    games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
   // Filter to only show completed games
-  const completedGames = games.filter(
-    (game) => game.status === 'completed' && game.finalScore !== null,
-  )
+  const completedGames = games.filter((game) => game.status === 'completed')
 
   return (
     <div className="space-y-4 mt-4">
@@ -44,7 +52,7 @@ export const MatchSummary = ({
               <div key={game.gameNumber} className="text-sm">
                 Game {game.gameNumber}:{' '}
                 {game.winner === 'A' ? players.teamA : players.teamB} win (
-                {game.finalScore!.A}-{game.finalScore!.B})
+                {game.scoreA}-{game.scoreB})
               </div>
             ))}
           </div>

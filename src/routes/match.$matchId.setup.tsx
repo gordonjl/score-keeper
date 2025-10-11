@@ -1,17 +1,17 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useStore } from '@livestore/react'
 import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
-import { getCurrentGameId } from '../machines/matchMachine'
-import type { PlayerName } from '../machines/squashMachine'
+import { useEffect, useRef, useState } from 'react'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
+import { matchById$ } from '../livestore/squash-queries'
+import { events } from '../livestore/schema'
+import type { PlayerName } from '../machines/squashMachine.types'
 
 // Effect Schema for setup form (no Zod)
 const Team = S.Literal('A', 'B')
 const PlayerRow = S.Literal(1 as const, 2 as const)
-
-// Using a BasicSchema built in onSubmit for more flexible validation
 
 type SetupSearch = {
   teamA?: string
@@ -38,32 +38,16 @@ export const Route = createFileRoute('/match/$matchId/setup')({
 
 function SetupRoute() {
   const { matchId } = Route.useParams()
-  const { actor, isLoading } = useEventSourcedMatch()
+  const { store } = useStore()
+  const { actor, isLoading } = useLiveStoreMatch()
   const searchParams = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
-  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const hasPopulatedForm = useRef(false)
 
-  // Get match data from actor
-  const matchData = actor
-    ? {
-        players: actor.getSnapshot().context.players,
-        teamAFirstServer: actor.getSnapshot().context.teamAFirstServer,
-        teamBFirstServer: actor.getSnapshot().context.teamBFirstServer,
-      }
-    : {
-        players: {
-          A1: { firstName: '', lastName: '', fullName: '' },
-          A2: { firstName: '', lastName: '', fullName: '' },
-          B1: { firstName: '', lastName: '', fullName: '' },
-          B2: { firstName: '', lastName: '', fullName: '' },
-          teamA: 'Team A',
-          teamB: 'Team B',
-        },
-        teamAFirstServer: 1 as 1 | 2,
-        teamBFirstServer: 1 as 1 | 2,
-      }
+  // Query match data from LiveStore
+  const match = store.useQuery(matchById$(matchId))
 
   const form = useForm({
     defaultValues: {
@@ -80,7 +64,6 @@ function SetupRoute() {
       firstServingTeam: 'A' as 'A' | 'B',
     },
     onSubmit: ({ value }) => {
-      // Build unknown payload to validate
       const payload = {
         A1First: value.A1First,
         A1Last: value.A1Last,
@@ -95,7 +78,6 @@ function SetupRoute() {
         firstServingTeam: value.firstServingTeam,
       }
 
-      // Basic decode (strings allowed to be empty)
       const BasicSchema = S.Struct({
         A1First: S.Trim,
         A1Last: S.Trim,
@@ -157,47 +139,64 @@ function SetupRoute() {
           ? build(parsed.B2First, parsed.B2Last)
           : build(parsed.B1First, parsed.B1Last)
 
-      const players = {
-        A1,
-        A2,
-        B1,
-        B2,
-        teamA: `${A1.fullName} & ${A2.fullName}`,
-        teamB: `${B1.fullName} & ${B2.fullName}`,
-      }
-
-      // Setup the match
       if (!actor) return
 
-      actor.send({
-        type: 'SETUP_MATCH',
-        players,
-        teamAFirstServer: parsed.teamAFirstServer,
-        teamBFirstServer: parsed.teamBFirstServer,
-      })
+      // 1. Emit matchSetup event to LiveStore
+      store.commit(
+        events.matchSetup({
+          matchId,
+          playerA1: {
+            firstName: A1.firstName,
+            lastName: A1.lastName,
+          },
+          playerA2: {
+            firstName: A2.firstName,
+            lastName: A2.lastName,
+          },
+          playerB1: {
+            firstName: B1.firstName,
+            lastName: B1.lastName,
+          },
+          playerB2: {
+            firstName: B2.firstName,
+            lastName: B2.lastName,
+          },
+          teamAFirstServer: parsed.teamAFirstServer,
+          teamBFirstServer: parsed.teamBFirstServer,
+          timestamp: new Date(),
+        }),
+      )
 
-      // Start the first game
-      actor.send({
-        type: 'START_NEW_GAME',
-        firstServingTeam: parsed.firstServingTeam,
-      })
+      // 2. Emit gameStarted event to LiveStore
+      const gameId = crypto.randomUUID()
+      store.commit(
+        events.gameStarted({
+          gameId,
+          matchId,
+          gameNumber: 1,
+          firstServingTeam: parsed.firstServingTeam,
+          firstServingPlayer: 1,
+          firstServingSide: 'R',
+          maxPoints: 15,
+          winBy: 1,
+          timestamp: new Date(),
+        }),
+      )
 
-      // Navigate to the game route with the current game ID
-      const snapshot = actor.getSnapshot()
-      const currentGameId = getCurrentGameId(snapshot)
-      if (currentGameId) {
-        navigate({
-          to: '/match/$matchId/game/$gameId',
-          params: { matchId, gameId: currentGameId },
-        })
-      }
+      // 3. Update machine UI state
+      actor.send({ type: 'START_GAME', gameId })
+
+      // 4. Navigate to the game
+      navigate({
+        to: '/match/$matchId/game/$gameNumber',
+        params: { matchId, gameNumber: '1' },
+      })
     },
   })
 
-  // Populate form with search params (priority) or existing match data on mount
+  // Populate form with search params (priority) or existing match data
   useEffect(() => {
-    console.log('Setup: Search params:', searchParams)
-    console.log('Setup: Match data:', matchData)
+    if (hasPopulatedForm.current) return
 
     // Priority 1: Search params (from "Start New Match (Same Teams)")
     if (
@@ -206,7 +205,6 @@ function SetupRoute() {
       searchParams.B1 &&
       searchParams.B2
     ) {
-      console.log('Setup: Populating form from search params')
       const parse = (full: string) => {
         const parts = full.trim().split(/\s+/)
         const last = parts.pop() ?? ''
@@ -225,24 +223,25 @@ function SetupRoute() {
       form.setFieldValue('B1Last', b1.last)
       form.setFieldValue('B2First', b2.first)
       form.setFieldValue('B2Last', b2.last)
+      hasPopulatedForm.current = true
     }
-    // Priority 2: Existing match context data
-    else {
-      console.log('Setup: Populating form with existing data')
-      form.setFieldValue('A1First', matchData.players.A1.firstName)
-      form.setFieldValue('A1Last', matchData.players.A1.lastName)
-      form.setFieldValue('A2First', matchData.players.A2.firstName)
-      form.setFieldValue('A2Last', matchData.players.A2.lastName)
-      form.setFieldValue('B1First', matchData.players.B1.firstName)
-      form.setFieldValue('B1Last', matchData.players.B1.lastName)
-      form.setFieldValue('B2First', matchData.players.B2.firstName)
-      form.setFieldValue('B2Last', matchData.players.B2.lastName)
-      form.setFieldValue('teamAFirstServer', matchData.teamAFirstServer)
-      form.setFieldValue('teamBFirstServer', matchData.teamBFirstServer)
+    // Priority 2: Existing match data from LiveStore
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    else if (match && match.playerA1FirstName) {
+      form.setFieldValue('A1First', match.playerA1FirstName)
+      form.setFieldValue('A1Last', match.playerA1LastName)
+      form.setFieldValue('A2First', match.playerA2FirstName)
+      form.setFieldValue('A2Last', match.playerA2LastName)
+      form.setFieldValue('B1First', match.playerB1FirstName)
+      form.setFieldValue('B1Last', match.playerB1LastName)
+      form.setFieldValue('B2First', match.playerB2FirstName)
+      form.setFieldValue('B2Last', match.playerB2LastName)
+      form.setFieldValue('teamAFirstServer', match.teamAFirstServer as 1 | 2)
+      form.setFieldValue('teamBFirstServer', match.teamBFirstServer as 1 | 2)
+      hasPopulatedForm.current = true
     }
-  }, [matchData, searchParams, form])
+  }, [match, searchParams, form])
 
-  // Show loading state after all hooks are called
   if (isLoading || !actor) {
     return (
       <div className="flex items-center justify-center min-h-screen">

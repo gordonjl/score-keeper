@@ -1,15 +1,33 @@
+import { useStore } from '@livestore/react'
 import { Clock, TrendingUp, Trophy } from 'lucide-react'
-import type { GameResult } from '../../machines/matchMachine'
+import { useMemo } from 'react'
+import { gamesByMatch$, matchById$ } from '../../livestore/squash-queries'
+import type { ActorRefFrom } from 'xstate'
+import type { matchMachine } from '../../machines/matchMachine'
 
 type MatchProgressProps = {
-  games: Array<GameResult>
-  currentGameNumber: number
-  players: { teamA: string; teamB: string }
-  matchStartTime?: number
+  matchActorRef: ActorRefFrom<typeof matchMachine>
   isGameInProgress: boolean
 }
 
-const calculateMatchStats = (games: Array<GameResult>) => {
+type Game = {
+  readonly id: string
+  readonly matchId: string
+  readonly gameNumber: number
+  readonly status: string
+  readonly scoreA: number
+  readonly scoreB: number
+  readonly winner: 'A' | 'B' | null
+  readonly maxPoints: number
+  readonly winBy: number
+  readonly createdAt: Date
+  readonly completedAt: Date | null
+  readonly firstServingTeam: string
+  readonly firstServingPlayer: number
+  readonly firstServingSide: string
+}
+
+const calculateMatchStats = (games: ReadonlyArray<Game>) => {
   // Filter to only completed games
   const completedGames = games.filter((g) => g.status === 'completed')
 
@@ -18,8 +36,8 @@ const calculateMatchStats = (games: Array<GameResult>) => {
       gamesWonA: 0,
       gamesWonB: 0,
       totalPoints: 0,
-      longestGame: null as GameResult | null,
-      closestGame: null as GameResult | null,
+      longestGame: null as Game | null,
+      closestGame: null as Game | null,
       currentStreak: { team: null as 'A' | 'B' | null, count: 0 },
     }
   }
@@ -27,30 +45,28 @@ const calculateMatchStats = (games: Array<GameResult>) => {
   const gamesWonA = completedGames.filter((g) => g.winner === 'A').length
   const gamesWonB = completedGames.filter((g) => g.winner === 'B').length
   const totalPoints = completedGames.reduce(
-    (sum, g) => sum + g.finalScore!.A + g.finalScore!.B,
+    (sum, g) => sum + g.scoreA + g.scoreB,
     0,
   )
 
   const longestGame = completedGames.reduce(
     (longest, game) => {
-      const points = game.finalScore!.A + game.finalScore!.B
-      const longestPoints = longest
-        ? longest.finalScore!.A + longest.finalScore!.B
-        : 0
+      const points = game.scoreA + game.scoreB
+      const longestPoints = longest ? longest.scoreA + longest.scoreB : 0
       return points > longestPoints ? game : longest
     },
-    null as GameResult | null,
+    null as Game | null,
   )
 
   const closestGame = completedGames.reduce(
     (closest, game) => {
-      const diff = Math.abs(game.finalScore!.A - game.finalScore!.B)
+      const diff = Math.abs(game.scoreA - game.scoreB)
       const closestDiff = closest
-        ? Math.abs(closest.finalScore!.A - closest.finalScore!.B)
+        ? Math.abs(closest.scoreA - closest.scoreB)
         : Infinity
       return diff < closestDiff ? game : closest
     },
-    null as GameResult | null,
+    null as Game | null,
   )
 
   // Calculate current streak
@@ -78,26 +94,38 @@ const calculateMatchStats = (games: Array<GameResult>) => {
   }
 }
 
-const formatDuration = (milliseconds: number): string => {
-  const seconds = Math.floor(milliseconds / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
-  }
-  return `${minutes}m ${seconds % 60}s`
-}
-
 export const MatchProgress = ({
-  games,
-  currentGameNumber,
-  players,
-  matchStartTime,
+  matchActorRef,
   isGameInProgress,
 }: MatchProgressProps) => {
-  const stats = calculateMatchStats(games)
-  const duration = matchStartTime ? Date.now() - matchStartTime : 0
+  const { store } = useStore()
+
+  // Get matchId from the actor context
+  const matchId = matchActorRef.getSnapshot().context.matchId
+
+  // Query match and games data from LiveStore
+  const match = store.useQuery(matchById$(matchId))
+  const games = store.useQuery(gamesByMatch$(matchId))
+
+  // Build players object from match data
+  const players = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!match) {
+      return {
+        teamA: 'Team A',
+        teamB: 'Team B',
+      }
+    }
+    return {
+      teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
+      teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
+    }
+  }, [match])
+
+  // Compute derived values
+  const currentGameNumber =
+    games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
+  const stats = calculateMatchStats(games as ReadonlyArray<Game>)
 
   return (
     <div className="space-y-4">
@@ -157,8 +185,7 @@ export const MatchProgress = ({
                 .map((game) => {
                   const winnerName =
                     game.winner === 'A' ? players.teamA : players.teamB
-                  const isDominant =
-                    Math.abs(game.finalScore!.A - game.finalScore!.B) >= 10
+                  const isDominant = Math.abs(game.scoreA - game.scoreB) >= 10
 
                   return (
                     <div
@@ -180,7 +207,7 @@ export const MatchProgress = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold">
-                          {game.finalScore!.A}-{game.finalScore!.B}
+                          {game.scoreA}-{game.scoreB}
                         </span>
                         {isDominant && (
                           <TrendingUp className="w-3 h-3 text-warning" />
@@ -203,14 +230,6 @@ export const MatchProgress = ({
               Match Stats
             </h3>
             <div className="space-y-3 text-sm">
-              {matchStartTime && (
-                <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg">
-                  <span className="text-base-content/70">Duration</span>
-                  <span className="font-semibold badge badge-ghost">
-                    {formatDuration(duration)}
-                  </span>
-                </div>
-              )}
               <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg">
                 <span className="text-base-content/70">Total Points</span>
                 <span className="font-semibold badge badge-ghost">
@@ -222,9 +241,7 @@ export const MatchProgress = ({
                   <span className="text-base-content/70">Longest Game</span>
                   <span className="font-semibold badge badge-ghost">
                     Game {stats.longestGame.gameNumber} (
-                    {stats.longestGame.finalScore!.A +
-                      stats.longestGame.finalScore!.B}{' '}
-                    pts)
+                    {stats.longestGame.scoreA + stats.longestGame.scoreB} pts)
                   </span>
                 </div>
               )}
@@ -234,8 +251,7 @@ export const MatchProgress = ({
                   <span className="font-semibold badge badge-ghost">
                     Game {stats.closestGame.gameNumber} (
                     {Math.abs(
-                      stats.closestGame.finalScore!.A -
-                        stats.closestGame.finalScore!.B,
+                      stats.closestGame.scoreA - stats.closestGame.scoreB,
                     )}{' '}
                     pt diff)
                   </span>

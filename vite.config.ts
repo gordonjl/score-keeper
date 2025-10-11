@@ -11,6 +11,7 @@ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 const config = defineConfig({
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+    host: true, // Allow access from any host (enables subdomain.localhost)
   },
   worker: { format: 'es' },
   plugins: [

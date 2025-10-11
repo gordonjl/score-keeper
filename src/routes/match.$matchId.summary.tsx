@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useStore } from '@livestore/react'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
-import { useEventSourcedMatch } from '../contexts/EventSourcedMatchContext'
+import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
+import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
 
 export const Route = createFileRoute('/match/$matchId/summary')({
   component: MatchSummaryRoute,
@@ -9,26 +11,55 @@ export const Route = createFileRoute('/match/$matchId/summary')({
 
 function MatchSummaryRoute() {
   const { matchId } = Route.useParams()
-  const { actor: matchActorRef, isLoading } = useEventSourcedMatch()
+  const { store } = useStore()
+  const { actor: matchActorRef, isLoading } = useLiveStoreMatch()
   const navigate = useNavigate({ from: Route.fullPath })
 
-  const matchData = matchActorRef
+  // Query data from LiveStore
+  const match = store.useQuery(matchById$(matchId))
+  const games = store.useQuery(gamesByMatch$(matchId))
+
+  // Build players from match data
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const players = match
     ? {
-        games: matchActorRef.getSnapshot().context.games,
-        players: matchActorRef.getSnapshot().context.players,
-        isMatchComplete: matchActorRef.getSnapshot().matches('matchComplete'),
+        A1: {
+          firstName: match.playerA1FirstName,
+          lastName: match.playerA1LastName,
+          fullName:
+            `${match.playerA1FirstName} ${match.playerA1LastName}`.trim(),
+        },
+        A2: {
+          firstName: match.playerA2FirstName,
+          lastName: match.playerA2LastName,
+          fullName:
+            `${match.playerA2FirstName} ${match.playerA2LastName}`.trim(),
+        },
+        B1: {
+          firstName: match.playerB1FirstName,
+          lastName: match.playerB1LastName,
+          fullName:
+            `${match.playerB1FirstName} ${match.playerB1LastName}`.trim(),
+        },
+        B2: {
+          firstName: match.playerB2FirstName,
+          lastName: match.playerB2LastName,
+          fullName:
+            `${match.playerB2FirstName} ${match.playerB2LastName}`.trim(),
+        },
+        teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
+        teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
       }
     : null
 
   // Check if match is actually complete by counting wins
-  const isActuallyComplete = matchData
-    ? matchData.games.filter(
-        (g) => g.status === 'completed' && g.winner === 'A',
-      ).length >= 3 ||
-      matchData.games.filter(
-        (g) => g.status === 'completed' && g.winner === 'B',
-      ).length >= 3
-    : false
+  const gamesWonA = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'A',
+  ).length
+  const gamesWonB = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'B',
+  ).length
+  const isActuallyComplete = gamesWonA >= 3 || gamesWonB >= 3
 
   // Redirect if match is not complete after loading completes
   useEffect(() => {
@@ -49,18 +80,11 @@ function MatchSummaryRoute() {
     )
   }
 
-  if (!matchData || !isActuallyComplete) {
+  if (!players || !isActuallyComplete) {
     return <div className="p-4">Loading...</div>
   }
 
-  const gamesWonA = matchData.games.filter(
-    (g) => g.status === 'completed' && g.winner === 'A',
-  ).length
-  const gamesWonB = matchData.games.filter(
-    (g) => g.status === 'completed' && g.winner === 'B',
-  ).length
-  const matchWinner =
-    gamesWonA >= 3 ? matchData.players.teamA : matchData.players.teamB
+  const matchWinner = gamesWonA >= 3 ? players.teamA : players.teamB
   const matchWinnerTeam = gamesWonA >= 3 ? 'A' : 'B'
 
   const handleStartNewMatch = () => {
@@ -69,12 +93,12 @@ function MatchSummaryRoute() {
       to: '/match/$matchId/setup',
       params: { matchId },
       search: {
-        teamA: matchData.players.teamA,
-        teamB: matchData.players.teamB,
-        A1: matchData.players.A1.fullName,
-        A2: matchData.players.A2.fullName,
-        B1: matchData.players.B1.fullName,
-        B2: matchData.players.B2.fullName,
+        teamA: players.teamA,
+        teamB: players.teamB,
+        A1: players.A1.fullName,
+        A2: players.A2.fullName,
+        B1: players.B1.fullName,
+        B2: players.B2.fullName,
       },
     })
   }
@@ -114,14 +138,14 @@ function MatchSummaryRoute() {
               <div
                 className={`stat bg-base-200 rounded-lg ${matchWinnerTeam === 'A' ? 'ring-2 ring-success' : ''}`}
               >
-                <div className="stat-title">{matchData.players.teamA}</div>
+                <div className="stat-title">{players.teamA}</div>
                 <div className="stat-value text-primary">{gamesWonA}</div>
                 <div className="stat-desc">Games Won</div>
               </div>
               <div
                 className={`stat bg-base-200 rounded-lg ${matchWinnerTeam === 'B' ? 'ring-2 ring-success' : ''}`}
               >
-                <div className="stat-title">{matchData.players.teamB}</div>
+                <div className="stat-title">{players.teamB}</div>
                 <div className="stat-value text-secondary">{gamesWonB}</div>
                 <div className="stat-desc">Games Won</div>
               </div>
@@ -130,13 +154,11 @@ function MatchSummaryRoute() {
             {/* Game-by-Game Results */}
             <div className="divider text-sm">Game Results</div>
             <div className="space-y-2">
-              {matchData.games
+              {games
                 .filter((g) => g.status === 'completed')
                 .map((game) => {
                   const gameWinner =
-                    game.winner === 'A'
-                      ? matchData.players.teamA
-                      : matchData.players.teamB
+                    game.winner === 'A' ? players.teamA : players.teamB
                   const gameWinnerTeam = game.winner
                   return (
                     <div
@@ -158,21 +180,17 @@ function MatchSummaryRoute() {
                               gameWinnerTeam === 'A' ? 'font-bold' : ''
                             }
                           >
-                            {matchData.players.teamA}
+                            {players.teamA}
                           </span>{' '}
-                          <span className="font-mono">
-                            {game.finalScore?.A ?? 0}
-                          </span>
+                          <span className="font-mono">{game.scoreA}</span>
                           {' - '}
-                          <span className="font-mono">
-                            {game.finalScore?.B ?? 0}
-                          </span>{' '}
+                          <span className="font-mono">{game.scoreB}</span>{' '}
                           <span
                             className={
                               gameWinnerTeam === 'B' ? 'font-bold' : ''
                             }
                           >
-                            {matchData.players.teamB}
+                            {players.teamB}
                           </span>
                         </div>
                       </div>
@@ -185,21 +203,17 @@ function MatchSummaryRoute() {
             <div className="divider text-sm">Players</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-base-200 p-3 rounded-lg">
-                <h3 className="font-bold mb-2 text-sm">
-                  {matchData.players.teamA}
-                </h3>
+                <h3 className="font-bold mb-2 text-sm">{players.teamA}</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>{matchData.players.A1.fullName}</li>
-                  <li>{matchData.players.A2.fullName}</li>
+                  <li>{players.A1.fullName}</li>
+                  <li>{players.A2.fullName}</li>
                 </ul>
               </div>
               <div className="bg-base-200 p-3 rounded-lg">
-                <h3 className="font-bold mb-2 text-sm">
-                  {matchData.players.teamB}
-                </h3>
+                <h3 className="font-bold mb-2 text-sm">{players.teamB}</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>{matchData.players.B1.fullName}</li>
-                  <li>{matchData.players.B2.fullName}</li>
+                  <li>{players.B1.fullName}</li>
+                  <li>{players.B2.fullName}</li>
                 </ul>
               </div>
             </div>

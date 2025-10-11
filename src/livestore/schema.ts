@@ -1,13 +1,21 @@
 import {
   Events,
-  makeSchema,
   Schema,
   SessionIdSymbol,
   State,
+  makeSchema,
 } from '@livestore/livestore'
+import {
+  createSquashMaterializers,
+  squashEvents,
+  squashTables,
+} from './squash-schema'
 
-// You can model your state as SQLite tables (https://docs.livestore.dev/reference/state/sqlite-schema)
-export const tables = {
+// ============================================================================
+// TODO SCHEMA (Canary - will be removed after migration)
+// ============================================================================
+
+const todoTables = {
   todos: State.SQLite.table({
     name: 'todos',
     columns: {
@@ -31,8 +39,7 @@ export const tables = {
   }),
 }
 
-// Events describe data changes (https://docs.livestore.dev/reference/events)
-export const events = {
+const todoEvents = {
   todoCreated: Events.synced({
     name: 'v1.TodoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
@@ -53,23 +60,45 @@ export const events = {
     name: 'v1.TodoClearedCompleted',
     schema: Schema.Struct({ deletedAt: Schema.Date }),
   }),
-  uiStateSet: tables.uiState.set,
+  uiStateSet: todoTables.uiState.set,
 }
 
-// Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
+const todoMaterializers = {
+  'v1.TodoCreated': ({ id, text }: { id: string; text: string }) =>
+    todoTables.todos.insert({ id, text, completed: false }),
+  'v1.TodoCompleted': ({ id }: { id: string }) =>
+    todoTables.todos.update({ completed: true }).where({ id }),
+  'v1.TodoUncompleted': ({ id }: { id: string }) =>
+    todoTables.todos.update({ completed: false }).where({ id }),
+  'v1.TodoDeleted': ({ id, deletedAt }: { id: string; deletedAt: Date }) =>
+    todoTables.todos.update({ deletedAt }).where({ id }),
+  'v1.TodoClearedCompleted': ({ deletedAt }: { deletedAt: Date }) =>
+    todoTables.todos.update({ deletedAt }).where({ completed: true }),
+}
+
+// ============================================================================
+// COMPOSED SCHEMA (TODO + Squash)
+// ============================================================================
+
+// Combine all tables
+export const tables = {
+  ...todoTables,
+  ...squashTables,
+}
+
+// Combine all events
+export const events = {
+  ...todoEvents,
+  ...squashEvents,
+}
+
+// Combine all materializers
 const materializers = State.SQLite.materializers(events, {
-  'v1.TodoCreated': ({ id, text }) =>
-    tables.todos.insert({ id, text, completed: false }),
-  'v1.TodoCompleted': ({ id }) =>
-    tables.todos.update({ completed: true }).where({ id }),
-  'v1.TodoUncompleted': ({ id }) =>
-    tables.todos.update({ completed: false }).where({ id }),
-  'v1.TodoDeleted': ({ id, deletedAt }) =>
-    tables.todos.update({ deletedAt }).where({ id }),
-  'v1.TodoClearedCompleted': ({ deletedAt }) =>
-    tables.todos.update({ deletedAt }).where({ completed: true }),
+  ...todoMaterializers,
+  ...createSquashMaterializers(),
 })
 
+// Create final state and schema
 const state = State.SQLite.makeState({ tables, materializers })
 
 export const schema = makeSchema({ events, state })

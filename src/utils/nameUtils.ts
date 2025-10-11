@@ -1,4 +1,4 @@
-import type { PlayerName } from '../machines/squashMachine'
+import type { PlayerName } from '../machines/squashMachine.types'
 
 /**
  * Creates a PlayerName object from first and last names
