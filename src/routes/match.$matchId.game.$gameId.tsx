@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useStore } from '@livestore/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from '@xstate/react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
-import { useMatchSelectors } from '../hooks/useMatchSelectors'
+import { events } from '../livestore/schema'
+import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchProgress } from '../components/game/MatchProgress'
@@ -14,9 +16,7 @@ import { ScoreGrid } from '../components/game/ScoreGrid'
 import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { determineFirstServingTeam } from '../components/game/utils'
-import { getCurrentGameId } from '../machines/matchMachine'
-import type { GameResult } from '../machines/matchMachine'
-import type { PlayerName } from '../machines/squashMachine.types'
+import type { PlayerName, Team } from '../machines/squashMachine.types'
 
 export const Route = createFileRoute('/match/$matchId/game/$gameId')({
   component: GameRouteWrapper,
@@ -26,12 +26,20 @@ export const Route = createFileRoute('/match/$matchId/game/$gameId')({
 function GameRouteWrapper() {
   const { matchId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { actor, isLoading } = useLiveStoreMatch()
+  const { store } = useStore()
+  const { isLoading } = useLiveStoreMatch()
 
-  // Use selectors for reactive match state
-  const { games, isMatchComplete } = actor
-    ? useMatchSelectors(actor)
-    : { games: [], isMatchComplete: false }
+  // Query games from LiveStore
+  const games = store.useQuery(gamesByMatch$(matchId))
+
+  // Check if match is complete (3 games won)
+  const gamesWonA = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'A',
+  ).length
+  const gamesWonB = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'B',
+  ).length
+  const isMatchComplete = gamesWonA >= 3 || gamesWonB >= 3
 
   // If match is complete, redirect to summary
   useEffect(() => {
@@ -57,22 +65,52 @@ function GameRouteWrapper() {
     return <div className="p-4">Loading...</div>
   }
 
-  // GameRoute maintains a stable machine that handles gameId changes via events
-  // No need to remount - the machine resets itself when route params change
-  return <GameRoute matchGames={games} />
+  return <GameRoute />
 }
 
 // Main component that requires a game actor
-function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
+function GameRoute() {
   const { matchId, gameId } = Route.useParams()
-  const gameNumber = parseInt(gameId, 10)
   const navigate = useNavigate({ from: Route.fullPath })
+  const { store } = useStore()
   const { actor: matchActorRef } = useLiveStoreMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
 
-  // Use selector for reactive match players
-  const matchPlayers = matchActorRef
-    ? useMatchSelectors(matchActorRef).players
+  // Query data from LiveStore
+  const match = store.useQuery(matchById$(matchId))
+  const games = store.useQuery(gamesByMatch$(matchId))
+
+  // Build players from match data
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const matchPlayers = match
+    ? {
+        A1: {
+          firstName: match.playerA1FirstName,
+          lastName: match.playerA1LastName,
+          fullName:
+            `${match.playerA1FirstName} ${match.playerA1LastName}`.trim(),
+        },
+        A2: {
+          firstName: match.playerA2FirstName,
+          lastName: match.playerA2LastName,
+          fullName:
+            `${match.playerA2FirstName} ${match.playerA2LastName}`.trim(),
+        },
+        B1: {
+          firstName: match.playerB1FirstName,
+          lastName: match.playerB1LastName,
+          fullName:
+            `${match.playerB1FirstName} ${match.playerB1LastName}`.trim(),
+        },
+        B2: {
+          firstName: match.playerB2FirstName,
+          lastName: match.playerB2LastName,
+          fullName:
+            `${match.playerB2FirstName} ${match.playerB2LastName}`.trim(),
+        },
+        teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
+        teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
+      }
     : {
         A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
         A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
@@ -81,6 +119,8 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
         teamA: 'Team A',
         teamB: 'Team B',
       }
+
+  const gameNumber = games.findIndex((g) => g.id === gameId) + 1
 
   // Use squashGameMachine hook to create and manage machine
   const { actorRef } = useSquashGameMachine(matchId, gameNumber, matchPlayers)
@@ -128,16 +168,14 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
 
   // Memoized game statistics
   const gameStats = useMemo(() => {
-    const gamesWonA = matchGames.filter(
+    const gamesWonA = games.filter(
       (g) => g.status === 'completed' && g.winner === 'A',
     ).length
-    const gamesWonB = matchGames.filter(
+    const gamesWonB = games.filter(
       (g) => g.status === 'completed' && g.winner === 'B',
     ).length
     const currentGameNumber =
-      matchGames.length > 0
-        ? Math.max(...matchGames.map((g) => g.gameNumber))
-        : 1
+      games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
     const currentWinner = scoreA > scoreB ? 'A' : 'B'
     const willCompleteMatch =
       (currentWinner === 'A' && gamesWonA + 1 >= 3) ||
@@ -150,7 +188,7 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
       currentWinner,
       willCompleteMatch,
     }
-  }, [matchGames, scoreA, scoreB])
+  }, [games, scoreA, scoreB])
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 p-2 sm:p-4 max-w-full mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
@@ -194,16 +232,26 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
             onCancel={() => actorRef.send({ type: 'UNDO' })}
             onConfirm={() => {
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
-              const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-              matchActorRef?.send({
-                type: 'GAME_COMPLETED',
-                winner,
-                finalScore,
-              })
 
-              // If match is complete, navigate to summary immediately
+              // Emit gameCompleted event to LiveStore
+              store.commit(
+                events.gameCompleted({
+                  gameId,
+                  matchId,
+                  winner,
+                  finalScoreA: scoreA,
+                  finalScoreB: scoreB,
+                  timestamp: new Date(),
+                }),
+              )
+
+              // Update machine UI state
+              matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
+
+              // Check if match is complete and navigate
               if (gameStats.willCompleteMatch) {
+                matchActorRef?.send({ type: 'END_MATCH' })
                 navigate({ to: '/match/$matchId/summary', params: { matchId } })
               }
             }}
@@ -222,47 +270,46 @@ function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
             onStartGame={(config) => {
               // Confirm game over and record result
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
-              const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-              matchActorRef?.send({
-                type: 'GAME_COMPLETED',
-                winner,
-                finalScore,
+
+              // Emit gameCompleted event to LiveStore
+              store.commit(
+                events.gameCompleted({
+                  gameId,
+                  matchId,
+                  winner,
+                  finalScoreA: scoreA,
+                  finalScoreB: scoreB,
+                  timestamp: new Date(),
+                }),
+              )
+              matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
+
+              // Create new game in LiveStore
+              const newGameId = crypto.randomUUID()
+              const newGameNumber = games.length + 1
+
+              store.commit(
+                events.gameStarted({
+                  gameId: newGameId,
+                  matchId,
+                  gameNumber: newGameNumber,
+                  firstServingTeam: config.firstServingTeam,
+                  firstServingPlayer: 1,
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                  firstServingSide: config.teamASide || 'R',
+                  maxPoints: 15,
+                  winBy: 1,
+                  timestamp: new Date(),
+                }),
+              )
+
+              // Update machine UI state and navigate
+              matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
+              navigate({
+                to: '/match/$matchId/game/$gameId',
+                params: { matchId, gameId: newGameId },
               })
-
-              // Start new game immediately
-              const pick = (
-                name: string,
-                p1: PlayerName,
-                p2: PlayerName,
-              ): PlayerName => (name === p1.fullName ? p1 : p2)
-              const reordered = {
-                A1: pick(config.players.A1, matchPlayers.A1, matchPlayers.A2),
-                A2: pick(config.players.A2, matchPlayers.A1, matchPlayers.A2),
-                B1: pick(config.players.B1, matchPlayers.B1, matchPlayers.B2),
-                B2: pick(config.players.B2, matchPlayers.B1, matchPlayers.B2),
-              }
-              matchActorRef?.send({
-                type: 'START_NEW_GAME',
-                firstServingTeam: config.firstServingTeam,
-                players: reordered,
-                teamASide: config.teamASide,
-                teamBSide: config.teamBSide,
-              })
-
-              // Get the new game ID and navigate to it
-              if (matchActorRef) {
-                const snapshot = matchActorRef.getSnapshot()
-                const newGameId = getCurrentGameId(snapshot)
-                if (newGameId) {
-                  navigate({
-                    to: '/match/$matchId/game/$gameId',
-                    params: { matchId, gameId: newGameId },
-                  })
-                }
-              }
-
-              setShowNextGameSetup(false)
             }}
           />
         )}
