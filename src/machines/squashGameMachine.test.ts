@@ -57,7 +57,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       const snapshot = actor.getSnapshot()
@@ -79,7 +78,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Team A serves and wins
@@ -101,7 +99,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Team A serves, Team B wins (first hand)
@@ -125,7 +122,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Play one rally
@@ -148,7 +144,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Simulate game to 15-0
@@ -171,7 +166,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Simulate game to 15-0
@@ -197,7 +191,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Play two rallies
@@ -211,7 +204,6 @@ describe('squashGameMachine', () => {
 
       const snapshot = actor.getSnapshot()
       expect(snapshot.context.score).toEqual({ A: 1, B: 0 })
-      expect(snapshot.context.rallyCount).toBe(1)
     })
 
     it('should not undo when no history exists', () => {
@@ -224,7 +216,6 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
-        rallyCount: 0,
       })
 
       // Try to undo with no rallies played
@@ -232,7 +223,6 @@ describe('squashGameMachine', () => {
 
       const snapshot = actor.getSnapshot()
       expect(snapshot.context.score).toEqual({ A: 0, B: 0 })
-      expect(snapshot.context.rallyCount).toBe(0)
     })
   })
 })

@@ -131,10 +131,9 @@ export const configureGameState = (
   params: {
     game: Game
     players: PlayerNameMap
-    rallyCount: number
   },
 ): Partial<Context> => {
-  const { game, players, rallyCount } = params
+  const { game, players } = params
 
   // Read current server state directly from game table (no replay needed!)
   const server: Server = {
@@ -154,7 +153,6 @@ export const configureGameState = (
     server,
     firstHandUsed: game.firstHandUsed,
     history: [],
-    rallyCount,
   }
 }
 
@@ -184,7 +182,8 @@ export const rallyWon = (
   params: { winner: Team },
 ): Partial<Context> => {
   const { winner } = params
-  const rallyNumber = context.rallyCount + 1
+  // Derive rally number from current score (since we don't track "let" rallies)
+  const rallyNumber = context.score.A + context.score.B + 1
 
   // Emit LiveStore rallyWon event
   if (context.store && context.gameId) {
@@ -217,10 +216,7 @@ export const rallyWon = (
     winner,
   )
 
-  return {
-    ...nextState,
-    rallyCount: rallyNumber,
-  }
+  return nextState
 }
 
 export const undoOnce = (context: Context): Partial<Context> => {
@@ -228,7 +224,8 @@ export const undoOnce = (context: Context): Partial<Context> => {
   if (!prev) return {}
 
   // Emit LiveStore rallyUndone event
-  if (context.store && context.gameId && context.rallyCount > 0) {
+  // Only emit if there are rallies to undo (score > 0)
+  if (context.store && context.gameId && (context.score.A > 0 || context.score.B > 0)) {
     context.store.commit(
       events.rallyUndone({
         gameId: context.gameId,
@@ -243,7 +240,6 @@ export const undoOnce = (context: Context): Partial<Context> => {
     server: prev.server,
     firstHandUsed: prev.firstHandUsed,
     history: context.history.slice(0, -1),
-    rallyCount: Math.max(0, context.rallyCount - 1),
   }
 }
 
@@ -269,7 +265,6 @@ export const resetGameState = (): Partial<Context> => ({
   },
   firstHandUsed: false,
   history: [],
-  rallyCount: 0,
 })
 
 // ===== Guards =====

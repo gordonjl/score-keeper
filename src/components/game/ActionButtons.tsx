@@ -8,16 +8,17 @@ type ActionButtonsProps = {
 
 export const ActionButtons = ({ actorRef }: ActionButtonsProps) => {
   // Use a single selector for all state this component needs
-  const { isGameOver, isActive, isAwaitingConfirmation, rallyCount } =
+  const { isGameOver, isActive, isAwaitingConfirmation, hasHistory } =
     useSelector(actorRef, (s) => ({
       isGameOver: s.status === 'done',
       isActive: s.matches('active'),
       isAwaitingConfirmation: s.matches('awaitingConfirmation'),
-      rallyCount: s.context.rallyCount,
+      hasHistory: s.context.history.length > 0,
     }))
 
   const canLet = !isGameOver && isActive && !isAwaitingConfirmation
-  const canUndo = rallyCount > 0
+  // Can undo if there's history (which means at least one rally was played)
+  const canUndo = hasHistory
 
   const onLet = () => {
     actorRef.send({ type: 'LET' })

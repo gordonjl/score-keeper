@@ -58,7 +58,6 @@ export type Context = {
 
   // LiveStore integration
   store: Store<typeof schema> | null
-  rallyCount: number
 }
 
 // ===== Events =====
@@ -67,7 +66,6 @@ export type Events =
       type: 'GAME_LOADED'
       game: Game
       players: PlayerNameMap
-      rallyCount: number
     }
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'TOGGLE_SERVE_SIDE' }
@@ -91,7 +89,6 @@ export const squashGameMachine = setup({
         params: {
           game: Game
           players: PlayerNameMap
-          rallyCount: number
         },
       ) => configureGameState(context, params),
     ),
@@ -145,7 +142,6 @@ export const squashGameMachine = setup({
             params: ({ event }) => ({
               game: event.game,
               players: event.players,
-              rallyCount: event.rallyCount,
             }),
           },
         },

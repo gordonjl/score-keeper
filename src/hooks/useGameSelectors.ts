@@ -19,7 +19,6 @@ export const useGameSelectors = (
   const score = useSelector(actor, (s) => s.context.score)
   const players = useSelector(actor, (s) => s.context.players)
   const server = useSelector(actor, (s) => s.context.server)
-  const rallyCount = useSelector(actor, (s) => s.context.rallyCount)
 
   // State checks
   const isGameOver = useSelector(actor, (s) => s.status === 'done')
@@ -55,7 +54,6 @@ export const useGameSelectors = (
     players,
     server,
     serverRowKey,
-    rallyCount,
     isGameOver,
     isAwaitingConfirmation,
     isActive,

@@ -57,15 +57,14 @@ export const useSquashGameMachine = (
 
   // Load game data ONCE when actor is created
   // IMPORTANT: Only depends on actorRef to run once per actor creation
-  // We intentionally capture gameData, players, ralliesData from closure
-  // to avoid re-running when rallies update during gameplay (would cause infinite loop)
+  // We intentionally capture gameData, players from closure
+  // to avoid re-running when data updates during gameplay (would cause infinite loop)
   useEffect(() => {
     // Load game data - server state is already in the game table (no replay needed!)
     actorRef.send({
       type: 'GAME_LOADED',
       game: gameData,
       players,
-      rallyCount: ralliesData.length,
     })
   }, [actorRef])
 
