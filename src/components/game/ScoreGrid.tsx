@@ -1,32 +1,44 @@
+import { useMemo } from 'react'
+import { useSelector } from '@xstate/react'
+import { getOrderedRows } from './utils'
+import type { ActorRefFrom } from 'xstate'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
 import type { RowKey } from '../../machines/squashMachine'
 
 type ScoreGridProps = {
-  rows: Array<RowKey>
-  players: Record<string, string>
-  grid: Record<RowKey, Array<string>>
-  serverRowKey: RowKey
-  scoreA: number
-  scoreB: number
-  serverTeam: 'A' | 'B'
-  handIndex: number
-  isGameOver: boolean
-  onToggleServeSide: () => void
+  actorRef: ActorRefFrom<typeof squashGameMachine>
+  firstServingTeam: 'A' | 'B'
+  playerLabels: Record<string, string>
 }
 
 const MAX_COLS = 15
 
 export const ScoreGrid = ({
-  rows,
-  players,
-  grid,
-  serverRowKey,
-  scoreA,
-  scoreB,
-  serverTeam,
-  handIndex,
-  isGameOver,
-  onToggleServeSide,
+  actorRef,
+  firstServingTeam,
+  playerLabels,
 }: ScoreGridProps) => {
+  // Use a single selector for all state this component needs
+  const { grid, scoreA, scoreB, server, isGameOver } = useSelector(
+    actorRef,
+    (s) => ({
+      grid: s.context.grid,
+      scoreA: s.context.score.A,
+      scoreB: s.context.score.B,
+      server: s.context.server,
+      isGameOver: s.matches('complete'),
+    }),
+  )
+
+  // Compute derived values
+  const rows = useMemo(() => getOrderedRows(firstServingTeam), [firstServingTeam])
+  const serverRowKey = `${server.team}${server.player}` as RowKey
+  const serverTeam = server.team
+  const handIndex = server.handIndex
+
+  const onToggleServeSide = () => {
+    actorRef.send({ type: 'TOGGLE_SERVE_SIDE' })
+  }
   const renderCell = (row: RowKey, col: number) => {
     const cell = grid[row][col]
     const isCurrentServer =
@@ -117,7 +129,7 @@ export const ScoreGrid = ({
                         {row}
                       </span>
                       <span className="text-xs sm:text-sm truncate max-w-[50px] sm:max-w-[70px]">
-                        {players[row]}
+                        {playerLabels[row]}
                       </span>
                     </div>
                   </td>

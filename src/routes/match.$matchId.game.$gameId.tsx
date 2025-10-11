@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSelector } from '@xstate/react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
-import { useEventSourcedGameActor } from '../hooks/useEventSourcedGame'
+import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
+import { useMatchSelectors } from '../hooks/useMatchSelectors'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchProgress } from '../components/game/MatchProgress'
@@ -11,15 +13,10 @@ import { RallyButtons } from '../components/game/RallyButtons'
 import { ScoreGrid } from '../components/game/ScoreGrid'
 import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
-import { useGameState } from '../components/game/useGameState'
-import {
-  determineFirstServingTeam,
-  getOrderedRows,
-} from '../components/game/utils'
+import { determineFirstServingTeam } from '../components/game/utils'
 import { getCurrentGameId } from '../machines/matchMachine'
-import type { ActorRefFrom } from 'xstate'
 import type { GameResult } from '../machines/matchMachine'
-import type { PlayerName, squashMachine } from '../machines/squashMachine'
+import type { PlayerName } from '../machines/squashMachine'
 
 export const Route = createFileRoute('/match/$matchId/game/$gameId')({
   component: GameRouteWrapper,
@@ -27,31 +24,21 @@ export const Route = createFileRoute('/match/$matchId/game/$gameId')({
 
 // Wrapper component that conditionally renders based on game actor existence
 function GameRouteWrapper() {
-  const { matchId, gameId } = Route.useParams()
+  const { matchId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
   const { actor, isLoading } = useLiveStoreMatch()
-  const gameActor = useEventSourcedGameActor(gameId)
 
-  const matchData = actor
-    ? {
-        games: actor.getSnapshot().context.games,
-        isMatchComplete: actor.getSnapshot().matches('matchComplete'),
-      }
+  // Use selectors for reactive match state
+  const { games, isMatchComplete } = actor
+    ? useMatchSelectors(actor)
     : { games: [], isMatchComplete: false }
 
   // If match is complete, redirect to summary
   useEffect(() => {
-    if (matchData.isMatchComplete) {
+    if (isMatchComplete) {
       navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
-  }, [matchData.isMatchComplete, matchId, navigate])
-
-  // If no game actor after loading completes, redirect to setup
-  useEffect(() => {
-    if (!isLoading && !gameActor && !matchData.isMatchComplete) {
-      navigate({ to: '/match/$matchId/setup', params: { matchId } })
-    }
-  }, [isLoading, gameActor, matchData.isMatchComplete, matchId, navigate])
+  }, [isMatchComplete, matchId, navigate])
 
   // Show loading while initializing
   if (isLoading) {
@@ -65,162 +52,147 @@ function GameRouteWrapper() {
     )
   }
 
-  // Conditionally render GameRoute only when actor exists
-  if (!gameActor || matchData.isMatchComplete) {
+  // Conditionally render GameRoute only when not complete
+  if (isMatchComplete) {
     return <div className="p-4">Loading...</div>
   }
 
-  return <GameRoute gameActor={gameActor} matchGames={matchData.games} />
+  // GameRoute maintains a stable machine that handles gameId changes via events
+  // No need to remount - the machine resets itself when route params change
+  return <GameRoute matchGames={games} />
 }
 
 // Main component that requires a game actor
-function GameRoute({
-  gameActor,
-  matchGames,
-}: {
-  gameActor: ActorRefFrom<typeof squashMachine>
-  matchGames: Array<GameResult>
-}) {
-  const { matchId } = Route.useParams()
+function GameRoute({ matchGames }: { matchGames: Array<GameResult> }) {
+  const { matchId, gameId } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
   const { actor: matchActorRef } = useLiveStoreMatch()
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
-  const [matchStartTime] = useState(Date.now())
 
-  // Use custom hook to get all game state
+  // Use selector for reactive match players
+  const matchPlayers = matchActorRef
+    ? useMatchSelectors(matchActorRef).players
+    : {
+        A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
+        A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
+        B1: { firstName: 'B1', lastName: 'Player', fullName: 'B1 Player' },
+        B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
+        teamA: 'Team A',
+        teamB: 'Team B',
+      }
+
+  // Use squashGameMachine hook to create and manage machine
+  const { actorRef } = useSquashGameMachine(gameId, matchPlayers)
+
+  // Only select state that the route component DIRECTLY uses for its own logic
+  // Use a single selector to get multiple values efficiently
   const {
-    scoreA,
-    scoreB,
-    grid,
-    players,
-    server,
-    serverRowKey,
-    history,
     isGameOver,
     isAwaitingConfirmation,
-    isIdle,
-    announcement,
-  } = useGameState(gameActor)
+    scoreA,
+    scoreB,
+    teamAName,
+    teamBName,
+    grid,
+  } = useSelector(actorRef, (s) => ({
+    isGameOver: s.matches('complete'),
+    isAwaitingConfirmation: s.matches('awaitingConfirmation'),
+    scoreA: s.context.score.A,
+    scoreB: s.context.score.B,
+    teamAName: s.context.players.teamA,
+    teamBName: s.context.players.teamB,
+    grid: s.context.grid,
+  }))
 
-  // Get match context for next game setup
-  const matchPlayers = matchActorRef
-    ? matchActorRef.getSnapshot().context.players
-    : players
+  // Computed values needed by route component for conditional logic
+  const firstServingTeam = useMemo(
+    () => determineFirstServingTeam(grid),
+    [grid],
+  )
 
-  // Build player row labels from match players (source of truth)
-  const matchPlayerRowLabels: Record<'A1' | 'A2' | 'B1' | 'B2', string> = {
-    A1: matchPlayers.A1.lastName || matchPlayers.A1.firstName || 'A1',
-    A2: matchPlayers.A2.lastName || matchPlayers.A2.firstName || 'A2',
-    B1: matchPlayers.B1.lastName || matchPlayers.B1.firstName || 'B1',
-    B2: matchPlayers.B2.lastName || matchPlayers.B2.firstName || 'B2',
-  }
+  const winnerTeam = useMemo(
+    () => (scoreA > scoreB ? teamAName : teamBName),
+    [scoreA, scoreB, teamAName, teamBName],
+  )
 
-  // Determine which team served first
-  const firstServingTeam = determineFirstServingTeam(grid)
-  const rows = getOrderedRows(firstServingTeam)
+  const matchPlayerRowLabels = useMemo(
+    () => ({
+      A1: matchPlayers.A1.lastName || matchPlayers.A1.firstName || 'A1',
+      A2: matchPlayers.A2.lastName || matchPlayers.A2.firstName || 'A2',
+      B1: matchPlayers.B1.lastName || matchPlayers.B1.firstName || 'B1',
+      B2: matchPlayers.B2.lastName || matchPlayers.B2.firstName || 'B2',
+    }),
+    [matchPlayers],
+  )
 
-  // Display teams in order: first-serving team on left/top
-  const topTeam = firstServingTeam === 'A' ? 'teamA' : 'teamB'
-  const bottomTeam = firstServingTeam === 'A' ? 'teamB' : 'teamA'
-  const topScore = firstServingTeam === 'A' ? scoreA : scoreB
-  const bottomScore = firstServingTeam === 'A' ? scoreB : scoreA
-  const winnerTeam = scoreA > scoreB ? players.teamA : players.teamB
+  // Memoized game statistics
+  const gameStats = useMemo(() => {
+    const gamesWonA = matchGames.filter(
+      (g) => g.status === 'completed' && g.winner === 'A',
+    ).length
+    const gamesWonB = matchGames.filter(
+      (g) => g.status === 'completed' && g.winner === 'B',
+    ).length
+    const currentGameNumber =
+      matchGames.length > 0
+        ? Math.max(...matchGames.map((g) => g.gameNumber))
+        : 1
+    const currentWinner = scoreA > scoreB ? 'A' : 'B'
+    const willCompleteMatch =
+      (currentWinner === 'A' && gamesWonA + 1 >= 3) ||
+      (currentWinner === 'B' && gamesWonB + 1 >= 3)
 
-  // Strictly typed team name map for ScoreHeader
-  // Use match players as source of truth for team names
-  const teamNames: Record<'teamA' | 'teamB', string> = {
-    teamA: matchPlayers.teamA,
-    teamB: matchPlayers.teamB,
-  }
-
-  // Calculate games won (only count completed games)
-  const gamesWonA = matchGames.filter(
-    (g) => g.status === 'completed' && g.winner === 'A',
-  ).length
-  const gamesWonB = matchGames.filter(
-    (g) => g.status === 'completed' && g.winner === 'B',
-  ).length
-
-  // Get current game number from the games array (highest game number)
-  const currentGameNumber =
-    matchGames.length > 0 ? Math.max(...matchGames.map((g) => g.gameNumber)) : 1
-
-  // Check if this game will complete the match (one team will have 3 wins)
-  const currentWinner = scoreA > scoreB ? 'A' : 'B'
-  const willCompleteMatch =
-    (currentWinner === 'A' && gamesWonA + 1 >= 3) ||
-    (currentWinner === 'B' && gamesWonB + 1 >= 3)
+    return {
+      gamesWonA,
+      gamesWonB,
+      currentGameNumber,
+      currentWinner,
+      willCompleteMatch,
+    }
+  }, [matchGames, scoreA, scoreB])
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 p-2 sm:p-4 max-w-full mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
       {/* Match Progress Sidebar - Desktop */}
-      <div className="hidden lg:block lg:w-80 flex-shrink-0">
-        <MatchProgress
-          games={matchGames}
-          currentGameNumber={currentGameNumber}
-          players={{ teamA: matchPlayers.teamA, teamB: matchPlayers.teamB }}
-          matchStartTime={matchStartTime}
-          isGameInProgress={!isGameOver}
-        />
-      </div>
+      {matchActorRef && (
+        <div className="hidden lg:block lg:w-80 flex-shrink-0">
+          <MatchProgress
+            matchActorRef={matchActorRef}
+            isGameInProgress={!isGameOver}
+          />
+        </div>
+      )}
 
       {/* Main Game Area */}
       <div className="flex-1 min-w-0">
-        <ScoreHeader
-          topTeam={topTeam}
-          bottomTeam={bottomTeam}
-          topScore={topScore}
-          bottomScore={bottomScore}
-          players={teamNames}
-          currentGameNumber={currentGameNumber}
-          gamesWonA={gamesWonA}
-          gamesWonB={gamesWonB}
-        />
+        {matchActorRef && (
+          <ScoreHeader
+            gameActorRef={actorRef}
+            matchActorRef={matchActorRef}
+            firstServingTeam={firstServingTeam}
+          />
+        )}
 
-        <ServeAnnouncement announcement={announcement} />
+        <ServeAnnouncement actorRef={actorRef} />
 
         <ScoreGrid
-          rows={rows}
-          players={matchPlayerRowLabels}
-          grid={grid}
-          serverRowKey={serverRowKey}
-          scoreA={scoreA}
-          scoreB={scoreB}
-          serverTeam={server.team}
-          handIndex={server.handIndex}
-          isGameOver={isGameOver}
-          onToggleServeSide={() =>
-            gameActor.send({ type: 'TOGGLE_SERVE_SIDE' })
-          }
+          actorRef={actorRef}
+          firstServingTeam={firstServingTeam}
+          playerLabels={matchPlayerRowLabels}
         />
 
-        <RallyButtons
-          players={{
-            A1: players.A1.fullName,
-            A2: players.A2.fullName,
-            B1: players.B1.fullName,
-            B2: players.B2.fullName,
-          }}
-          isDisabled={isGameOver || isAwaitingConfirmation}
-          onRallyWon={(winner) => gameActor.send({ type: 'RALLY_WON', winner })}
-        />
+        <RallyButtons actorRef={actorRef} />
 
-        <ActionButtons
-          canLet={!isGameOver && !isIdle && !isAwaitingConfirmation}
-          canUndo={history.length > 0}
-          onLet={() => gameActor.send({ type: 'LET' })}
-          onUndo={() => gameActor.send({ type: 'UNDO' })}
-        />
+        <ActionButtons actorRef={actorRef} />
 
         {isAwaitingConfirmation && !showNextGameSetup && (
           <GameOverConfirmation
+            actorRef={actorRef}
             winnerTeam={winnerTeam}
-            scoreA={scoreA}
-            scoreB={scoreB}
-            willCompleteMatch={willCompleteMatch}
-            onCancel={() => gameActor.send({ type: 'UNDO' })}
+            willCompleteMatch={gameStats.willCompleteMatch}
+            onCancel={() => actorRef.send({ type: 'UNDO' })}
             onConfirm={() => {
-              gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+              actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
               matchActorRef?.send({
@@ -230,7 +202,7 @@ function GameRoute({
               })
 
               // If match is complete, navigate to summary immediately
-              if (willCompleteMatch) {
+              if (gameStats.willCompleteMatch) {
                 navigate({ to: '/match/$matchId/summary', params: { matchId } })
               }
             }}
@@ -243,12 +215,12 @@ function GameRoute({
         {showNextGameSetup && (
           <NextGameSetup
             isFirstGame={false}
-            lastWinner={scoreA > scoreB ? 'A' : 'B'}
+            lastWinner={gameStats.currentWinner as 'A' | 'B'}
             players={matchPlayers}
             onCancel={() => setShowNextGameSetup(false)}
             onStartGame={(config) => {
               // Confirm game over and record result
-              gameActor.send({ type: 'CONFIRM_GAME_OVER' })
+              actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const finalScore = { A: scoreA, B: scoreB }
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
               matchActorRef?.send({
@@ -278,13 +250,15 @@ function GameRoute({
               })
 
               // Get the new game ID and navigate to it
-              const snapshot = matchActorRef?.getSnapshot()
-              const newGameId = snapshot ? getCurrentGameId(snapshot) : null
-              if (newGameId) {
-                navigate({
-                  to: '/match/$matchId/game/$gameId',
-                  params: { matchId, gameId: newGameId },
-                })
+              if (matchActorRef) {
+                const snapshot = matchActorRef.getSnapshot()
+                const newGameId = getCurrentGameId(snapshot)
+                if (newGameId) {
+                  navigate({
+                    to: '/match/$matchId/game/$gameId',
+                    params: { matchId, gameId: newGameId },
+                  })
+                }
               }
 
               setShowNextGameSetup(false)
@@ -292,17 +266,15 @@ function GameRoute({
           />
         )}
 
-        {isGameOver && !showNextGameSetup && (
+        {isGameOver && !showNextGameSetup && matchActorRef && (
           <MatchSummary
-            games={matchGames}
-            players={{ teamA: players.teamA, teamB: players.teamB }}
-            currentGameNumber={currentGameNumber}
+            matchActorRef={matchActorRef}
             currentWinner={winnerTeam}
             onStartNewGame={() => {
               setShowNextGameSetup(true)
             }}
             onEndMatch={() => {
-              matchActorRef?.send({ type: 'END_MATCH' })
+              matchActorRef.send({ type: 'END_MATCH' })
               // Match is automatically persisted in IndexedDB
               navigate({ to: '/' })
             }}
@@ -311,22 +283,21 @@ function GameRoute({
       </div>
 
       {/* Match Progress - Mobile (Collapsible) */}
-      <div className="lg:hidden">
-        <details className="collapse collapse-arrow bg-base-200">
-          <summary className="collapse-title font-medium">
-            Match Progress (Game {currentGameNumber})
-          </summary>
-          <div className="collapse-content">
-            <MatchProgress
-              games={matchGames}
-              currentGameNumber={currentGameNumber}
-              players={matchPlayers}
-              matchStartTime={matchStartTime}
-              isGameInProgress={!isGameOver}
-            />
-          </div>
-        </details>
-      </div>
+      {matchActorRef && (
+        <div className="lg:hidden">
+          <details className="collapse collapse-arrow bg-base-200">
+            <summary className="collapse-title font-medium">
+              Match Progress (Game {gameStats.currentGameNumber})
+            </summary>
+            <div className="collapse-content">
+              <MatchProgress
+                matchActorRef={matchActorRef}
+                isGameInProgress={!isGameOver}
+              />
+            </div>
+          </details>
+        </div>
+      )}
     </div>
   )
 }

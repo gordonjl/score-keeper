@@ -1,27 +1,28 @@
-type Game = {
-  gameNumber: number
-  winner: 'A' | 'B' | null
-  finalScore: { A: number; B: number } | null
-  status: 'in_progress' | 'completed'
-}
+import { useSelector } from '@xstate/react'
+import type { ActorRefFrom } from 'xstate'
+import type { matchMachine } from '../../machines/matchMachine'
 
 type MatchSummaryProps = {
-  games: Array<Game>
-  players: Record<string, string>
-  currentGameNumber: number
+  matchActorRef: ActorRefFrom<typeof matchMachine>
   currentWinner: string
   onStartNewGame: () => void
   onEndMatch: () => void
 }
 
 export const MatchSummary = ({
-  games,
-  players,
-  currentGameNumber,
+  matchActorRef,
   currentWinner,
   onStartNewGame,
   onEndMatch,
 }: MatchSummaryProps) => {
+  // Select all data this component needs from the match actor
+  const { games, players } = useSelector(matchActorRef, (s) => ({
+    games: s.context.games,
+    players: s.context.players,
+  }))
+
+  // Compute derived values
+  const currentGameNumber = games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
   // Filter to only show completed games
   const completedGames = games.filter(
     (game) => game.status === 'completed' && game.finalScore !== null,

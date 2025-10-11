@@ -1,16 +1,22 @@
-import { assign, setup } from 'xstate'
-import { events } from '../livestore/schema'
+import { assign, log, setup } from 'xstate'
+import {
+  configureGameState,
+  gameEnded,
+  initialGrid,
+  rallyWon,
+  resetGameState,
+  snapshot,
+  toggleServeSide,
+  undoOnce,
+} from './squashGameMachine.actions'
+import type { Snapshot } from './squashGameMachine.actions'
 import type { Store } from '@livestore/livestore'
 import type { schema } from '../livestore/schema'
 import type {
   ActivityGrid,
-  Cell,
   PlayerNameMap,
-  PlayerRow,
-  RowKey,
   Score,
   Server,
-  Side,
   Team,
 } from './squashMachine'
 
@@ -25,23 +31,15 @@ export type Game = {
   winner: string | null
   maxPoints: number
   winBy: number
-  createdAt: number
-  completedAt: number | null
+  createdAt: Date
+  completedAt: Date | null
   firstServingTeam: string
   firstServingPlayer: number
   firstServingSide: string
 }
 
-// ===== Snapshot for History =====
-type Snapshot = {
-  score: Score
-  server: Server
-  grid: ActivityGrid
-  firstHandUsed: boolean
-}
-
 // ===== Context =====
-type Context = {
+export type Context = {
   // Configuration (from Game)
   gameId: string | null
   matchId: string | null
@@ -66,7 +64,7 @@ type Context = {
 }
 
 // ===== Events =====
-type Events =
+export type Events =
   | {
       type: 'GAME_LOADED'
       game: Game
@@ -78,44 +76,6 @@ type Events =
   | { type: 'LET' }
   | { type: 'UNDO' }
   | { type: 'RESET' }
-
-// ===== Helper Functions =====
-const otherTeam = (t: Team): Team => (t === 'A' ? 'B' : 'A')
-const flip = (s: Side): Side => (s === 'R' ? 'L' : 'R')
-const rowKey = (team: Team, player: PlayerRow): RowKey =>
-  `${team}${player}` as RowKey
-
-const makeEmptyCols = (n = 30): Array<Cell> =>
-  Array.from({ length: n }, () => '')
-
-const initialGrid = (cols = 30): ActivityGrid => ({
-  A1: makeEmptyCols(cols),
-  A2: makeEmptyCols(cols),
-  B1: makeEmptyCols(cols),
-  B2: makeEmptyCols(cols),
-  A: makeEmptyCols(cols),
-  B: makeEmptyCols(cols),
-})
-
-const writeCell = (
-  grid: ActivityGrid,
-  key: RowKey | 'A' | 'B',
-  col: number,
-  value: Cell,
-): ActivityGrid => {
-  const next: ActivityGrid = {
-    A1: [...grid.A1],
-    A2: [...grid.A2],
-    B1: [...grid.B1],
-    B2: [...grid.B2],
-    A: [...grid.A],
-    B: [...grid.B],
-  }
-  next[key][col] = value
-  return next
-}
-
-const colForTeamServe = (score: Score, team: Team): number => score[team]
 
 // ===== State Machine =====
 export const squashGameMachine = setup({
@@ -130,308 +90,19 @@ export const squashGameMachine = setup({
   },
   actions: {
     configureGameState: assign(
-      ({ context }, params: { game: Game; players: PlayerNameMap }) => {
-        const { game, players } = params
-
-        // TODO: Support resuming in-progress games by replaying rally events from LiveStore
-        // For now, only support fresh games at 0-0
-        if (game.scoreA !== 0 || game.scoreB !== 0) {
-          console.warn(
-            'Cannot resume in-progress game - starting fresh. Grid reconstruction not yet implemented.',
-          )
-        }
-
-        // Initialize server from game data
-        const server: Server = {
-          team: game.firstServingTeam as Team,
-          player: game.firstServingPlayer as PlayerRow,
-          side: game.firstServingSide as Side,
-          handIndex: 0 as const,
-        }
-
-        // Initialize grid with first serve pre-written
-        const grid = writeCell(
-          initialGrid(),
-          rowKey(server.team, server.player),
-          0,
-          server.side,
-        )
-
-        return {
-          gameId: game.id,
-          matchId: game.matchId,
-          maxPoints: game.maxPoints,
-          winBy: game.winBy,
-          players,
-          score: { A: 0, B: 0 },
-          server,
-          grid,
-          firstHandUsed: false,
-          history: [],
-          rallyCount: 0,
-          store: context.store,
-        }
-      },
+      ({ context }, params: { game: Game; players: PlayerNameMap }) =>
+        configureGameState(context, params),
     ),
-
-    snapshot: assign(({ context }) => ({
-      history: [
-        ...context.history,
-        {
-          score: { ...context.score },
-          server: { ...context.server },
-          grid: { ...context.grid },
-          firstHandUsed: context.firstHandUsed,
-        },
-      ],
-    })),
-
-    toggleServeSide: assign(({ context }) => {
-      if (context.server.handIndex !== 0) return {}
-
-      const newSide = flip(context.server.side)
-      const col = colForTeamServe(context.score, context.server.team)
-      const currentRow = rowKey(context.server.team, context.server.player)
-      const nextGrid = writeCell(context.grid, currentRow, col, newSide)
-
-      return {
-        server: { ...context.server, side: newSide },
-        grid: nextGrid,
-      }
-    }),
-
-    rallyWon: assign(({ context }, params: { winner: Team }) => {
-      const { winner } = params
-      const cur = context.server
-      const col = colForTeamServe(context.score, cur.team)
-      const rallyNumber = context.rallyCount + 1
-      const currentRow = rowKey(cur.team, cur.player)
-
-      // Start with current grid
-      const updates: Partial<Context> = {
-        rallyCount: rallyNumber,
-      }
-
-      // Emit LiveStore rallyWon event
-      if (context.store && context.gameId) {
-        context.store.commit(
-          events.rallyWon({
-            rallyId: crypto.randomUUID(),
-            gameId: context.gameId,
-            rallyNumber,
-            winner,
-            serverTeam: cur.team,
-            serverPlayer: cur.player,
-            serverSide: cur.side,
-            serverHandIndex: cur.handIndex,
-            scoreABefore: context.score.A,
-            scoreBBefore: context.score.B,
-            scoreAAfter: winner === 'A' ? context.score.A + 1 : context.score.A,
-            scoreBAfter: winner === 'B' ? context.score.B + 1 : context.score.B,
-            timestamp: new Date(),
-          }),
-        )
-      }
-
-      // Server won the rally
-      if (winner === cur.team) {
-        const nextScore: Score = {
-          ...context.score,
-          [winner]: context.score[winner] + 1,
-        }
-        const nextServer: Server = { ...cur, side: flip(cur.side) }
-        const nextCol = nextScore[cur.team]
-        const nextGrid = writeCell(
-          context.grid,
-          currentRow,
-          nextCol,
-          nextServer.side,
-        )
-
-        return {
-          ...updates,
-          score: nextScore,
-          server: nextServer,
-          grid: nextGrid,
-        }
-      }
-
-      // Receiving team won - add slash to current cell
-      const existingCell = context.grid[currentRow][col]
-      const slashedCell: Cell = `${existingCell}/` as Cell
-      const gridWithSlash = writeCell(
-        context.grid,
-        currentRow,
-        col,
-        slashedCell,
-      )
-
-      const nextScore: Score = {
-        ...context.score,
-        [winner]: context.score[winner] + 1,
-      }
-
-      // First-hand exception at 0-0
-      const isStartOfGame = context.score.A === 0 && context.score.B === 0
-      if (isStartOfGame && !context.firstHandUsed) {
-        const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-        const gridWithPartnerSlash = writeCell(
-          gridWithSlash,
-          partnerRow,
-          0,
-          '/',
-        )
-
-        const t = otherTeam(cur.team)
-        const nextServer: Server = {
-          team: t,
-          player: 1,
-          side: 'R',
-          handIndex: 0,
-        }
-        const nextCol = nextScore[t]
-        const finalGrid = writeCell(
-          gridWithPartnerSlash,
-          rowKey(t, 1),
-          nextCol,
-          nextServer.side,
-        )
-
-        return {
-          ...updates,
-          score: nextScore,
-          server: nextServer,
-          grid: finalGrid,
-          firstHandUsed: true,
-        }
-      }
-
-      // First hand lost (not start of game)
-      if (cur.handIndex === 0 && !context.firstHandUsed) {
-        const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-        const gridWithPartnerSlash = writeCell(
-          gridWithSlash,
-          partnerRow,
-          col,
-          '/',
-        )
-
-        const t = otherTeam(cur.team)
-        const nextServer: Server = {
-          team: t,
-          player: 1,
-          side: 'R',
-          handIndex: 0,
-        }
-        const nextCol = nextScore[t]
-        const finalGrid = writeCell(
-          gridWithPartnerSlash,
-          rowKey(t, 1),
-          nextCol,
-          nextServer.side,
-        )
-
-        return {
-          ...updates,
-          score: nextScore,
-          server: nextServer,
-          grid: finalGrid,
-          firstHandUsed: true,
-        }
-      }
-
-      // First hand lost, partner serves (second hand)
-      if (cur.handIndex === 0) {
-        const xCol = nextScore[winner]
-        const gridWithX = writeCell(gridWithSlash, winner, xCol, 'X')
-
-        const partner: Server = {
-          team: cur.team,
-          player: cur.player === 1 ? 2 : 1,
-          side: flip(cur.side),
-          handIndex: 1,
-        }
-        const nextCol = context.score[cur.team]
-        const finalGrid = writeCell(
-          gridWithX,
-          rowKey(partner.team, partner.player),
-          nextCol,
-          partner.side,
-        )
-
-        return {
-          ...updates,
-          score: nextScore,
-          server: partner,
-          grid: finalGrid,
-          firstHandUsed: true,
-        }
-      }
-
-      // Second hand lost - hand-out to other team
-      const t = otherTeam(cur.team)
-      const nextServer: Server = {
-        team: t,
-        player: 1,
-        side: 'R',
-        handIndex: 0,
-      }
-      const nextCol = nextScore[t]
-      const finalGrid = writeCell(
-        gridWithSlash,
-        rowKey(t, 1),
-        nextCol,
-        nextServer.side,
-      )
-
-      return {
-        ...updates,
-        score: nextScore,
-        server: nextServer,
-        grid: finalGrid,
-        firstHandUsed: true,
-      }
-    }),
-
-    undoOnce: assign(({ context }) => {
-      const prev = context.history.at(-1)
-      if (!prev) return {}
-
-      // Emit LiveStore rallyUndone event
-      if (context.store && context.gameId && context.rallyCount > 0) {
-        context.store.commit(
-          events.rallyUndone({
-            gameId: context.gameId,
-            rallyId: '', // LiveStore materializer will find the last rally
-            timestamp: new Date(),
-          }),
-        )
-      }
-
-      return {
-        score: prev.score,
-        server: prev.server,
-        grid: prev.grid,
-        firstHandUsed: prev.firstHandUsed,
-        history: context.history.slice(0, -1),
-        rallyCount: Math.max(0, context.rallyCount - 1),
-      }
-    }),
+    snapshot: assign(({ context }) => snapshot(context)),
+    toggleServeSide: assign(({ context }) => toggleServeSide(context)),
+    rallyWon: assign(({ context }, params: { winner: Team }) =>
+      rallyWon(context, params),
+    ),
+    undoOnce: assign(({ context }) => undoOnce(context)),
+    resetGameState: assign(() => resetGameState()),
   },
   guards: {
-    gameEnded: (
-      _,
-      params: {
-        score: Score
-        maxPoints: number
-        winBy: number
-      },
-    ) => {
-      const { score, maxPoints, winBy } = params
-      const { A, B } = score
-      if (A < maxPoints && B < maxPoints) return false
-      return Math.abs(A - B) >= winBy
-    },
+    gameEnded,
   },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgDEAqgHIAiA8gNoAMAuoqAAcA9rEoAXSkOr8QAD0QAWAEwAaEAE9EADgCMAOgCsAXyNrUmHPiKkKNegCUAogGVHAFW58kIYaIlSZeQRlNU0EJQUAdj1IrgBmHSVjUxBzLDxCEnIqWj1qITEAYSkAM0ooNAAnSDpcAEFiRwB9ABk2OpZHFk8ZX3FJaW8guIN9SJ0tcYBOBS0IpR0p0MQlCL0pyIA2A02kkzN0dKss21zyCQA3BzqWloBNJoB1NiYe7z7-QdBhqc29LSmXAMM1m80WywQcSUXHWSl+k2SBwsGWs2TsenOlCudDcbFwuBazVc9gAakSAJKdN6CET9AJDRAGHZ6CJTKYGZRKOKbKFaCE6AxKf5xEWisUihT7VKHSyZGw5MAYsiXeiEjy8Xq0z6BRC7GFTLQKKECmZcrRxflcIXim0SqVpWWo06KihgMgAazo1J8WoGOshoxiE2moOU4I0igBehFwLikUR0uRx3l6NdHq9Oi8NL8foZAbGwcWoYWSwjwSN0ZGUzjCYdKJOCoxAHcMP1qFBitQypUCBhPnRCi8AGLk+zEJr1RpNNhk+zej6576ISLjdZs6sAzazI18suzaJcLSx+MmFL5CBwGR15No2ianP0pcIAC0mwhr-tMvrKdy+SKpXKKpIHvOkvjkRAJiFOFNiPDYFESHQuBmCEIi0Fl4kSWsvxvZ0lRVEDtTzTYdAUdYSK4JCkOUOJzRQgw4hiLQtwMc0bUlFJrzlW8XWwN13QIxdwPCGiYm2YEFGLCZdzCbkDBiAxIl0PYOOwrjcIwFs2w7ACez7QSF0fISdn0Vl2U5bleQhfdDFgmtPyTNTGzIIQCAEAAbMAxDAATDKCRD4n+YE4UmLhNiBKIrKYytj2SEwgA */
@@ -464,6 +135,7 @@ export const squashGameMachine = setup({
       target: '.active',
     },
     RESET: {
+      actions: [log('resetGameState'), 'resetGameState'],
       target: '.notConfigured',
     },
   },
@@ -524,7 +196,8 @@ export const squashGameMachine = setup({
       },
     },
     complete: {
-      type: 'final',
+      // Not a final state - machine persists across games
+      // Will be reset via RESET event when new game starts
     },
   },
 })

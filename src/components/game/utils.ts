@@ -31,3 +31,13 @@ export const getOrderedRows = (firstServingTeam: 'A' | 'B'): Array<RowKey> => {
     ? ['A1', 'A2', 'B1', 'B2']
     : ['B1', 'B2', 'A1', 'A2']
 }
+
+/**
+ * Get display name for a player (prefer lastName, fallback to firstName)
+ */
+export const getPlayerDisplayName = (player: {
+  firstName: string
+  lastName: string
+}): string => {
+  return player.lastName || player.firstName
+}

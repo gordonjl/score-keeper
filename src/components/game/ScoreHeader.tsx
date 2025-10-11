@@ -1,30 +1,51 @@
+import { useSelector } from '@xstate/react'
+import type { ActorRefFrom } from 'xstate'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
+import type { matchMachine } from '../../machines/matchMachine'
+
 type TeamKey = 'teamA' | 'teamB'
 
 type ScoreHeaderProps = {
-  topTeam: TeamKey
-  bottomTeam: TeamKey
-  topScore: number
-  bottomScore: number
-  players: Record<TeamKey, string>
-  currentGameNumber: number
-  gamesWonA: number
-  gamesWonB: number
+  gameActorRef: ActorRefFrom<typeof squashGameMachine>
+  matchActorRef: ActorRefFrom<typeof matchMachine>
+  firstServingTeam: 'A' | 'B'
 }
 
 export const ScoreHeader = ({
-  topTeam,
-  bottomTeam,
-  topScore,
-  bottomScore,
-  players,
-  currentGameNumber,
-  gamesWonA,
-  gamesWonB,
+  gameActorRef,
+  matchActorRef,
+  firstServingTeam,
 }: ScoreHeaderProps) => {
+  // Select scores from game actor
+  const { scoreA, scoreB, teamNames } = useSelector(gameActorRef, (s) => ({
+    scoreA: s.context.score.A,
+    scoreB: s.context.score.B,
+    teamNames: {
+      teamA: s.context.players.teamA,
+      teamB: s.context.players.teamB,
+    },
+  }))
+
+  // Select match data from match actor
+  const games = useSelector(matchActorRef, (s) => s.context.games)
+
+  // Compute derived values from games
+  const currentGameNumber = games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
+  const gamesWonA = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'A',
+  ).length
+  const gamesWonB = games.filter(
+    (g) => g.status === 'completed' && g.winner === 'B',
+  ).length
+
+  // Compute display values based on first serving team
+  const topTeam: TeamKey = firstServingTeam === 'A' ? 'teamA' : 'teamB'
+  const bottomTeam: TeamKey = firstServingTeam === 'A' ? 'teamB' : 'teamA'
+  const topScore = firstServingTeam === 'A' ? scoreA : scoreB
+  const bottomScore = firstServingTeam === 'A' ? scoreB : scoreA
+
   const topTeamGamesWon = topTeam === 'teamA' ? gamesWonA : gamesWonB
   const bottomTeamGamesWon = topTeam === 'teamA' ? gamesWonB : gamesWonA
-  const isTopWinning = topScore > bottomScore
-  const isBottomWinning = bottomScore > topScore
 
   return (
     <div className="card bg-base-100 shadow-xl mb-3 border border-base-300">
@@ -38,7 +59,7 @@ export const ScoreHeader = ({
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-sm sm:text-lg font-bold truncate">
-                {players[topTeam]}
+                {teamNames[topTeam]}
               </h1>
               <div className="flex gap-1 mt-1">
                 {Array.from({ length: topTeamGamesWon }).map((_, i) => (
@@ -66,7 +87,7 @@ export const ScoreHeader = ({
             </div>
             <div className="flex-1 min-w-0 text-right">
               <h1 className="text-sm sm:text-lg font-bold truncate">
-                {players[bottomTeam]}
+                {teamNames[bottomTeam]}
               </h1>
               <div className="flex gap-1 mt-1 justify-end">
                 {Array.from({ length: bottomTeamGamesWon }).map((_, i) => (

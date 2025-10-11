@@ -1,11 +1,10 @@
+import { useSelector } from '@xstate/react'
 import { Clock, TrendingUp, Trophy } from 'lucide-react'
-import type { GameResult } from '../../machines/matchMachine'
+import type { ActorRefFrom } from 'xstate'
+import type { GameResult, matchMachine } from '../../machines/matchMachine'
 
 type MatchProgressProps = {
-  games: Array<GameResult>
-  currentGameNumber: number
-  players: { teamA: string; teamB: string }
-  matchStartTime?: number
+  matchActorRef: ActorRefFrom<typeof matchMachine>
   isGameInProgress: boolean
 }
 
@@ -78,26 +77,19 @@ const calculateMatchStats = (games: Array<GameResult>) => {
   }
 }
 
-const formatDuration = (milliseconds: number): string => {
-  const seconds = Math.floor(milliseconds / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
-  }
-  return `${minutes}m ${seconds % 60}s`
-}
-
 export const MatchProgress = ({
-  games,
-  currentGameNumber,
-  players,
-  matchStartTime,
+  matchActorRef,
   isGameInProgress,
 }: MatchProgressProps) => {
+  // Select all data this component needs from the match actor
+  const { games, players } = useSelector(matchActorRef, (s) => ({
+    games: s.context.games,
+    players: s.context.players,
+  }))
+
+  // Compute derived values
+  const currentGameNumber = games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
   const stats = calculateMatchStats(games)
-  const duration = matchStartTime ? Date.now() - matchStartTime : 0
 
   return (
     <div className="space-y-4">
@@ -203,14 +195,6 @@ export const MatchProgress = ({
               Match Stats
             </h3>
             <div className="space-y-3 text-sm">
-              {matchStartTime && (
-                <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg">
-                  <span className="text-base-content/70">Duration</span>
-                  <span className="font-semibold badge badge-ghost">
-                    {formatDuration(duration)}
-                  </span>
-                </div>
-              )}
               <div className="flex justify-between items-center p-2 bg-base-100 rounded-lg">
                 <span className="text-base-content/70">Total Points</span>
                 <span className="font-semibold badge badge-ghost">

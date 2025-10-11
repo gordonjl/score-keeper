@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchMatchIdRouteImport } from './routes/match.$matchId'
+import { Route as TestMatchIdSayHiRouteImport } from './routes/test.$matchId.sayHi'
 import { Route as MatchMatchIdSummaryRouteImport } from './routes/match.$matchId.summary'
 import { Route as MatchMatchIdSetupRouteImport } from './routes/match.$matchId.setup'
 import { Route as MatchMatchIdGameGameIdRouteImport } from './routes/match.$matchId.game.$gameId'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const MatchMatchIdRoute = MatchMatchIdRouteImport.update({
   id: '/match/$matchId',
   path: '/match/$matchId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestMatchIdSayHiRoute = TestMatchIdSayHiRouteImport.update({
+  id: '/test/$matchId/sayHi',
+  path: '/test/$matchId/sayHi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MatchMatchIdSummaryRoute = MatchMatchIdSummaryRouteImport.update({
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
+  '/test/$matchId/sayHi': typeof TestMatchIdSayHiRoute
   '/match/$matchId/game/$gameId': typeof MatchMatchIdGameGameIdRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
+  '/test/$matchId/sayHi': typeof TestMatchIdSayHiRoute
   '/match/$matchId/game/$gameId': typeof MatchMatchIdGameGameIdRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
+  '/test/$matchId/sayHi': typeof TestMatchIdSayHiRoute
   '/match/$matchId/game/$gameId': typeof MatchMatchIdGameGameIdRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
+    | '/test/$matchId/sayHi'
     | '/match/$matchId/game/$gameId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
+    | '/test/$matchId/sayHi'
     | '/match/$matchId/game/$gameId'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/match/$matchId'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
+    | '/test/$matchId/sayHi'
     | '/match/$matchId/game/$gameId'
   fileRoutesById: FileRoutesById
 }
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MatchesRoute: typeof MatchesRoute
   MatchMatchIdRoute: typeof MatchMatchIdRouteWithChildren
+  TestMatchIdSayHiRoute: typeof TestMatchIdSayHiRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -126,6 +139,13 @@ declare module '@tanstack/react-router' {
       path: '/match/$matchId'
       fullPath: '/match/$matchId'
       preLoaderRoute: typeof MatchMatchIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/test/$matchId/sayHi': {
+      id: '/test/$matchId/sayHi'
+      path: '/test/$matchId/sayHi'
+      fullPath: '/test/$matchId/sayHi'
+      preLoaderRoute: typeof TestMatchIdSayHiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/match/$matchId/summary': {
@@ -172,6 +192,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MatchesRoute: MatchesRoute,
   MatchMatchIdRoute: MatchMatchIdRouteWithChildren,
+  TestMatchIdSayHiRoute: TestMatchIdSayHiRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

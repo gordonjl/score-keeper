@@ -192,7 +192,8 @@ export const matchMachine = setup({
       // Emit LiveStore gameStarted event
       if (context.store && context.matchId) {
         const gameNumber = context.games.length + 1
-        const gameId = `${gameNumber}` // Just use the game number as string
+        // Generate globally unique gameId
+        const gameId = crypto.randomUUID()
 
         // Determine first server side
         const firstServerSide = event.teamASide || event.teamBSide || 'R'

@@ -336,13 +336,34 @@ export const createSquashMaterializers = () => ({
     // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
     ctx,
   ) => {
-    // Check if game already exists to avoid duplicate insert
+    // Check if game already exists (gameId is globally unique)
     const existingGames = ctx.query(
       squashTables.games.where({ id: gameId }),
-    ) as Array<{ id: string }>
+    ) as Array<{ id: string; status: string }>
 
-    // If game already exists, skip insert (idempotent)
-    if (existingGames.length > 0) return []
+    // If game already exists and is completed, don't reset it (idempotent)
+    if (existingGames.length > 0 && existingGames[0].status === 'completed') {
+      return []
+    }
+
+    // If game exists but is in_progress, reset it to fresh state (handle replays/resets)
+    if (existingGames.length > 0) {
+      return squashTables.games
+        .update({
+          status: 'in_progress',
+          scoreA: 0,
+          scoreB: 0,
+          winner: null,
+          maxPoints,
+          winBy,
+          createdAt: timestamp,
+          completedAt: null,
+          firstServingTeam,
+          firstServingPlayer,
+          firstServingSide,
+        })
+        .where({ id: gameId })
+    }
 
     return squashTables.games.insert({
       id: gameId,
