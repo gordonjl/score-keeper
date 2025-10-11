@@ -60,22 +60,17 @@ export const useSquashGameMachine = (
   // We intentionally capture gameData, players, ralliesData from closure
   // to avoid re-running when rallies update during gameplay (would cause infinite loop)
   useEffect(() => {
-    // Load game data
+    // Load game data with rallies for replay
+    // The machine will handle replaying rallies internally via configureGameState action
     actorRef.send({
       type: 'GAME_LOADED',
       game: gameData,
       players,
+      rallies: ralliesData.map((rally) => ({
+        winner: rally.winner as Team,
+        rallyNumber: rally.rallyNumber,
+      })),
     })
-
-    // Replay rallies to reconstruct grid state (only initial rallies)
-    if (gameData.status === 'in_progress' && ralliesData.length > 0) {
-      ralliesData.forEach((rally) => {
-        actorRef.send({
-          type: 'RALLY_WON',
-          winner: rally.winner as Team,
-        })
-      })
-    }
   }, [actorRef])
 
   // Get current state snapshot for convenience

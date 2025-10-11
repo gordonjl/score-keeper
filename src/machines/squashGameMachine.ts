@@ -62,12 +62,19 @@ export type Context = {
   rallyCount: number
 }
 
+// ===== Rally Data Type =====
+export type RallyData = {
+  winner: Team
+  rallyNumber: number
+}
+
 // ===== Events =====
 export type Events =
   | {
       type: 'GAME_LOADED'
       game: Game
       players: PlayerNameMap
+      rallies: ReadonlyArray<RallyData>
     }
   | { type: 'RALLY_WON'; winner: Team }
   | { type: 'TOGGLE_SERVE_SIDE' }
@@ -86,8 +93,14 @@ export const squashGameMachine = setup({
   },
   actions: {
     configureGameState: assign(
-      ({ context }, params: { game: Game; players: PlayerNameMap }) =>
-        configureGameState(context, params),
+      (
+        { context },
+        params: {
+          game: Game
+          players: PlayerNameMap
+          rallies: ReadonlyArray<RallyData>
+        },
+      ) => configureGameState(context, params),
     ),
     snapshot: assign(({ context }) => snapshot(context)),
     toggleServeSide: assign(({ context }) => toggleServeSide(context)),
@@ -134,16 +147,33 @@ export const squashGameMachine = setup({
     notConfigured: {
       on: {
         GAME_LOADED: {
-          target: 'active',
+          target: 'checkingStateAfterLoad',
           actions: {
             type: 'configureGameState',
             params: ({ event }) => ({
               game: event.game,
               players: event.players,
+              rallies: event.rallies,
             }),
           },
         },
       },
+    },
+    checkingStateAfterLoad: {
+      always: [
+        {
+          guard: {
+            type: 'gameEnded',
+            params: ({ context }) => ({
+              score: context.score,
+              maxPoints: context.maxPoints,
+              winBy: context.winBy,
+            }),
+          },
+          target: 'awaitingConfirmation',
+        },
+        { target: 'active' },
+      ],
     },
     active: {
       on: {

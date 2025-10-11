@@ -1,3 +1,4 @@
+import { Array as EffectArray } from 'effect'
 import { events } from '../livestore/schema'
 import { flip, otherTeam, rowKey } from './squashMachine.types'
 import type {
@@ -49,6 +50,214 @@ const writeCell = (
 
 const colForTeamServe = (score: Score, team: Team): number => score[team]
 
+// ===== Core Rally Logic =====
+/**
+ * Pure function that processes a single rally and returns the next game state.
+ * Used by both rallyWon (live play) and replayRallies (loading saved games).
+ */
+type RallyState = {
+  score: Score
+  server: Server
+  grid: ActivityGrid
+  firstHandUsed: boolean
+}
+
+const processRally = (state: RallyState, winner: Team): RallyState => {
+  const cur = state.server
+  const col = colForTeamServe(state.score, cur.team)
+  const currentRow = rowKey(cur.team, cur.player)
+
+  // Server won the rally
+  if (winner === cur.team) {
+    const nextScore: Score = {
+      ...state.score,
+      [winner]: state.score[winner] + 1,
+    }
+    const nextServer: Server = { ...cur, side: flip(cur.side) }
+    const nextCol = nextScore[cur.team]
+    const nextGrid = writeCell(state.grid, currentRow, nextCol, nextServer.side)
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: nextGrid,
+      firstHandUsed: state.firstHandUsed,
+    }
+  }
+
+  // Receiving team won - add slash to current cell
+  const existingCell = state.grid[currentRow][col]
+  const slashedCell: Cell = `${existingCell}/` as Cell
+  const gridWithSlash = writeCell(state.grid, currentRow, col, slashedCell)
+
+  const nextScore: Score = {
+    A: winner === 'A' ? state.score.A + 1 : state.score.A,
+    B: winner === 'B' ? state.score.B + 1 : state.score.B,
+  }
+
+  // First-hand exception at 0-0
+  const isStartOfGame = state.score.A === 0 && state.score.B === 0
+  if (isStartOfGame && !state.firstHandUsed) {
+    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, 0, '/')
+
+    const t = otherTeam(cur.team)
+    const nextServer: Server = {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+    }
+    const nextCol = nextScore[t]
+    const finalGrid = writeCell(
+      gridWithPartnerSlash,
+      rowKey(t, 1),
+      nextCol,
+      nextServer.side,
+    )
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost (not start of game)
+  if (cur.handIndex === 0 && !state.firstHandUsed) {
+    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
+    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, col, '/')
+
+    const t = otherTeam(cur.team)
+    const nextServer: Server = {
+      team: t,
+      player: 1,
+      side: 'R',
+      handIndex: 0,
+    }
+    const nextCol = nextScore[t]
+    const finalGrid = writeCell(
+      gridWithPartnerSlash,
+      rowKey(t, 1),
+      nextCol,
+      nextServer.side,
+    )
+
+    return {
+      score: nextScore,
+      server: nextServer,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // First hand lost, partner serves (second hand)
+  if (cur.handIndex === 0) {
+    const xCol = nextScore[winner]
+    const gridWithX = writeCell(gridWithSlash, winner, xCol, 'X')
+
+    const partner: Server = {
+      team: cur.team,
+      player: cur.player === 1 ? 2 : 1,
+      side: flip(cur.side),
+      handIndex: 1,
+    }
+    const nextCol = state.score[cur.team]
+    const finalGrid = writeCell(
+      gridWithX,
+      rowKey(partner.team, partner.player),
+      nextCol,
+      partner.side,
+    )
+
+    return {
+      score: nextScore,
+      server: partner,
+      grid: finalGrid,
+      firstHandUsed: true,
+    }
+  }
+
+  // Second hand lost - hand-out to other team
+  const t = otherTeam(cur.team)
+  const nextServer: Server = {
+    team: t,
+    player: 1,
+    side: 'R',
+    handIndex: 0,
+  }
+  const nextCol = nextScore[t]
+  const finalGrid = writeCell(
+    gridWithSlash,
+    rowKey(t, 1),
+    nextCol,
+    nextServer.side,
+  )
+
+  return {
+    score: nextScore,
+    server: nextServer,
+    grid: finalGrid,
+    firstHandUsed: true,
+  }
+}
+
+// ===== Rally Replay =====
+/**
+ * Replays rallies to reconstruct grid state from rally history.
+ * This is used when loading a game that's already in progress.
+ * Does NOT emit LiveStore events (rallies already exist in DB).
+ */
+type RallyData = {
+  winner: Team
+  rallyNumber: number
+}
+
+const replayRallies = (
+  initialContext: Partial<Context>,
+  rallies: ReadonlyArray<RallyData>,
+): Partial<Context> => {
+  const server = initialContext.server!
+
+  // Write initial serve position to column 0
+  const gridWithInitialServe = writeCell(
+    initialGrid(),
+    rowKey(server.team, server.player),
+    0,
+    server.side,
+  )
+
+  const initialState: RallyState = {
+    grid: gridWithInitialServe,
+    score: { A: 0, B: 0 },
+    server,
+    firstHandUsed: initialContext.firstHandUsed!,
+  }
+
+  const finalState = EffectArray.reduce(rallies, initialState, (state, rally) =>
+    processRally(state, rally.winner),
+  )
+
+  // Write current server position at current score column
+  const currentCol = colForTeamServe(finalState.score, finalState.server.team)
+  const gridWithCurrentServer = writeCell(
+    finalState.grid,
+    rowKey(finalState.server.team, finalState.server.player),
+    currentCol,
+    finalState.server.side,
+  )
+
+  // Return the replayed state
+  return {
+    score: finalState.score,
+    server: finalState.server,
+    grid: gridWithCurrentServer,
+    firstHandUsed: finalState.firstHandUsed,
+    rallyCount: rallies.length,
+  }
+}
+
 // ===== Snapshot for History =====
 export type Snapshot = {
   score: Score
@@ -60,9 +269,13 @@ export type Snapshot = {
 // ===== Actions =====
 export const configureGameState = (
   context: Context,
-  params: { game: Game; players: PlayerNameMap },
+  params: {
+    game: Game
+    players: PlayerNameMap
+    rallies: ReadonlyArray<RallyData>
+  },
 ): Partial<Context> => {
-  const { game, players } = params
+  const { game, players, rallies } = params
 
   // Initialize server from game data
   const server: Server = {
@@ -80,7 +293,7 @@ export const configureGameState = (
     server.side,
   )
 
-  return {
+  const initialState: Partial<Context> = {
     gameId: game.id,
     matchId: game.matchId,
     maxPoints: game.maxPoints,
@@ -92,8 +305,18 @@ export const configureGameState = (
     firstHandUsed: false,
     history: [],
     rallyCount: 0,
-    store: context.store,
   }
+
+  // Replay rallies if game is in progress
+  if (game.status === 'in_progress' && rallies.length > 0) {
+    // Merge initialState with replayed state to preserve all fields
+    return {
+      ...initialState,
+      ...replayRallies(initialState, rallies),
+    }
+  }
+
+  return initialState
 }
 
 export const snapshot = (context: Context): Partial<Context> => ({
@@ -127,15 +350,7 @@ export const rallyWon = (
   params: { winner: Team },
 ): Partial<Context> => {
   const { winner } = params
-  const cur = context.server
-  const col = colForTeamServe(context.score, cur.team)
   const rallyNumber = context.rallyCount + 1
-  const currentRow = rowKey(cur.team, cur.player)
-
-  // Start with current grid
-  const updates: Partial<Context> = {
-    rallyCount: rallyNumber,
-  }
 
   // Emit LiveStore rallyWon event
   if (context.store && context.gameId) {
@@ -145,10 +360,10 @@ export const rallyWon = (
         gameId: context.gameId,
         rallyNumber,
         winner,
-        serverTeam: cur.team,
-        serverPlayer: cur.player,
-        serverSide: cur.side,
-        serverHandIndex: cur.handIndex,
+        serverTeam: context.server.team,
+        serverPlayer: context.server.player,
+        serverSide: context.server.side,
+        serverHandIndex: context.server.handIndex,
         scoreABefore: context.score.A,
         scoreBBefore: context.score.B,
         scoreAAfter: winner === 'A' ? context.score.A + 1 : context.score.A,
@@ -158,148 +373,20 @@ export const rallyWon = (
     )
   }
 
-  // Server won the rally
-  if (winner === cur.team) {
-    const nextScore: Score = {
-      ...context.score,
-      [winner]: context.score[winner] + 1,
-    }
-    const nextServer: Server = { ...cur, side: flip(cur.side) }
-    const nextCol = nextScore[cur.team]
-    const nextGrid = writeCell(
-      context.grid,
-      currentRow,
-      nextCol,
-      nextServer.side,
-    )
-
-    return {
-      ...updates,
-      score: nextScore,
-      server: nextServer,
-      grid: nextGrid,
-    }
-  }
-
-  // Receiving team won - add slash to current cell
-  const existingCell = context.grid[currentRow][col]
-  const slashedCell: Cell = `${existingCell}/` as Cell
-  const gridWithSlash = writeCell(context.grid, currentRow, col, slashedCell)
-
-  const nextScore: Score = {
-    A: winner === 'A' ? context.score.A + 1 : context.score.A,
-    B: winner === 'B' ? context.score.B + 1 : context.score.B,
-  }
-
-  // First-hand exception at 0-0
-  const isStartOfGame = context.score.A === 0 && context.score.B === 0
-  if (isStartOfGame && !context.firstHandUsed) {
-    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, 0, '/')
-
-    const t = otherTeam(cur.team)
-    const nextServer: Server = {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-    }
-    const nextCol = nextScore[t]
-    const finalGrid = writeCell(
-      gridWithPartnerSlash,
-      rowKey(t, 1),
-      nextCol,
-      nextServer.side,
-    )
-
-    return {
-      ...updates,
-      score: nextScore,
-      server: nextServer,
-      grid: finalGrid,
-      firstHandUsed: true,
-    }
-  }
-
-  // First hand lost (not start of game)
-  if (cur.handIndex === 0 && !context.firstHandUsed) {
-    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, col, '/')
-
-    const t = otherTeam(cur.team)
-    const nextServer: Server = {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-    }
-    const nextCol = nextScore[t]
-    const finalGrid = writeCell(
-      gridWithPartnerSlash,
-      rowKey(t, 1),
-      nextCol,
-      nextServer.side,
-    )
-
-    return {
-      ...updates,
-      score: nextScore,
-      server: nextServer,
-      grid: finalGrid,
-      firstHandUsed: true,
-    }
-  }
-
-  // First hand lost, partner serves (second hand)
-  if (cur.handIndex === 0) {
-    const xCol = nextScore[winner]
-    const gridWithX = writeCell(gridWithSlash, winner, xCol, 'X')
-
-    const partner: Server = {
-      team: cur.team,
-      player: cur.player === 1 ? 2 : 1,
-      side: flip(cur.side),
-      handIndex: 1,
-    }
-    const nextCol = context.score[cur.team]
-    const finalGrid = writeCell(
-      gridWithX,
-      rowKey(partner.team, partner.player),
-      nextCol,
-      partner.side,
-    )
-
-    return {
-      ...updates,
-      score: nextScore,
-      server: partner,
-      grid: finalGrid,
-      firstHandUsed: true,
-    }
-  }
-
-  // Second hand lost - hand-out to other team
-  const t = otherTeam(cur.team)
-  const nextServer: Server = {
-    team: t,
-    player: 1,
-    side: 'R',
-    handIndex: 0,
-  }
-  const nextCol = nextScore[t]
-  const finalGrid = writeCell(
-    gridWithSlash,
-    rowKey(t, 1),
-    nextCol,
-    nextServer.side,
+  // Process rally using pure function
+  const nextState = processRally(
+    {
+      score: context.score,
+      server: context.server,
+      grid: context.grid,
+      firstHandUsed: context.firstHandUsed,
+    },
+    winner,
   )
 
   return {
-    ...updates,
-    score: nextScore,
-    server: nextServer,
-    grid: finalGrid,
-    firstHandUsed: true,
+    ...nextState,
+    rallyCount: rallyNumber,
   }
 }
 

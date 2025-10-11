@@ -52,6 +52,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       const snapshot = actor.getSnapshot()
@@ -73,6 +74,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Team A serves and wins
@@ -94,6 +96,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Team A serves, Team B wins (first hand)
@@ -117,6 +120,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Play one rally
@@ -139,6 +143,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Simulate game to 15-0
@@ -161,6 +166,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Simulate game to 15-0
@@ -186,6 +192,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Play two rallies
@@ -212,6 +219,7 @@ describe('squashGameMachine', () => {
         type: 'GAME_LOADED',
         game: mockGame,
         players: mockPlayers,
+        rallies: [],
       })
 
       // Try to undo with no rallies played
