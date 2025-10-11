@@ -188,8 +188,8 @@ function SetupRoute() {
 
       // 4. Navigate to the game
       navigate({
-        to: '/match/$matchId/game/$gameId',
-        params: { matchId, gameId },
+        to: '/match/$matchId/game/$gameNumber',
+        params: { matchId, gameNumber: '1' },
       })
     },
   })

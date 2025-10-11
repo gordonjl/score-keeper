@@ -17,7 +17,7 @@ import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
 import { events } from '../livestore/schema'
 import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
 
-export const Route = createFileRoute('/match/$matchId/game/$gameId')({
+export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
   component: GameRouteWrapper,
 })
 
@@ -69,7 +69,8 @@ function GameRouteWrapper() {
 
 // Main component that requires a game actor
 function GameRoute() {
-  const { matchId, gameId } = Route.useParams()
+  const { matchId, gameNumber: gameNumberStr } = Route.useParams()
+  const gameNumber = Number.parseInt(gameNumberStr, 10)
   const navigate = useNavigate({ from: Route.fullPath })
   const { store } = useStore()
   const { actor: matchActorRef } = useLiveStoreMatch()
@@ -119,10 +120,13 @@ function GameRoute() {
         teamB: 'Team B',
       }
 
-  const gameNumber = games.findIndex((g) => g.id === gameId) + 1
-
   // Use squashGameMachine hook to create and manage machine
-  const { actorRef } = useSquashGameMachine(matchId, gameNumber, matchPlayers)
+  const { actorRef, game } = useSquashGameMachine(
+    matchId,
+    gameNumber,
+    matchPlayers,
+  )
+  const gameId = game.id
 
   // Only select state that the route component DIRECTLY uses for its own logic
   // Use a single selector to get multiple values efficiently
@@ -269,7 +273,7 @@ function GameRoute() {
             onStartGame={(config) => {
               // Hide the dialog immediately
               setShowNextGameSetup(false)
-              
+
               // Confirm game over and record result
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
@@ -309,8 +313,8 @@ function GameRoute() {
               // Update machine UI state and navigate
               matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
               navigate({
-                to: '/match/$matchId/game/$gameId',
-                params: { matchId, gameId: newGameId },
+                to: '/match/$matchId/game/$gameNumber',
+                params: { matchId, gameNumber: String(newGameNumber) },
               })
             }}
           />
