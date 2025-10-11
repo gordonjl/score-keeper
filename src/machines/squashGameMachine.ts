@@ -1,16 +1,14 @@
 import { assign, setup } from 'xstate'
 import {
-  configureGameState,
   gameEnded,
+  initialize,
   rallyWon,
-  snapshot,
   toggleServeSide,
-  undoOnce,
+  undo,
 } from './squashGameMachine.actions'
-import type { Snapshot } from './squashGameMachine.actions'
 import type { Store } from '@livestore/livestore'
 import type { schema } from '../livestore/schema'
-import type { PlayerNameMap, Score, Server, Team } from './squashMachine.types'
+import type { Team } from './squashMachine.types'
 
 // ===== LiveStore Game Type =====
 export type Game = {
@@ -38,40 +36,33 @@ export type Game = {
 }
 
 // ===== Context =====
+// XState machine is now a pure state flow controller
+// All game data lives in LiveStore and is queried by components
 export type Context = {
-  // Configuration (from Game)
+  // Game configuration (needed for guards/actions)
   gameId: string | null
   matchId: string | null
   maxPoints: number
   winBy: number
 
-  // Players (passed in, not from Game)
-  players: PlayerNameMap
-
-  // Game state (UI state machine manages this)
-  score: Score
-  server: Server
-  firstHandUsed: boolean
-
-  // History for undo
-  history: Array<Snapshot>
-
-  // LiveStore integration
+  // LiveStore integration (needed to emit events)
   store: Store<typeof schema> | null
 }
 
 // ===== Events =====
 export type Events =
   | {
-      type: 'GAME_LOADED'
-      game: Game
-      players: PlayerNameMap
+      type: 'INITIALIZE'
+      gameId: string
+      matchId: string
+      maxPoints: number
+      winBy: number
     }
-  | { type: 'RALLY_WON'; winner: Team }
-  | { type: 'TOGGLE_SERVE_SIDE' }
+  | { type: 'RALLY_WON'; winner: Team; game: Game }
+  | { type: 'TOGGLE_SERVE_SIDE'; game: Game }
   | { type: 'CONFIRM_GAME_OVER' }
   | { type: 'LET' }
-  | { type: 'UNDO' }
+  | { type: 'UNDO'; game: Game }
 
 // ===== State Machine =====
 export const squashGameMachine = setup({
@@ -83,21 +74,10 @@ export const squashGameMachine = setup({
     },
   },
   actions: {
-    configureGameState: assign(
-      (
-        { context },
-        params: {
-          game: Game
-          players: PlayerNameMap
-        },
-      ) => configureGameState(context, params),
-    ),
-    snapshot: assign(({ context }) => snapshot(context)),
-    toggleServeSide: assign(({ context }) => toggleServeSide(context)),
-    rallyWon: assign(({ context }, params: { winner: Team }) =>
-      rallyWon(context, params),
-    ),
-    undoOnce: assign(({ context }) => undoOnce(context)),
+    initialize: assign(initialize),
+    rallyWon,
+    toggleServeSide,
+    undo,
   },
   guards: {
     gameEnded,
@@ -111,91 +91,38 @@ export const squashGameMachine = setup({
     matchId: null,
     maxPoints: 15,
     winBy: 1,
-    players: {
-      A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
-      A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
-      B1: { firstName: 'B1', lastName: 'Player', fullName: 'B1 Player' },
-      B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
-      teamA: 'Team A',
-      teamB: 'Team B',
-    },
-    score: { A: 0, B: 0 },
-    server: { team: 'A', player: 1, side: 'R', handIndex: 0 as const },
-    firstHandUsed: false,
-    history: [],
     store: input.store,
-    rallyCount: 0,
   }),
   on: {
     UNDO: {
-      actions: ['undoOnce'],
-      target: '.active',
+      actions: ['undo'],
     },
   },
   states: {
     notConfigured: {
       on: {
-        GAME_LOADED: {
-          target: 'checkingStateAfterLoad',
-          actions: {
-            type: 'configureGameState',
-            params: ({ event }) => ({
-              game: event.game,
-              players: event.players,
-            }),
-          },
+        INITIALIZE: {
+          target: 'active',
+          actions: ['initialize'],
         },
       },
     },
-    checkingStateAfterLoad: {
+    active: {
       always: [
         {
-          guard: {
-            type: 'gameEnded',
-            params: ({ context }) => ({
-              score: context.score,
-              maxPoints: context.maxPoints,
-              winBy: context.winBy,
-            }),
-          },
+          guard: 'gameEnded',
           target: 'awaitingConfirmation',
         },
-        { target: 'active' },
       ],
-    },
-    active: {
       on: {
         RALLY_WON: {
-          actions: [
-            'snapshot',
-            {
-              type: 'rallyWon',
-              params: ({ event }) => ({ winner: event.winner }),
-            },
-          ],
-          target: 'check',
+          actions: ['rallyWon'],
         },
         TOGGLE_SERVE_SIDE: {
           actions: ['toggleServeSide'],
         },
         LET: {},
       },
-    },
-    check: {
-      always: [
-        {
-          guard: {
-            type: 'gameEnded',
-            params: ({ context }) => ({
-              score: context.score,
-              maxPoints: context.maxPoints,
-              winBy: context.winBy,
-            }),
-          },
-          target: 'awaitingConfirmation',
-        },
-        { target: 'active' },
-      ],
     },
     awaitingConfirmation: {
       on: {

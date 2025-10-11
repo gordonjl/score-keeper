@@ -1,9 +1,13 @@
 import { useStore } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
-import { gamesByMatch$ } from '../../livestore/squash-queries'
+import {
+  gameById$,
+  gamesByMatch$,
+  matchById$,
+} from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
-import type { squashGameMachine } from '../../machines/squashGameMachine'
+import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
 
 type TeamKey = 'teamA' | 'teamB'
 
@@ -13,25 +17,32 @@ type ScoreHeaderProps = {
   firstServingTeam: 'A' | 'B'
 }
 
-export const ScoreHeader = ({
-  gameActorRef,
+// Inner component that only renders when gameId is available
+const ScoreHeaderContent = ({
+  gameId,
+  matchId,
   firstServingTeam,
-}: ScoreHeaderProps) => {
+}: {
+  gameId: string
+  matchId: string
+  firstServingTeam: 'A' | 'B'
+}) => {
   const { store } = useStore()
-  const { matchId } = useLiveStoreMatch()
 
-  // Select scores from game actor
-  const { scoreA, scoreB, teamNames } = useSelector(gameActorRef, (s) => ({
-    scoreA: s.context.score.A,
-    scoreB: s.context.score.B,
-    teamNames: {
-      teamA: s.context.players.teamA,
-      teamB: s.context.players.teamB,
-    },
-  }))
-
-  // Query games from LiveStore
+  // Query game and match data from LiveStore (only called when gameId is valid)
+  const game = store.useQuery(gameById$(gameId)) as Game
+  const match = store.useQuery(matchById$(matchId))
   const games = store.useQuery(gamesByMatch$(matchId))
+
+  // Get scores from LiveStore
+  const scoreA = game.scoreA
+  const scoreB = game.scoreB
+
+  // Build team names from match data
+  const teamNames = {
+    teamA: `${match.playerA1FirstName} & ${match.playerA2FirstName}`,
+    teamB: `${match.playerB1FirstName} & ${match.playerB2FirstName}`,
+  }
 
   // Compute derived values from games
   const currentGameNumber =
@@ -108,5 +119,38 @@ export const ScoreHeader = ({
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrapper component that checks for gameId before rendering
+export const ScoreHeader = ({
+  gameActorRef,
+  firstServingTeam,
+}: ScoreHeaderProps) => {
+  const { matchId } = useLiveStoreMatch()
+
+  // Get gameId from machine context
+  const gameId = useSelector(gameActorRef, (s) => s.context.gameId)
+
+  // Show loading state if game not loaded yet
+  if (!gameId) {
+    return (
+      <div className="card bg-base-100 shadow-xl mb-3 border border-base-300">
+        <div className="card-body p-3 sm:p-4">
+          <div className="flex justify-center items-center">
+            <span className="loading loading-spinner loading-sm"></span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Render content component with valid gameId
+  return (
+    <ScoreHeaderContent
+      gameId={gameId}
+      matchId={matchId}
+      firstServingTeam={firstServingTeam}
+    />
   )
 }

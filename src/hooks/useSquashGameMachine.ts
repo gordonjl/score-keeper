@@ -8,7 +8,6 @@ import {
   ralliesByGame$,
 } from '../livestore/squash-queries'
 import { squashGameMachine } from '../machines/squashGameMachine'
-import type { PlayerNameMap } from '../machines/squashMachine.types'
 
 /**
  * Hook to instantiate and manage squashGameMachine lifecycle with LiveStore integration.
@@ -20,11 +19,7 @@ import type { PlayerNameMap } from '../machines/squashMachine.types'
  * - Reactively queries game data from LiveStore
  * - Server state is read directly from game table (no rally replay needed)
  */
-export const useSquashGameMachine = (
-  matchId: string,
-  gameNumber: number,
-  players: PlayerNameMap,
-) => {
+export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const { store } = useStore()
 
   // Query the game by match ID and game number
@@ -55,18 +50,23 @@ export const useSquashGameMachine = (
     return actor
   }, [gameId, store])
 
-  // Load game data ONCE when actor is created
+  // Initialize machine ONCE when actor is created
   // IMPORTANT: Only depends on actorRef to run once per actor creation
-  // We intentionally capture gameData, players from closure
-  // to avoid re-running when data updates during gameplay (would cause infinite loop)
   useEffect(() => {
-    // Load game data - server state is already in the game table (no replay needed!)
     actorRef.send({
-      type: 'GAME_LOADED',
-      game: gameData,
-      players,
+      type: 'INITIALIZE',
+      gameId: gameData.id,
+      matchId: gameData.matchId,
+      maxPoints: gameData.maxPoints,
+      winBy: gameData.winBy,
     })
-  }, [actorRef])
+  }, [
+    actorRef,
+    gameData.id,
+    gameData.matchId,
+    gameData.maxPoints,
+    gameData.winBy,
+  ])
 
   // Get current state snapshot for convenience
   const state = useSelector(actorRef, (s) => s)

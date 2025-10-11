@@ -1,191 +1,44 @@
 import { events } from '../livestore/schema'
-import { flip } from './squashMachine.types'
-import type {
-  PlayerNameMap,
-  PlayerRow,
-  Score,
-  Server,
-  Side,
-  Team,
-} from './squashMachine.types'
-import type { Context, Game } from './squashGameMachine'
+import type { Team } from './squashMachine.types'
+import type { Context, Events, Game } from './squashGameMachine'
 
-// ===== Helper Functions =====
-// Re-export helpers for convenience
-export { flip }
+// ===== Actions (void functions that emit events to LiveStore) =====
 
-export const otherTeam = (team: Team): Team => (team === 'A' ? 'B' : 'A')
-
-// ===== Core Rally Logic =====
 /**
- * Pure function that processes a single rally and returns the next game state.
- * Simplified - no longer manages grid (now handled in ScoreGrid component).
+ * Initialize action - sets game configuration in context
  */
-type RallyState = {
-  score: Score
-  server: Server
-  firstHandUsed: boolean
-}
-
-const processRally = (state: RallyState, winner: Team): RallyState => {
-  const cur = state.server
-
-  // Server won the rally
-  if (winner === cur.team) {
-    const nextScore: Score = {
-      ...state.score,
-      [winner]: state.score[winner] + 1,
-    }
-    const nextServer: Server = { ...cur, side: flip(cur.side) }
-
-    return {
-      score: nextScore,
-      server: nextServer,
-      firstHandUsed: state.firstHandUsed,
-    }
-  }
-
-  // Receiving team won
-  const nextScore: Score = {
-    A: winner === 'A' ? state.score.A + 1 : state.score.A,
-    B: winner === 'B' ? state.score.B + 1 : state.score.B,
-  }
-
-  // First-hand exception at 0-0
-  const isStartOfGame = state.score.A === 0 && state.score.B === 0
-  if (isStartOfGame && !state.firstHandUsed) {
-    const t = otherTeam(cur.team)
-    const nextServer: Server = {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-    }
-
-    return {
-      score: nextScore,
-      server: nextServer,
-      firstHandUsed: true,
-    }
-  }
-
-  // First hand lost (not start of game)
-  if (cur.handIndex === 0 && !state.firstHandUsed) {
-    const t = otherTeam(cur.team)
-    const nextServer: Server = {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-    }
-
-    return {
-      score: nextScore,
-      server: nextServer,
-      firstHandUsed: true,
-    }
-  }
-
-  // First hand lost, partner serves (second hand)
-  if (cur.handIndex === 0) {
-    const partner: Server = {
-      team: cur.team,
-      player: cur.player === 1 ? 2 : 1,
-      side: flip(cur.side),
-      handIndex: 1,
-    }
-
-    return {
-      score: nextScore,
-      server: partner,
-      firstHandUsed: true,
-    }
-  }
-
-  // Second hand lost - hand-out to other team
-  const t = otherTeam(cur.team)
-  const nextServer: Server = {
-    team: t,
-    player: 1,
-    side: 'R',
-    handIndex: 0,
-  }
+export const initialize = ({
+  event,
+}: {
+  context: Context
+  event: Events
+}): Partial<Context> => {
+  if (event.type !== 'INITIALIZE') return {}
 
   return {
-    score: nextScore,
-    server: nextServer,
-    firstHandUsed: true,
+    gameId: event.gameId,
+    matchId: event.matchId,
+    maxPoints: event.maxPoints,
+    winBy: event.winBy,
   }
 }
 
-// ===== Snapshot for History =====
-export type Snapshot = {
-  score: Score
-  server: Server
-  firstHandUsed: boolean
-}
+/**
+ * Rally won action - emits event to LiveStore only
+ */
+export const rallyWon = ({
+  context,
+  event,
+}: {
+  context: Context
+  event: Events
+}) => {
+  if (event.type !== 'RALLY_WON') return
 
-// ===== Actions =====
-export const configureGameState = (
-  _context: Context,
-  params: {
-    game: Game
-    players: PlayerNameMap
-  },
-): Partial<Context> => {
-  const { game, players } = params
+  const { winner, game } = event
+  const rallyNumber = game.scoreA + game.scoreB + 1
 
-  // Read current server state directly from game table (no replay needed!)
-  const server: Server = {
-    team: game.currentServerTeam as Team,
-    player: game.currentServerPlayer as PlayerRow,
-    side: game.currentServerSide as Side,
-    handIndex: game.currentServerHandIndex as 0 | 1,
-  }
-
-  return {
-    gameId: game.id,
-    matchId: game.matchId,
-    maxPoints: game.maxPoints,
-    winBy: game.winBy,
-    players,
-    score: { A: game.scoreA, B: game.scoreB },
-    server,
-    firstHandUsed: game.firstHandUsed,
-    history: [],
-  }
-}
-
-export const snapshot = (context: Context): Partial<Context> => ({
-  history: [
-    ...context.history,
-    {
-      score: { ...context.score },
-      server: { ...context.server },
-      firstHandUsed: context.firstHandUsed,
-    },
-  ],
-})
-
-export const toggleServeSide = (context: Context): Partial<Context> => {
-  if (context.server.handIndex !== 0) return {}
-
-  const newSide = flip(context.server.side)
-
-  return {
-    server: { ...context.server, side: newSide },
-  }
-}
-
-export const rallyWon = (
-  context: Context,
-  params: { winner: Team },
-): Partial<Context> => {
-  const { winner } = params
-  // Derive rally number from current score (since we don't track "let" rallies)
-  const rallyNumber = context.score.A + context.score.B + 1
-
-  // Emit LiveStore rallyWon event
+  // Only emit to LiveStore - actions are void functions!
   if (context.store && context.gameId) {
     context.store.commit(
       events.rallyWon({
@@ -193,39 +46,69 @@ export const rallyWon = (
         gameId: context.gameId,
         rallyNumber,
         winner,
-        serverTeam: context.server.team,
-        serverPlayer: context.server.player,
-        serverSide: context.server.side,
-        serverHandIndex: context.server.handIndex,
-        scoreABefore: context.score.A,
-        scoreBBefore: context.score.B,
-        scoreAAfter: winner === 'A' ? context.score.A + 1 : context.score.A,
-        scoreBAfter: winner === 'B' ? context.score.B + 1 : context.score.B,
+        serverTeam: game.currentServerTeam as Team,
+        serverPlayer: game.currentServerPlayer as 1 | 2,
+        serverSide: game.currentServerSide as 'R' | 'L',
+        serverHandIndex: game.currentServerHandIndex as 0 | 1,
+        scoreABefore: game.scoreA,
+        scoreBBefore: game.scoreB,
+        scoreAAfter: winner === 'A' ? game.scoreA + 1 : game.scoreA,
+        scoreBAfter: winner === 'B' ? game.scoreB + 1 : game.scoreB,
         timestamp: new Date(),
       }),
     )
   }
-
-  // Process rally using pure function
-  const nextState = processRally(
-    {
-      score: context.score,
-      server: context.server,
-      firstHandUsed: context.firstHandUsed,
-    },
-    winner,
-  )
-
-  return nextState
 }
 
-export const undoOnce = (context: Context): Partial<Context> => {
-  const prev = context.history.at(-1)
-  if (!prev) return {}
+/**
+ * Toggle serve side action - emits event to LiveStore
+ */
+export const toggleServeSide = ({
+  event,
+}: {
+  context: Context
+  event: Events
+}) => {
+  if (event.type !== 'TOGGLE_SERVE_SIDE') return
+
+  const { game } = event
+
+  // Only toggle if first hand (handIndex === 0)
+  if (game.currentServerHandIndex !== 0) return
+
+  // TODO: Emit event to LiveStore when serverSideToggled event is added to schema
+  // For now, this is a client-only toggle - no action needed
+  // const newSide = game.currentServerSide === 'L' ? 'R' : 'L'
+  // if (context.store && context.gameId) {
+  //   context.store.commit(
+  //     events.serverSideToggled({
+  //       gameId: context.gameId,
+  //       newSide,
+  //       timestamp: new Date(),
+  //     }),
+  //   )
+  // }
+}
+
+/**
+ * Undo action - emits event to LiveStore
+ */
+export const undo = ({
+  context,
+  event,
+}: {
+  context: Context
+  event: Events
+}) => {
+  if (event.type !== 'UNDO') return
+
+  const { game } = event
+
+  // Only undo if there are rallies to undo (score > 0)
+  if (game.scoreA === 0 && game.scoreB === 0) return
 
   // Emit LiveStore rallyUndone event
-  // Only emit if there are rallies to undo (score > 0)
-  if (context.store && context.gameId && (context.score.A > 0 || context.score.B > 0)) {
+  if (context.store && context.gameId) {
     context.store.commit(
       events.rallyUndone({
         gameId: context.gameId,
@@ -234,50 +117,46 @@ export const undoOnce = (context: Context): Partial<Context> => {
       }),
     )
   }
-
-  return {
-    score: prev.score,
-    server: prev.server,
-    firstHandUsed: prev.firstHandUsed,
-    history: context.history.slice(0, -1),
-  }
 }
 
-export const resetGameState = (): Partial<Context> => ({
-  gameId: null,
-  matchId: null,
-  maxPoints: 15,
-  winBy: 1,
-  players: {
-    A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
-    A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
-    B1: { firstName: 'B1', lastName: 'Player', fullName: 'B1 Player' },
-    B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
-    teamA: 'Team A',
-    teamB: 'Team B',
-  },
-  score: { A: 0, B: 0 },
-  server: {
-    team: 'A' as Team,
-    player: 1 as PlayerRow,
-    side: 'R' as Side,
-    handIndex: 0 as const,
-  },
-  firstHandUsed: false,
-  history: [],
-})
+// ===== Guards (boolean functions that determine transitions) =====
 
-// ===== Guards =====
-export const gameEnded = (
-  _: unknown,
-  params: {
-    score: Score
-    maxPoints: number
-    winBy: number
-  },
-) => {
-  const { score, maxPoints, winBy } = params
-  const { A, B } = score
-  if (A < maxPoints && B < maxPoints) return false
-  return Math.abs(A - B) >= winBy
+/**
+ * Check if game has ended based on score
+ */
+export const gameEnded = ({
+  context,
+  event,
+}: {
+  context: Context
+  event: Events
+}) => {
+  // Guard needs game data from event
+  let game: Game | undefined
+
+  if (
+    event.type === 'RALLY_WON' ||
+    event.type === 'TOGGLE_SERVE_SIDE' ||
+    event.type === 'UNDO'
+  ) {
+    game = event.game
+  }
+
+  if (!game) return false
+
+  let { scoreA, scoreB } = game
+  const { maxPoints, winBy } = context
+
+  // For RALLY_WON events, calculate the score AFTER the rally
+  // (event contains pre-rally state, but we need to check post-rally state)
+  if (event.type === 'RALLY_WON') {
+    if (event.winner === 'A') {
+      scoreA = scoreA + 1
+    } else {
+      scoreB = scoreB + 1
+    }
+  }
+
+  if (scoreA < maxPoints && scoreB < maxPoints) return false
+  return Math.abs(scoreA - scoreB) >= winBy
 }

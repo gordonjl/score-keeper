@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useSelector } from '@xstate/react'
 import { useStore } from '@livestore/react'
-import { ralliesByGame$ } from '../../livestore/squash-queries'
+import { gameById$, ralliesByGame$ } from '../../livestore/squash-queries'
 import { getOrderedRows } from './utils'
 import type { ActorRefFrom } from 'xstate'
-import type { squashGameMachine } from '../../machines/squashGameMachine'
+import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
 import type {
   ActivityGrid,
   Cell,
@@ -257,30 +257,36 @@ const buildGridFromRallies = (
   return finalState.grid
 }
 
-export const ScoreGrid = ({
-  actorRef,
+// Inner component that only renders when gameId is available
+const ScoreGridContent = ({
+  gameId,
   firstServingTeam,
   playerLabels,
-}: ScoreGridProps) => {
+  actorRef,
+}: ScoreGridProps & { gameId: string }) => {
   const { store } = useStore()
 
-  // Get state machine data
-  const { gameId, scoreA, scoreB, server, isGameOver, firstHandUsed } =
-    useSelector(actorRef, (s) => ({
-      gameId: s.context.gameId,
-      scoreA: s.context.score.A,
-      scoreB: s.context.score.B,
-      server: s.context.server,
-      isGameOver: s.status === 'done',
-      firstHandUsed: s.context.firstHandUsed,
-    }))
+  // Get isGameOver from machine context
+  const isGameOver = useSelector(actorRef, (s) => s.status === 'done')
 
-  // Query rallies from LiveStore
-  const ralliesData = store.useQuery(ralliesByGame$(gameId ?? ''))
+  // Query game data and rallies from LiveStore (only called when gameId is valid)
+  const gameData = store.useQuery(gameById$(gameId)) as Game
+  const ralliesData = store.useQuery(ralliesByGame$(gameId))
+
+  // Extract game state from LiveStore
+  const scoreA = gameData.scoreA
+  const scoreB = gameData.scoreB
+  const server: Server = {
+    team: gameData.currentServerTeam as Team,
+    player: gameData.currentServerPlayer as PlayerRow,
+    side: gameData.currentServerSide as Side,
+    handIndex: gameData.currentServerHandIndex as 0 | 1,
+  }
+  const firstHandUsed = gameData.firstHandUsed
 
   // Build grid from rallies
   const grid = useMemo(() => {
-    if (!gameId || ralliesData.length === 0) {
+    if (ralliesData.length === 0) {
       // No rallies yet - show initial serve position
       const initialServer: Server = {
         team: firstServingTeam,
@@ -332,7 +338,7 @@ export const ScoreGrid = ({
   const handIndex = server.handIndex
 
   const onToggleServeSide = () => {
-    actorRef.send({ type: 'TOGGLE_SERVE_SIDE' })
+    actorRef.send({ type: 'TOGGLE_SERVE_SIDE', game: gameData })
   }
   const renderCell = (row: RowKey, col: number) => {
     const cell = grid[row][col]
@@ -438,5 +444,38 @@ export const ScoreGrid = ({
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrapper component that checks for gameId before rendering
+export const ScoreGrid = ({
+  actorRef,
+  firstServingTeam,
+  playerLabels,
+}: ScoreGridProps) => {
+  // Get gameId from machine context
+  const gameId = useSelector(actorRef, (s) => s.context.gameId)
+
+  // Show loading state if game not loaded yet
+  if (!gameId) {
+    return (
+      <div className="card bg-base-100 shadow-xl mb-4 border border-base-300">
+        <div className="card-body p-2 sm:p-4">
+          <div className="flex justify-center items-center">
+            <span className="loading loading-spinner loading-sm"></span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Render content component with valid gameId
+  return (
+    <ScoreGridContent
+      gameId={gameId}
+      actorRef={actorRef}
+      firstServingTeam={firstServingTeam}
+      playerLabels={playerLabels}
+    />
   )
 }

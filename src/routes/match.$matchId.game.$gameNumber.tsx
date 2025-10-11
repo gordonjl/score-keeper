@@ -121,30 +121,20 @@ function GameRoute() {
       }
 
   // Use squashGameMachine hook to create and manage machine
-  const { actorRef, game } = useSquashGameMachine(
-    matchId,
-    gameNumber,
-    matchPlayers,
-  )
+  const { actorRef, game } = useSquashGameMachine(matchId, gameNumber)
   const gameId = game.id
 
   // Only select state that the route component DIRECTLY uses for its own logic
-  // Use a single selector to get multiple values efficiently
-  const {
-    isGameOver,
-    isAwaitingConfirmation,
-    scoreA,
-    scoreB,
-    teamAName,
-    teamBName,
-  } = useSelector(actorRef, (s) => ({
+  const { isGameOver, isAwaitingConfirmation } = useSelector(actorRef, (s) => ({
     isGameOver: s.status === 'done', // XState v5: Use status === 'done' for final state
     isAwaitingConfirmation: s.matches('awaitingConfirmation'),
-    scoreA: s.context.score.A,
-    scoreB: s.context.score.B,
-    teamAName: s.context.players.teamA,
-    teamBName: s.context.players.teamB,
   }))
+
+  // Get score and team names from LiveStore (source of truth)
+  const scoreA = game.scoreA
+  const scoreB = game.scoreB
+  const teamAName = `${match.playerA1FirstName} & ${match.playerA2FirstName}`
+  const teamBName = `${match.playerB1FirstName} & ${match.playerB2FirstName}`
 
   // Get firstServingTeam from game data (source of truth)
   const firstServingTeam = game.firstServingTeam as 'A' | 'B'
@@ -227,7 +217,7 @@ function GameRoute() {
             actorRef={actorRef}
             winnerTeam={winnerTeam}
             willCompleteMatch={gameStats.willCompleteMatch}
-            onCancel={() => actorRef.send({ type: 'UNDO' })}
+            onCancel={() => actorRef.send({ type: 'UNDO', game })}
             onConfirm={() => {
               actorRef.send({ type: 'CONFIRM_GAME_OVER' })
               const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
