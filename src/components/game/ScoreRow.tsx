@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import { ScoreCell } from './ScoreCell'
 import type { Cell, RowKey } from '../../machines/squashMachine.types'
 
@@ -28,6 +28,14 @@ export const ScoreRow = memo(
     onToggleServeSide,
     maxCols,
   }: ScoreRowProps) => {
+    // Stable empty callback for non-clickable cells
+    const noopClick = useCallback(() => {}, [])
+
+    // Stable callback for clickable cell
+    const handleClickableCell = useCallback(() => {
+      onToggleServeSide()
+    }, [onToggleServeSide])
+
     const renderCell = (col: number) => {
       const cell = cells[col]
       const isActive = rowKey === serverRowKey && col === serverScore
@@ -51,7 +59,7 @@ export const ScoreRow = memo(
             cell="X"
             isActive={isActive}
             isClickable={false}
-            onClick={() => {}}
+            onClick={noopClick}
             rowSpan={2}
           />
         )
@@ -62,19 +70,13 @@ export const ScoreRow = memo(
         return null
       }
 
-      const handleClick = () => {
-        if (isClickable) {
-          onToggleServeSide()
-        }
-      }
-
       return (
         <ScoreCell
           key={`${rowKey}-${col}`}
           cell={cell}
           isActive={isActive}
           isClickable={isClickable}
-          onClick={handleClick}
+          onClick={isClickable ? handleClickableCell : noopClick}
         />
       )
     }

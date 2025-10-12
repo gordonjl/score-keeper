@@ -29,16 +29,18 @@ export const writeCell = (
   col: number,
   value: Cell,
 ): ActivityGrid => {
-  const next: ActivityGrid = {
-    A1: [...grid.A1],
-    A2: [...grid.A2],
-    B1: [...grid.B1],
-    B2: [...grid.B2],
-    A: [...grid.A],
-    B: [...grid.B],
+  // Only create new array for the row that's changing
+  const newRow = [...grid[key]]
+  newRow[col] = value
+
+  return {
+    A1: key === 'A1' ? newRow : grid.A1,
+    A2: key === 'A2' ? newRow : grid.A2,
+    B1: key === 'B1' ? newRow : grid.B1,
+    B2: key === 'B2' ? newRow : grid.B2,
+    A: key === 'A' ? newRow : grid.A,
+    B: key === 'B' ? newRow : grid.B,
   }
-  next[key][col] = value
-  return next
 }
 
 export const rowKey = (team: Team, player: PlayerRow): RowKey =>
