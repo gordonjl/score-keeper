@@ -1,5 +1,5 @@
 import { assign, setup } from 'xstate'
-import type { MatchId } from '../types'
+import type { MatchId } from '@/types'
 
 /**
  * Pure UI state machine for match flow.
