@@ -14,3 +14,8 @@ todos.json
 # Local Netlify folder
 .netlify
 .wrangler
+
+# Serwist
+public/sw*
+public/swe-worker*
+dist/client/sw*
