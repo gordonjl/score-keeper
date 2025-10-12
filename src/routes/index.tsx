@@ -1,10 +1,7 @@
-import { useStore } from '@livestore/react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Check, Play, Target, Trash2, Trophy, Users, X } from 'lucide-react'
+import { Play, Target, Trophy, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
-import { events } from '../livestore/schema'
-import { uiState$, visibleTodos$ } from '../livestore/queries'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -14,8 +11,6 @@ function App() {
   const { createMatch } = useCreateLiveStoreMatch()
   const [isStarting, setIsStarting] = useState(false)
   const navigate = useNavigate({ from: Route.fullPath })
-
-  const { store } = useStore()
 
   const handleStartNewMatch = () => {
     setIsStarting(true)
@@ -158,123 +153,7 @@ function App() {
             </div>
           </div>
         </div>
-
-        {/* LiveStore Todo Test */}
-        <div className="mt-12 max-w-3xl mx-auto">
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <h2 className="card-title text-2xl mb-4 text-secondary">
-                LiveStore Test - Todo List
-              </h2>
-              <TodoTest store={store} />
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
-  )
-}
-
-const TodoTest = ({
-  store,
-}: {
-  store: ReturnType<typeof useStore>['store']
-}) => {
-  const { newTodoText } = store.useQuery(uiState$)
-  const visibleTodos = store.useQuery(visibleTodos$)
-
-  const updateNewTodoText = (text: string) =>
-    store.commit(events.uiStateSet({ newTodoText: text }))
-
-  const createTodo = () => {
-    if (newTodoText.trim()) {
-      store.commit(
-        events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-        events.uiStateSet({ newTodoText: '' }),
-      )
-    }
-  }
-
-  const toggleTodo = (id: string, completed: boolean) => {
-    store.commit(
-      completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }),
-    )
-  }
-
-  const deleteTodo = (id: string) => {
-    store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Input */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="What needs to be done?"
-          className="input input-bordered flex-1"
-          value={newTodoText}
-          onChange={(e) => updateNewTodoText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              createTodo()
-            }
-          }}
-        />
-        <button onClick={createTodo} className="btn btn-primary">
-          Add
-        </button>
-      </div>
-
-      {/* Todo List */}
-      <div className="space-y-2">
-        {visibleTodos.length === 0 ? (
-          <p className="text-center text-base-content/50 py-8">
-            No todos yet. Add one above!
-          </p>
-        ) : (
-          visibleTodos.map((todo) => (
-            <div
-              key={todo.id}
-              className="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300"
-            >
-              <button
-                onClick={() => toggleTodo(todo.id, todo.completed)}
-                className={`btn btn-sm btn-circle ${
-                  todo.completed ? 'btn-success' : 'btn-ghost'
-                }`}
-              >
-                {todo.completed ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <X className="w-4 h-4" />
-                )}
-              </button>
-              <span
-                className={`flex-1 ${
-                  todo.completed ? 'line-through text-base-content/50' : ''
-                }`}
-              >
-                {todo.text}
-              </span>
-              <button
-                onClick={() => deleteTodo(todo.id)}
-                className="btn btn-sm btn-ghost btn-circle text-error"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Stats */}
-      {visibleTodos.length > 0 && (
-        <div className="text-sm text-base-content/70 text-center">
-          {visibleTodos.filter((t) => !t.completed).length} active,{' '}
-          {visibleTodos.filter((t) => t.completed).length} completed
-        </div>
-      )}
     </div>
   )
 }
