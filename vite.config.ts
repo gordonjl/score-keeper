@@ -1,13 +1,30 @@
 /* eslint-disable unicorn/no-process-exit */
 import { spawn } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import netlify from '@netlify/vite-plugin-tanstack-start'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
-import { vitePluginVersionMark } from 'vite-plugin-version-mark'
+
+// Simple plugin to generate version.json in dist/client
+function versionPlugin(): Plugin {
+  return {
+    name: 'version-plugin',
+    closeBundle() {
+      const version = {
+        version: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      }
+      const outputPath = resolve(__dirname, 'dist/client/version.json')
+      writeFileSync(outputPath, JSON.stringify(version, null, 2))
+      console.log(`✓ Generated version.json: ${version.version}`)
+    },
+  }
+}
 
 const config = defineConfig({
   server: {
@@ -15,9 +32,6 @@ const config = defineConfig({
     host: true, // Allow access from any host (enables subdomain.localhost)
   },
   worker: { format: 'es' },
-  build: {
-    outDir: 'dist/client',
-  },
   plugins: [
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
@@ -28,20 +42,7 @@ const config = defineConfig({
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
     tanstackStart(),
     netlify(),
-    vitePluginVersionMark({
-      ifShortSHA: true,
-      outputFile: (version) => ({
-        path: '../version.json', // Server build outputs to dist/client/server, so go up one level
-        content: JSON.stringify(
-          {
-            version,
-            timestamp: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-      }),
-    }),
+    versionPlugin(),
     // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
     {
       name: 'wrangler-dev',
