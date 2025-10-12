@@ -10,9 +10,15 @@ export const ClearStorageButton = () => {
         const root = await navigator.storage.getDirectory()
         // @ts-expect-error - values() exists but TypeScript types may be outdated
         for await (const entry of root.values()) {
-          await root.removeEntry(entry.name, { recursive: true })
+          try {
+            await root.removeEntry(entry.name, { recursive: true })
+            console.log(`✅ Removed OPFS entry: ${entry.name}`)
+          } catch (err) {
+            // Some entries may be protected or locked, skip them
+            console.warn(`⚠️ Could not remove OPFS entry: ${entry.name}`, err)
+          }
         }
-        console.log('✅ OPFS cleared')
+        console.log('✅ OPFS cleared (some entries may be protected)')
       }
 
       // Clear IndexedDB
