@@ -14,6 +14,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ErrorBoundary } from 'react-error-boundary'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import { UpdateNotification } from '../components/support/UpdateNotification'
 import LiveStoreWorker from '../livestore/livestore.worker?worker'
 import { schema } from '../livestore/schema'
 
@@ -106,6 +107,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <UpdateNotification />
         {import.meta.env.DEV && (
           <TanStackDevtools
             config={{

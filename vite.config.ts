@@ -7,6 +7,7 @@ import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 const config = defineConfig({
   server: {
@@ -24,6 +25,32 @@ const config = defineConfig({
     netlify(),
     viteReact(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    VitePWA({
+      registerType: 'prompt',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+      },
+      manifest: {
+        name: 'Score Keeper',
+        short_name: 'Score Keeper',
+        description: 'Squash score tracking application',
+        theme_color: '#ffffff',
+        icons: [
+          {
+            src: '/logo192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/logo512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+    }),
     // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
     {
       name: 'wrangler-dev',
