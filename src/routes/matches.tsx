@@ -364,25 +364,27 @@ const MatchesHeader = () => (
   </div>
 )
 
-type MatchWithGames = {
+type MatchWithGamesProps = {
   readonly match: Match
-  readonly games: ReadonlyArray<Game>
+  readonly onDelete: (matchId: string) => void
+}
+
+const MatchWithGames = ({ match, onDelete }: MatchWithGamesProps) => {
+  const { store } = useStore()
+  const games = store.useQuery(gamesByMatch$(match.id))
+  
+  return <MatchCard match={match} games={games} onDelete={onDelete} />
 }
 
 type MatchesListProps = {
-  readonly matches: ReadonlyArray<MatchWithGames>
+  readonly matches: ReadonlyArray<Match>
   readonly onDelete: (matchId: string) => void
 }
 
 const MatchesList = ({ matches, onDelete }: MatchesListProps) => (
   <div className="grid gap-4">
-    {matches.map(({ match, games }) => (
-      <MatchCard
-        key={match.id}
-        match={match}
-        games={games}
-        onDelete={onDelete}
-      />
+    {matches.map((match) => (
+      <MatchWithGames key={match.id} match={match} onDelete={onDelete} />
     ))}
   </div>
 )
@@ -404,12 +406,6 @@ function MatchesListRoute() {
     teamAName: string
     teamBName: string
   }>({ isOpen: false, matchId: null, teamAName: '', teamBName: '' })
-
-  // Query games for each match
-  const matchesWithGames: Array<MatchWithGames> = matches.map((match) => ({
-    match,
-    games: store.useQuery(gamesByMatch$(match.id)),
-  }))
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const hasMatches = matches && matches.length > 0
@@ -470,7 +466,7 @@ function MatchesListRoute() {
     <div className="container mx-auto p-4">
       <MatchesHeader />
       {hasMatches ? (
-        <MatchesList matches={matchesWithGames} onDelete={handleDeleteClick} />
+        <MatchesList matches={matches} onDelete={handleDeleteClick} />
       ) : (
         <EmptyState />
       )}
