@@ -5,12 +5,12 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "start": "vite --port 3000",
-    "build": "vite build",
+    "build": "pnpm lint && vite build",
     "serve": "vite preview",
     "test": "vitest run",
-    "lint": "eslint",
+    "lint": "eslint src --max-warnings 0",
     "format": "prettier",
-    "check": "prettier --write . && eslint --fix"
+    "check": "prettier --write . && eslint --fix src"
   },
   "dependencies": {
     "@latest": "link:xstate/@latest",

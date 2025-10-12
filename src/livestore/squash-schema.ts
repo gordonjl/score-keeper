@@ -239,7 +239,7 @@ export const squashEvents = {
   }),
 
   // ===== UI state events (client-only) =====
-  gameUiStateSet: squashTables.gameUiState.set,
+  uiStateSet: squashTables.gameUiState.set,
 }
 
 // ============================================================================
