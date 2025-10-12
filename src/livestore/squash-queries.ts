@@ -43,6 +43,17 @@ export const allMatches$ = queryDb(
   { label: 'all-matches' },
 )
 
+/**
+ * Get all non-archived matches (active and completed)
+ */
+export const nonArchivedMatches$ = queryDb(
+  () => squashTables.matches.orderBy('updatedAt', 'desc'),
+  {
+    label: 'non-archived-matches',
+    map: (matches) => matches.filter((match) => match.status !== 'archived'),
+  },
+)
+
 // ============================================================================
 // GAME QUERIES
 // ============================================================================
