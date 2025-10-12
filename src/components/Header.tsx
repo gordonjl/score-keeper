@@ -3,6 +3,7 @@ import { Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { LetStrokeModal } from './modals/LetStrokeModal'
 import { TimersModal } from './modals/TimersModal'
+import { ClearStorageButton } from './support/ClearStorageButton'
 
 export default function Header() {
   const [theme, setTheme] = useState<'pcsquash' | 'pcsquash-dark'>('pcsquash')
@@ -43,6 +44,7 @@ export default function Header() {
         <div className="badge badge-ghost badge-lg">PAR-15 Doubles Scoring</div>
       </div>
       <div className="navbar-end gap-2">
+        {import.meta.env.DEV && <ClearStorageButton />}
         <button
           onClick={toggleTheme}
           className="btn btn-ghost btn-circle"
