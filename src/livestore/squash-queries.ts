@@ -11,6 +11,7 @@ import { squashTables } from './squash-schema'
 export const matchById$ = (matchId: string) =>
   queryDb(() => squashTables.matches.where({ id: matchId }).first(), {
     label: `match-${matchId}`,
+    deps: [matchId],
   })
 
 /**
@@ -64,7 +65,10 @@ export const nonArchivedMatches$ = queryDb(
 export const gamesByMatch$ = (matchId: string) =>
   queryDb(
     () => squashTables.games.where({ matchId }).orderBy('gameNumber', 'asc'),
-    { label: `games-${matchId}` },
+    {
+      label: `games-${matchId}`,
+      deps: [matchId],
+    },
   )
 
 /**
@@ -73,7 +77,10 @@ export const gamesByMatch$ = (matchId: string) =>
 export const currentGameByMatch$ = (matchId: string) =>
   queryDb(
     () => squashTables.games.where({ matchId, status: 'in_progress' }).first(),
-    { label: `current-game-${matchId}` },
+    {
+      label: `current-game-${matchId}`,
+      deps: [matchId],
+    },
   )
 
 /**
@@ -95,7 +102,7 @@ export const gameByNumber = (matchId: string, gameNumber: number) =>
       }),
     {
       label: `game-${matchId}-${gameNumber}`,
-      deps: [matchId, gameNumber], // 👈 Critical: React to changes in gameNumber
+      deps: [matchId, gameNumber],
     },
   )
 
@@ -108,7 +115,10 @@ export const completedGamesByMatch$ = (matchId: string) =>
       squashTables.games
         .where({ matchId, status: 'completed' })
         .orderBy('gameNumber', 'asc'),
-    { label: `completed-games-${matchId}` },
+    {
+      label: `completed-games-${matchId}`,
+      deps: [matchId],
+    },
   )
 
 // ============================================================================
@@ -136,6 +146,7 @@ export const ralliesByGame$ = (gameId: string) =>
 export const rallyCountByGame$ = (gameId: string) =>
   queryDb(() => squashTables.rallies.where({ gameId, deletedAt: null }), {
     label: `rally-count-${gameId}`,
+    deps: [gameId],
     map: (rows) => rows.length,
   })
 
@@ -149,7 +160,10 @@ export const lastRallyByGame$ = (gameId: string) =>
         .where({ gameId, deletedAt: null })
         .orderBy('rallyNumber', 'desc')
         .first(),
-    { label: `last-rally-${gameId}` },
+    {
+      label: `last-rally-${gameId}`,
+      deps: [gameId],
+    },
   )
 
 // ============================================================================
