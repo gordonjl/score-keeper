@@ -23,7 +23,10 @@ export const ClearStorageButton = () => {
           } catch (err) {
             // Some entries may be protected or locked, skip them
             const errorName = err instanceof Error ? err.name : 'Unknown'
-            console.warn(`⚠️ Could not remove OPFS entry: ${entry.name}`, errorName)
+            console.warn(
+              `⚠️ Could not remove OPFS entry: ${entry.name}`,
+              errorName,
+            )
           }
         }
         console.log('✅ OPFS cleared (some entries may be protected)')
@@ -50,7 +53,8 @@ export const ClearStorageButton = () => {
       window.location.reload()
     } catch (error) {
       console.error('Error clearing storage:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
       alert(`Error clearing storage: ${errorMessage}`)
     }
   }

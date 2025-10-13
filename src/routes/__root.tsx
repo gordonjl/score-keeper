@@ -17,6 +17,8 @@ import Footer from '../components/Footer'
 import { UpdateNotification } from '../components/support/UpdateNotification'
 import LiveStoreWorker from '../livestore/livestore.worker?worker'
 import { schema } from '../livestore/schema'
+import { AuthProvider } from '../contexts/AuthContext'
+import { useSyncAuthToLiveStore } from '../hooks/useSyncAuthToLiveStore'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
@@ -25,6 +27,18 @@ import type { QueryClient } from '@tanstack/react-query'
 
 type MyRouterContext = {
   queryClient: QueryClient
+}
+
+// Component that runs inside LiveStoreProvider to sync auth state
+const LiveStoreContent = () => {
+  useSyncAuthToLiveStore()
+
+  return (
+    <>
+      <Header />
+      <Outlet />
+    </>
+  )
 }
 
 const RootComponent = () => {
@@ -57,26 +71,27 @@ const RootComponent = () => {
 
   return (
     <RootDocument>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <LiveStoreProvider
-          schema={schema}
-          storeId={storeId}
-          renderLoading={() => (
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                <div className="loading loading-spinner loading-lg"></div>
-                <p className="mt-4">Loading...</p>
+      <AuthProvider>
+        <ErrorBoundary fallback={<div>Something went wrong</div>}>
+          <LiveStoreProvider
+            schema={schema}
+            storeId={storeId}
+            renderLoading={() => (
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                  <div className="loading loading-spinner loading-lg"></div>
+                  <p className="mt-4">Loading...</p>
+                </div>
               </div>
-            </div>
-          )}
-          adapter={adapter}
-          batchUpdates={batchUpdates}
-          syncPayload={{ authToken: 'insecure-token-change-me' }}
-        >
-          <Header />
-          <Outlet />
-        </LiveStoreProvider>
-      </ErrorBoundary>
+            )}
+            adapter={adapter}
+            batchUpdates={batchUpdates}
+            syncPayload={{ storeId }}
+          >
+            <LiveStoreContent />
+          </LiveStoreProvider>
+        </ErrorBoundary>
+      </AuthProvider>
     </RootDocument>
   )
 }
@@ -108,6 +123,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <main className="flex-1">{children}</main>
         <Footer />
         <UpdateNotification />
+        {/* Netlify Identity modal container */}
+        <div id="netlify-modal"></div>
         {import.meta.env.DEV && (
           <TanStackDevtools
             config={{

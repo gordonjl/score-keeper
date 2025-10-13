@@ -3,7 +3,20 @@ import { squashTables } from './tables'
 import type { PlayerRow, Side, Team } from '../machines/squashMachine.types'
 
 // Type narrowing helpers for LiveStore data
-const narrowGame = <T extends { currentServerTeam: string; currentServerPlayer: number; currentServerSide: string; currentServerHandIndex: number; firstServingTeam: string; firstServingPlayer: number; firstServingSide: string; winner: string | null }>(game: T) => ({
+const narrowGame = <
+  T extends {
+    currentServerTeam: string
+    currentServerPlayer: number
+    currentServerSide: string
+    currentServerHandIndex: number
+    firstServingTeam: string
+    firstServingPlayer: number
+    firstServingSide: string
+    winner: string | null
+  },
+>(
+  game: T,
+) => ({
   ...game,
   currentServerTeam: game.currentServerTeam as Team,
   currentServerPlayer: game.currentServerPlayer as PlayerRow,
@@ -15,7 +28,17 @@ const narrowGame = <T extends { currentServerTeam: string; currentServerPlayer: 
   winner: game.winner as Team | null,
 })
 
-const narrowRally = <T extends { winner: string; serverTeam: string; serverPlayer: number; serverSide: string; serverHandIndex: number }>(rally: T) => ({
+const narrowRally = <
+  T extends {
+    winner: string
+    serverTeam: string
+    serverPlayer: number
+    serverSide: string
+    serverHandIndex: number
+  },
+>(
+  rally: T,
+) => ({
   ...rally,
   winner: rally.winner as Team,
   serverTeam: rally.serverTeam as Team,

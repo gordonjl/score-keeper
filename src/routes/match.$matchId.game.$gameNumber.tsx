@@ -15,10 +15,7 @@ import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
 import { events, tables } from '../livestore/schema'
-import {
-  gamesByMatch$,
-  matchById$,
-} from '../livestore/squash-queries'
+import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
 
 export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
   component: GameRouteWrapper,
@@ -77,7 +74,7 @@ function GameRoute() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { store } = useStore()
   const { actor: matchActorRef } = useLiveStoreMatch()
-  
+
   // Use LiveStore client document for next game setup state
   const [nextGameSetupState, updateNextGameSetupState] = useClientDocument(
     tables.nextGameSetupState,
@@ -89,44 +86,34 @@ function GameRoute() {
   const games = useQuery(gamesByMatch$(matchId))
 
   // Build players from match data
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const matchPlayers = useMemo(() => match
-    ? {
-        A1: {
-          firstName: match.playerA1FirstName,
-          lastName: match.playerA1LastName,
-          fullName:
-            `${match.playerA1FirstName} ${match.playerA1LastName}`.trim(),
-        },
-        A2: {
-          firstName: match.playerA2FirstName,
-          lastName: match.playerA2LastName,
-          fullName:
-            `${match.playerA2FirstName} ${match.playerA2LastName}`.trim(),
-        },
-        B1: {
-          firstName: match.playerB1FirstName,
-          lastName: match.playerB1LastName,
-          fullName:
-            `${match.playerB1FirstName} ${match.playerB1LastName}`.trim(),
-        },
-        B2: {
-          firstName: match.playerB2FirstName,
-          lastName: match.playerB2LastName,
-          fullName:
-            `${match.playerB2FirstName} ${match.playerB2LastName}`.trim(),
-        },
-        teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
-        teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
-      }
-    : {
-        A1: { firstName: 'A1', lastName: 'Player', fullName: 'A1 Player' },
-        A2: { firstName: 'A2', lastName: 'Player', fullName: 'A2 Player' },
-        B1: { firstName: 'B1', lastName: 'Player', fullName: 'B1 Player' },
-        B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
-        teamA: 'Team A',
-        teamB: 'Team B',
-      }, [match])
+
+  const matchPlayers = useMemo(
+    () => ({
+      A1: {
+        firstName: match.playerA1FirstName,
+        lastName: match.playerA1LastName,
+        fullName: `${match.playerA1FirstName} ${match.playerA1LastName}`.trim(),
+      },
+      A2: {
+        firstName: match.playerA2FirstName,
+        lastName: match.playerA2LastName,
+        fullName: `${match.playerA2FirstName} ${match.playerA2LastName}`.trim(),
+      },
+      B1: {
+        firstName: match.playerB1FirstName,
+        lastName: match.playerB1LastName,
+        fullName: `${match.playerB1FirstName} ${match.playerB1LastName}`.trim(),
+      },
+      B2: {
+        firstName: match.playerB2FirstName,
+        lastName: match.playerB2LastName,
+        fullName: `${match.playerB2FirstName} ${match.playerB2LastName}`.trim(),
+      },
+      teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
+      teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
+    }),
+    [match],
+  )
 
   // Use squashGameMachine hook to create and manage machine
   const { actorRef, game } = useSquashGameMachine(matchId, gameNumber)
@@ -215,7 +202,17 @@ function GameRoute() {
       matchActorRef?.send({ type: 'END_MATCH' })
       void navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
-  }, [actorRef, scoreA, scoreB, store, gameId, matchId, matchActorRef, gameStats.willCompleteMatch, navigate])
+  }, [
+    actorRef,
+    scoreA,
+    scoreB,
+    store,
+    gameId,
+    matchId,
+    matchActorRef,
+    gameStats.willCompleteMatch,
+    navigate,
+  ])
 
   const handleNextGameClick = useCallback(() => {
     updateNextGameSetupState({

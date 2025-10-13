@@ -151,3 +151,41 @@ export const squashEvents = {
     }),
   }),
 }
+
+// ============================================================================
+// AUTH EVENTS
+// ============================================================================
+
+export const authEvents = {
+  userRegistered: Events.synced({
+    name: 'v1.UserRegistered',
+    schema: Schema.Struct({
+      userId: Schema.String,
+      githubUsername: Schema.String,
+      githubEmail: Schema.NullOr(Schema.String),
+      githubAvatarUrl: Schema.NullOr(Schema.String),
+      displayName: Schema.NullOr(Schema.String),
+      role: Schema.Literal('admin', 'staff', 'member'),
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  userLoggedIn: Events.synced({
+    name: 'v1.UserLoggedIn',
+    schema: Schema.Struct({
+      userId: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  roleAssigned: Events.synced({
+    name: 'v1.RoleAssigned',
+    schema: Schema.Struct({
+      userId: Schema.String,
+      assignedBy: Schema.String,
+      newRole: Schema.Literal('admin', 'staff', 'member'),
+      previousRole: Schema.Literal('admin', 'staff', 'member'),
+      timestamp: Schema.Date,
+    }),
+  }),
+}
