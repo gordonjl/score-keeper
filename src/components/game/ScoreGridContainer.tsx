@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useSelector } from '@xstate/react'
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { gameById$, ralliesByGame$ } from '../../livestore/squash-queries'
 import { getOrderedRows } from './utils'
 import { ScoreTable } from './ScoreTable'
@@ -36,16 +36,14 @@ export const ScoreGridContainer = ({
   firstServingTeam,
   playerLabels,
 }: ScoreGridContainerProps) => {
-  const { store } = useStore()
-
   // Combined selector for machine state
   const machineState = useSelector(actorRef, (s) => ({
     isGameOver: s.status === 'done',
   }))
 
   // Query game data and rallies from LiveStore
-  const gameData = store.useQuery(gameById$(gameId)) as Game
-  const ralliesData = store.useQuery(ralliesByGame$(gameId))
+  const gameData = useQuery(gameById$(gameId)) as Game
+  const ralliesData = useQuery(ralliesByGame$(gameId))
 
   // Extract server state from game
   const server: Server = useMemo(

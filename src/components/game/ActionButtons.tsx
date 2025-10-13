@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { gameById$, ralliesByGame$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
@@ -16,8 +16,6 @@ const ActionButtonsContent = ({
   gameId: string
   actorRef: ActorRefFrom<typeof squashGameMachine>
 }) => {
-  const { store } = useStore()
-
   // Get state from machine
   const { isGameOver, isActive, isAwaitingConfirmation } = useSelector(
     actorRef,
@@ -29,8 +27,8 @@ const ActionButtonsContent = ({
   )
 
   // Query game and rallies from LiveStore (only called when gameId is valid)
-  const game = store.useQuery(gameById$(gameId)) as Game
-  const rallies = store.useQuery(ralliesByGame$(gameId))
+  const game = useQuery(gameById$(gameId)) as Game
+  const rallies = useQuery(ralliesByGame$(gameId))
 
   const canLet = !isGameOver && isActive && !isAwaitingConfirmation
   // Can undo if there are rallies (which means at least one rally was played)

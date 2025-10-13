@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
 import {
@@ -27,12 +27,10 @@ const ScoreHeaderContent = ({
   matchId: string
   firstServingTeam: 'A' | 'B'
 }) => {
-  const { store } = useStore()
-
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = store.useQuery(gameById$(gameId)) as Game
-  const match = store.useQuery(matchById$(matchId))
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const game = useQuery(gameById$(gameId)) as Game
+  const match = useQuery(matchById$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // Get scores from LiveStore
   const scoreA = game.scoreA

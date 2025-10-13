@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { Clock, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { gamesByMatch$, matchById$ } from '../../livestore/squash-queries'
@@ -98,14 +98,12 @@ export const MatchProgress = ({
   matchActorRef,
   isGameInProgress,
 }: MatchProgressProps) => {
-  const { store } = useStore()
-
   // Get matchId from the actor context
   const matchId = matchActorRef.getSnapshot().context.matchId
 
   // Query match and games data from LiveStore
-  const match = store.useQuery(matchById$(matchId))
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const match = useQuery(matchById$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // Build players object from match data
   const players = useMemo(() => {

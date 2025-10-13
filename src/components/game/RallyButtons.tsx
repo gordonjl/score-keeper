@@ -1,5 +1,5 @@
 import { useSelector } from '@xstate/react'
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
 import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
@@ -16,8 +16,6 @@ const RallyButtonsContent = ({
   gameId: string
   actorRef: ActorRefFrom<typeof squashGameMachine>
 }) => {
-  const { store } = useStore()
-
   // Get state from machine
   const { isGameOver, isAwaitingConfirmation } = useSelector(actorRef, (s) => ({
     isGameOver: s.status === 'done',
@@ -25,10 +23,10 @@ const RallyButtonsContent = ({
   }))
 
   // Query game data from LiveStore (only called when gameId is valid)
-  const game = store.useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId)) as Game
 
   // Query match for player names
-  const match = store.useQuery(matchById$(game.matchId)) as {
+  const match = useQuery(matchById$(game.matchId)) as {
     playerA1FirstName: string
     playerA2FirstName: string
     playerB1FirstName: string

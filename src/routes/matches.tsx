@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Calendar, CheckCircle2, Clock, Play, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteMatchModal } from '../components/modals/DeleteMatchModal'
@@ -370,8 +370,7 @@ type MatchWithGamesProps = {
 }
 
 const MatchWithGames = ({ match, onDelete }: MatchWithGamesProps) => {
-  const { store } = useStore()
-  const games = store.useQuery(gamesByMatch$(match.id))
+  const games = useQuery(gamesByMatch$(match.id))
   
   return <MatchCard match={match} games={games} onDelete={onDelete} />
 }
@@ -399,7 +398,7 @@ export const Route = createFileRoute('/matches')({
 
 function MatchesListRoute() {
   const { store } = useStore()
-  const matches = store.useQuery(nonArchivedMatches$)
+  const matches = useQuery(nonArchivedMatches$)
   const [deleteModalState, setDeleteModalState] = useState<{
     isOpen: boolean
     matchId: string | null

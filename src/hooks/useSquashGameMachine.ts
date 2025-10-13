@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { useEffect, useMemo } from 'react'
 import { createActor } from 'xstate'
@@ -21,9 +21,9 @@ import { squashGameMachine } from '../machines/squashGameMachine'
  */
 export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const { store } = useStore()
-
+  
   // Query the game by match ID and game number
-  const gameByNumberResult = store.useQuery(gameByNumber(matchId, gameNumber))
+  const gameByNumberResult = useQuery(gameByNumber(matchId, gameNumber))
 
   if (!gameByNumberResult) {
     throw new Error(
@@ -34,8 +34,8 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const gameId = gameByNumberResult.id
 
   // Query game details and rallies
-  const gameData = store.useQuery(gameById$(gameId))
-  const ralliesData = store.useQuery(ralliesByGame$(gameId))
+  const gameData = useQuery(gameById$(gameId))
+  const ralliesData = useQuery(ralliesByGame$(gameId))
 
   // Create a new machine actor when gameId changes
   // This ensures each game gets a fresh machine instance

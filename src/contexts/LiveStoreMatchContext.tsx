@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { createContext, useContext, useEffect } from 'react'
 import { useMachine } from '@xstate/react'
 import { events } from '../livestore/schema'
@@ -40,10 +40,8 @@ export const LiveStoreMatchProvider = ({
   matchId,
   children,
 }: LiveStoreMatchProviderProps) => {
-  const { store } = useStore()
-
   // Query match data to check if loaded
-  const match = store.useQuery(matchById$(matchId))
+  const match = useQuery(matchById$(matchId))
 
   // Create the UI state machine
   const [, , actor] = useMachine(matchMachine, {
