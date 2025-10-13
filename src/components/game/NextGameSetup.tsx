@@ -32,7 +32,7 @@ type NextGameSetupProps = {
     players: PlayerPositions
     teamASide: Side
     teamBSide: Side
-  }) => void
+  }) => void | Promise<void>
 }
 
 export const NextGameSetup = ({
@@ -84,7 +84,7 @@ export const NextGameSetup = ({
 
     // Default both teams to start serving from right side
     // Side can be toggled during gameplay by clicking the cell
-    onStartGame({
+    void onStartGame({
       firstServingTeam: setupState.firstServingTeam,
       players: gamePlayers,
       teamASide: 'R',

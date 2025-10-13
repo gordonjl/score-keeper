@@ -37,7 +37,14 @@ export default tseslint.config(
       // Allow empty functions (sometimes needed for default props)
       '@typescript-eslint/no-empty-function': 'off',
       // Relax some strict rules for pragmatic development
-      '@typescript-eslint/no-floating-promises': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-floating-promises': [
+        'warn',
+        {
+          // Allow store.commit() to be called without await/void (livestore pattern)
+          ignoreVoid: true,
+          ignoreIIFE: false,
+        },
+      ],
       '@typescript-eslint/no-misused-promises': 'warn', // Downgrade to warning
       '@typescript-eslint/no-unsafe-call': 'warn', // Downgrade to warning
       '@typescript-eslint/no-unsafe-member-access': 'warn', // Downgrade to warning

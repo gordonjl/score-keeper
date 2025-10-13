@@ -63,7 +63,7 @@ function MatchSummaryRoute() {
   // Redirect if match is not complete after loading completes
   useEffect(() => {
     if (!isLoading && !isActuallyComplete) {
-      navigate({ to: '/match/$matchId/setup', params: { matchId } })
+      void navigate({ to: '/match/$matchId/setup', params: { matchId } })
     }
   }, [isLoading, isActuallyComplete, matchId, navigate])
 
@@ -88,7 +88,7 @@ function MatchSummaryRoute() {
 
   const handleStartNewMatch = () => {
     matchActorRef?.send({ type: 'RESET' })
-    navigate({
+    void navigate({
       to: '/match/$matchId/setup',
       params: { matchId },
       search: {
@@ -105,7 +105,7 @@ function MatchSummaryRoute() {
   const handleFinishAndExit = () => {
     // Match is automatically persisted in IndexedDB
     // Navigate to root
-    navigate({ to: '/' })
+    void navigate({ to: '/' })
   }
 
   return (

@@ -17,7 +17,7 @@ function App() {
     const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
     const matchId = createMatch(playerNames)
 
-    navigate({ to: '/match/$matchId/setup', params: { matchId } })
+    void navigate({ to: '/match/$matchId/setup', params: { matchId } })
   }
 
   return (

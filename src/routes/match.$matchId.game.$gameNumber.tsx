@@ -45,7 +45,7 @@ function GameRouteWrapper() {
   // If match is complete, redirect to summary
   useEffect(() => {
     if (isMatchComplete) {
-      navigate({ to: '/match/$matchId/summary', params: { matchId } })
+      void navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
   }, [isMatchComplete, matchId, navigate])
 
@@ -195,7 +195,7 @@ function GameRoute() {
     actorRef.send({ type: 'CONFIRM_GAME_OVER' })
     const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
 
-    // Emit gameCompleted event to LiveStore
+    // Emit gameCompleted event to LiveStore (fire-and-forget)
     store.commit(
       events.gameCompleted({
         gameId,
@@ -213,7 +213,7 @@ function GameRoute() {
     // Check if match is complete and navigate
     if (gameStats.willCompleteMatch) {
       matchActorRef?.send({ type: 'END_MATCH' })
-      navigate({ to: '/match/$matchId/summary', params: { matchId } })
+      void navigate({ to: '/match/$matchId/summary', params: { matchId } })
     }
   }, [actorRef, scoreA, scoreB, store, gameId, matchId, matchActorRef, gameStats.willCompleteMatch, navigate])
 
@@ -249,7 +249,7 @@ function GameRoute() {
       const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
 
       // Emit gameCompleted event to LiveStore
-      await store.commit(
+      store.commit(
         events.gameCompleted({
           gameId,
           matchId,
@@ -270,7 +270,7 @@ function GameRoute() {
         games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 0
       const newGameNumber = maxGameNumber + 1
 
-      await store.commit(
+      store.commit(
         events.gameStarted({
           gameId: newGameId,
           matchId,
@@ -290,7 +290,7 @@ function GameRoute() {
 
       // Update machine UI state and navigate
       matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
-      navigate({
+      void navigate({
         to: '/match/$matchId/game/$gameNumber',
         params: { matchId, gameNumber: String(newGameNumber) },
       })
@@ -320,7 +320,7 @@ function GameRoute() {
   const handleEndMatch = useCallback(() => {
     matchActorRef?.send({ type: 'END_MATCH' })
     // Match is automatically persisted in IndexedDB
-    navigate({ to: '/' })
+    void navigate({ to: '/' })
   }, [matchActorRef, navigate])
 
   return (
