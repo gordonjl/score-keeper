@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Either, Schema as S } from 'effect'
 import { Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -47,7 +47,7 @@ function SetupRoute() {
   const hasPopulatedForm = useRef(false)
 
   // Query match data from LiveStore
-  const match = store.useQuery(matchById$(matchId))
+  const match = useQuery(matchById$(matchId))
 
   const form = useForm({
     defaultValues: {

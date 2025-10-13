@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSelector } from '@xstate/react'
 import { useEffect, useMemo, useState } from 'react'
@@ -28,7 +28,7 @@ function GameRouteWrapper() {
   const { isLoading } = useLiveStoreMatch()
 
   // Query games from LiveStore
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // Check if match is complete (3 games won)
   const gamesWonA = games.filter(
@@ -77,12 +77,12 @@ function GameRoute() {
   const [showNextGameSetup, setShowNextGameSetup] = useState(false)
 
   // Query data from LiveStore
-  const match = store.useQuery(matchById$(matchId))
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const match = useQuery(matchById$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // Build players from match data
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const matchPlayers = match
+  const matchPlayers = useMemo(() => match
     ? {
         A1: {
           firstName: match.playerA1FirstName,
@@ -118,7 +118,7 @@ function GameRoute() {
         B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
         teamA: 'Team A',
         teamB: 'Team B',
-      }
+      }, [match])
 
   // Use squashGameMachine hook to create and manage machine
   const { actorRef, game } = useSquashGameMachine(matchId, gameNumber)

@@ -1,6 +1,6 @@
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { useSelector } from '@xstate/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createActor } from 'xstate'
 import {
   gameById$,
@@ -21,9 +21,9 @@ import { squashGameMachine } from '../machines/squashGameMachine'
  */
 export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const { store } = useStore()
-
+  
   // Query the game by match ID and game number
-  const gameByNumberResult = store.useQuery(gameByNumber(matchId, gameNumber))
+  const gameByNumberResult = useQuery(gameByNumber(matchId, gameNumber))
 
   if (!gameByNumberResult) {
     throw new Error(
@@ -34,8 +34,8 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const gameId = gameByNumberResult.id
 
   // Query game details and rallies
-  const gameData = store.useQuery(gameById$(gameId))
-  const ralliesData = store.useQuery(ralliesByGame$(gameId))
+  const gameData = useQuery(gameById$(gameId))
+  const ralliesData = useQuery(ralliesByGame$(gameId))
 
   // Create a new machine actor when gameId changes
   // This ensures each game gets a fresh machine instance
@@ -48,19 +48,24 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
     actor.start()
 
     return actor
-  }, [gameId, store])
+  }, [store])
 
   // Initialize machine ONCE when actor is created
-  // IMPORTANT: Only depends on actorRef to run once per actor creation
+  // Use a ref to track if we've initialized this actor
+  const initializedRef = useRef(false)
+  
   useEffect(() => {
-    actorRef.send({
-      type: 'INITIALIZE',
-      gameId: gameData.id,
-      matchId: gameData.matchId,
-      maxPoints: gameData.maxPoints,
-      winBy: gameData.winBy,
-      game: gameData,
-    })
+    if (!initializedRef.current && actorRef.getSnapshot().value === 'notConfigured') {
+      actorRef.send({
+        type: 'INITIALIZE',
+        gameId: gameData.id,
+        matchId: gameData.matchId,
+        maxPoints: gameData.maxPoints,
+        winBy: gameData.winBy,
+        game: gameData,
+      })
+      initializedRef.current = true
+    }
   }, [actorRef, gameData])
 
   // Get current state snapshot for convenience

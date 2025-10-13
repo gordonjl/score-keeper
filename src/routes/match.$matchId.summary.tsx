@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
@@ -16,8 +16,8 @@ function MatchSummaryRoute() {
   const navigate = useNavigate({ from: Route.fullPath })
 
   // Query data from LiveStore
-  const match = store.useQuery(matchById$(matchId))
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const match = useQuery(matchById$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // Build players from match data
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

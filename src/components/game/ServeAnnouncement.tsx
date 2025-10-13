@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
 import { toWords } from './utils'
@@ -11,11 +11,9 @@ type ServeAnnouncementProps = {
 
 // Inner component that only renders when gameId is available
 const ServeAnnouncementContent = ({ gameId }: { gameId: string }) => {
-  const { store } = useStore()
-
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = store.useQuery(gameById$(gameId)) as Game
-  const match = store.useQuery(matchById$(game.matchId))
+  const game = useQuery(gameById$(gameId)) as Game
+  const match = useQuery(matchById$(game.matchId))
 
   // Get server and score from LiveStore
   const server = {

@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
 import { gamesByMatch$, matchById$ } from '../../livestore/squash-queries'
 
@@ -14,12 +14,11 @@ export const MatchSummary = ({
   onStartNewGame,
   onEndMatch,
 }: MatchSummaryProps) => {
-  const { store } = useStore()
   const { matchId } = useLiveStoreMatch()
 
   // Query from LiveStore
-  const match = store.useQuery(matchById$(matchId))
-  const games = store.useQuery(gamesByMatch$(matchId))
+  const match = useQuery(matchById$(matchId))
+  const games = useQuery(gamesByMatch$(matchId))
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const players = match
