@@ -38,9 +38,9 @@ const config = defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
+    tanstackStart(),
     viteReact(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    tanstackStart(),
     netlify(),
     versionPlugin(),
     // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
