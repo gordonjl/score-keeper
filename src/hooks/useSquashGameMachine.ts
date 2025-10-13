@@ -1,7 +1,5 @@
 import { useQuery, useStore } from '@livestore/react'
-import { useSelector } from '@xstate/react'
-import { useEffect, useMemo, useRef } from 'react'
-import { createActor } from 'xstate'
+import { useActorRef, useSelector } from '@xstate/react'
 import {
   gameById$,
   gameByNumber,
@@ -12,11 +10,13 @@ import { squashGameMachine } from '../machines/squashGameMachine'
 /**
  * Hook to instantiate and manage squashGameMachine lifecycle with LiveStore integration.
  *
- * Following XState + LiveStore best practices:
+ * Following XState + LiveStore best practices (learned from official examples):
  * - LiveStore is the source of truth for persistent data
- * - XState manages UI state transitions
- * - Creates a new machine actor for each game (when gameId changes)
- * - Reactively queries game data from LiveStore
+ * - XState manages UI state transitions and game flow
+ * - useActorRef() creates a NEW actor when gameId changes
+ * - Actor is initialized with game identity via input (not INITIALIZE event)
+ * - useSelector() provides fine-grained reactivity
+ * - When switching games, React creates a fresh actor with new input
  * - Server state is read directly from game table (no rally replay needed)
  */
 export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
@@ -37,35 +37,12 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const gameData = useQuery(gameById$(gameId))
   const ralliesData = useQuery(ralliesByGame$(gameId))
 
-  // Create a new machine actor when gameId changes
-  // This ensures each game gets a fresh machine instance
-  const actorRef = useMemo(() => {
-    const actor = createActor(squashGameMachine, {
-      // @ts-expect-error - LiveStore type compatibility with XState
-      input: { store },
-    })
-
-    actor.start()
-
-    return actor
-  }, [store])
-
-  // Initialize machine ONCE when actor is created
-  // Use a ref to track if we've initialized this actor
-  const initializedRef = useRef(false)
-
-  useEffect(() => {
-    if (
-      !initializedRef.current &&
-      actorRef.getSnapshot().value === 'notConfigured'
-    ) {
-      actorRef.send({
-        type: 'INITIALIZE',
-        game: gameData,
-      })
-      initializedRef.current = true
-    }
-  }, [actorRef, gameData])
+  // Use XState React hook to create and manage actor lifecycle
+  // useActorRef creates a NEW actor when gameId changes (XState best practice)
+  // This ensures each game gets a fresh machine instance with proper initialization
+  const actorRef = useActorRef(squashGameMachine, {
+    input: { store, gameId },
+  })
 
   // Get current state snapshot for convenience
   const state = useSelector(actorRef, (s) => s)

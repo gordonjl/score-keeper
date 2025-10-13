@@ -17,25 +17,23 @@ export const rallyWon = (
   const rallyNumber = game.scoreA + game.scoreB + 1
 
   // Only emit to LiveStore - actions are void functions!
-  if (context.store) {
-    context.store.commit(
-      events.rallyWon({
-        rallyId: crypto.randomUUID(),
-        gameId: game.id,
-        rallyNumber,
-        winner,
-        serverTeam: game.currentServerTeam,
-        serverPlayer: game.currentServerPlayer,
-        serverSide: game.currentServerSide,
-        serverHandIndex: game.currentServerHandIndex,
-        scoreABefore: game.scoreA,
-        scoreBBefore: game.scoreB,
-        scoreAAfter: winner === 'A' ? game.scoreA + 1 : game.scoreA,
-        scoreBAfter: winner === 'B' ? game.scoreB + 1 : game.scoreB,
-        timestamp: new Date(),
-      }),
-    )
-  }
+  context.store.commit(
+    events.rallyWon({
+      rallyId: crypto.randomUUID(),
+      gameId: game.id,
+      rallyNumber,
+      winner,
+      serverTeam: game.currentServerTeam,
+      serverPlayer: game.currentServerPlayer,
+      serverSide: game.currentServerSide,
+      serverHandIndex: game.currentServerHandIndex,
+      scoreABefore: game.scoreA,
+      scoreBBefore: game.scoreB,
+      scoreAAfter: winner === 'A' ? game.scoreA + 1 : game.scoreA,
+      scoreBAfter: winner === 'B' ? game.scoreB + 1 : game.scoreB,
+      timestamp: new Date(),
+    }),
+  )
 }
 
 /**
@@ -53,15 +51,13 @@ export const toggleServeSide = (
   if (game.currentServerHandIndex !== 0) return
 
   const newSide = game.currentServerSide === 'L' ? 'R' : 'L'
-  if (context.store) {
-    context.store.commit(
-      events.serverSideToggled({
-        gameId: game.id,
-        newSide,
-        timestamp: new Date(),
-      }),
-    )
-  }
+  context.store.commit(
+    events.serverSideToggled({
+      gameId: game.id,
+      newSide,
+      timestamp: new Date(),
+    }),
+  )
 }
 
 /**
@@ -79,15 +75,13 @@ export const undo = (
   if (game.scoreA === 0 && game.scoreB === 0) return
 
   // Emit LiveStore rallyUndone event
-  if (context.store) {
-    context.store.commit(
-      events.rallyUndone({
-        gameId: game.id,
-        rallyId: '', // LiveStore materializer will find the last rally
-        timestamp: new Date(),
-      }),
-    )
-  }
+  context.store.commit(
+    events.rallyUndone({
+      gameId: game.id,
+      rallyId: '', // LiveStore materializer will find the last rally
+      timestamp: new Date(),
+    }),
+  )
 }
 
 // ===== Guards (boolean functions that work with params only) =====
