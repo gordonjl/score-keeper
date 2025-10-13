@@ -221,8 +221,10 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
     match.playerB2LastName,
   )
 
-  const isTeamAWinner = stats.matchStatus === 'completed' && stats.gamesWonA >= 3
-  const isTeamBWinner = stats.matchStatus === 'completed' && stats.gamesWonB >= 3
+  const isTeamAWinner =
+    stats.matchStatus === 'completed' && stats.gamesWonA >= 3
+  const isTeamBWinner =
+    stats.matchStatus === 'completed' && stats.gamesWonB >= 3
 
   // Check if match has been set up (has player names)
   const hasPlayerNames =
@@ -274,7 +276,7 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
             e.preventDefault()
             onDelete(match.id)
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity btn btn-xs btn-ghost btn-circle text-error hover:bg-error/10"
+          className="transition-opacity btn btn-xs btn-ghost btn-circle text-error hover:bg-error/10"
           aria-label="Delete match"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -295,7 +297,7 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
             {teamAName}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 px-4">
           <div
             className={`text-3xl font-black tabular-nums ${
@@ -313,7 +315,7 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
             {stats.gamesWonB}
           </div>
         </div>
-        
+
         <div className="flex-1 text-right">
           <div className="text-[9px] text-base-content/40 uppercase tracking-wider font-bold mb-1">
             Team B
@@ -371,7 +373,7 @@ type MatchWithGamesProps = {
 
 const MatchWithGames = ({ match, onDelete }: MatchWithGamesProps) => {
   const games = useQuery(gamesByMatch$(match.id))
-  
+
   return <MatchCard match={match} games={games} onDelete={onDelete} />
 }
 
@@ -399,7 +401,7 @@ export const Route = createFileRoute('/matches')({
 function MatchesListRoute() {
   const { store } = useStore()
   const matches = useQuery(nonArchivedMatches$)
-  
+
   // Use LiveStore client document for modal state (persists across refreshes)
   const [modalState, updateModalState] = useClientDocument(
     tables.modalState,
