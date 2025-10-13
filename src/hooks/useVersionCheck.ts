@@ -25,7 +25,7 @@ export const useVersionCheck = (checkInterval = 60_000) => {
           return
         }
 
-        const data: VersionInfo = await response.json()
+        const data = (await response.json()) as VersionInfo
 
         if (!currentVersion) {
           // First load - store the current version

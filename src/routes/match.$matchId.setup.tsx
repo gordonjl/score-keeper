@@ -187,7 +187,7 @@ function SetupRoute() {
       actor.send({ type: 'START_GAME', gameId })
 
       // 4. Navigate to the game
-      navigate({
+      void navigate({
         to: '/match/$matchId/game/$gameNumber',
         params: { matchId, gameNumber: '1' },
       })
@@ -227,7 +227,7 @@ function SetupRoute() {
     }
     // Priority 2: Existing match data from LiveStore
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    else if (match && match.playerA1FirstName) {
+    else if (match?.playerA1FirstName) {
       form.setFieldValue('A1First', match.playerA1FirstName)
       form.setFieldValue('A1Last', match.playerA1LastName)
       form.setFieldValue('A2First', match.playerA2FirstName)
@@ -260,7 +260,7 @@ function SetupRoute() {
           className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault()
-            form.handleSubmit()
+            void form.handleSubmit()
           }}
         >
           <div className="card bg-base-100 shadow-xl">
@@ -597,7 +597,7 @@ function SetupRoute() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => navigate({ to: '/' })}
+              onClick={() => void navigate({ to: '/' })}
             >
               Cancel
             </button>

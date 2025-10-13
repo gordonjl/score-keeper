@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery, useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
@@ -11,7 +11,6 @@ export const Route = createFileRoute('/match/$matchId/summary')({
 
 function MatchSummaryRoute() {
   const { matchId } = Route.useParams()
-  const { store } = useStore()
   const { actor: matchActorRef, isLoading } = useLiveStoreMatch()
   const navigate = useNavigate({ from: Route.fullPath })
 
@@ -64,7 +63,7 @@ function MatchSummaryRoute() {
   // Redirect if match is not complete after loading completes
   useEffect(() => {
     if (!isLoading && !isActuallyComplete) {
-      navigate({ to: '/match/$matchId/setup', params: { matchId } })
+      void navigate({ to: '/match/$matchId/setup', params: { matchId } })
     }
   }, [isLoading, isActuallyComplete, matchId, navigate])
 
@@ -89,7 +88,7 @@ function MatchSummaryRoute() {
 
   const handleStartNewMatch = () => {
     matchActorRef?.send({ type: 'RESET' })
-    navigate({
+    void navigate({
       to: '/match/$matchId/setup',
       params: { matchId },
       search: {
@@ -106,7 +105,7 @@ function MatchSummaryRoute() {
   const handleFinishAndExit = () => {
     // Match is automatically persisted in IndexedDB
     // Navigate to root
-    navigate({ to: '/' })
+    void navigate({ to: '/' })
   }
 
   return (

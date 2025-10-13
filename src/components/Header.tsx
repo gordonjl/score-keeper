@@ -1,23 +1,41 @@
 import { Link } from '@tanstack/react-router'
+import { useClientDocument } from '@livestore/react'
+import { SessionIdSymbol } from '@livestore/livestore'
 import { Moon, Sun } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { tables } from '../livestore/schema'
+import { ClearStorageButton } from './support/ClearStorageButton'
 import { LetStrokeModal } from './modals/LetStrokeModal'
 import { TimersModal } from './modals/TimersModal'
-import { ClearStorageButton } from './support/ClearStorageButton'
 
 export default function Header() {
-  const [theme, setTheme] = useState<'pcsquash' | 'pcsquash-dark'>('pcsquash')
-  const [isLetStrokeModalOpen, setIsLetStrokeModalOpen] = useState(false)
-  const [isTimersModalOpen, setIsTimersModalOpen] = useState(false)
+  // Use LiveStore client documents for persistent state
+  const [modalState, updateModalState] = useClientDocument(
+    tables.modalState,
+    SessionIdSymbol,
+  )
+  const [themePreference, updateThemePreference] = useClientDocument(
+    tables.themePreference,
+    SessionIdSymbol,
+  )
 
+  // Determine current theme from preference and system default
+  const theme =
+    themePreference.theme === 'system'
+      ? typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'pcsquash-dark'
+        : 'pcsquash'
+      : themePreference.theme
+
+  // Apply theme on mount and when preference changes
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    setTheme(mq.matches ? 'pcsquash-dark' : 'pcsquash')
-  }, [])
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   const toggleTheme = () => {
     const newTheme = theme === 'pcsquash' ? 'pcsquash-dark' : 'pcsquash'
-    setTheme(newTheme)
+    updateThemePreference({ theme: newTheme })
     document.documentElement.setAttribute('data-theme', newTheme)
   }
 
@@ -93,7 +111,10 @@ export default function Header() {
                 <li>
                   <button
                     onClick={() => {
-                      setIsLetStrokeModalOpen(true)
+                      updateModalState({
+                        ...modalState,
+                        letStrokeModal: { isOpen: true },
+                      })
                       closeDropdown()
                     }}
                   >
@@ -103,7 +124,10 @@ export default function Header() {
                 <li>
                   <button
                     onClick={() => {
-                      setIsTimersModalOpen(true)
+                      updateModalState({
+                        ...modalState,
+                        timersModal: { isOpen: true },
+                      })
                       closeDropdown()
                     }}
                   >
@@ -125,12 +149,22 @@ export default function Header() {
         </div>
       </div>
       <LetStrokeModal
-        isOpen={isLetStrokeModalOpen}
-        onClose={() => setIsLetStrokeModalOpen(false)}
+        isOpen={modalState.letStrokeModal.isOpen}
+        onClose={() =>
+          updateModalState({
+            ...modalState,
+            letStrokeModal: { isOpen: false },
+          })
+        }
       />
       <TimersModal
-        isOpen={isTimersModalOpen}
-        onClose={() => setIsTimersModalOpen(false)}
+        isOpen={modalState.timersModal.isOpen}
+        onClose={() =>
+          updateModalState({
+            ...modalState,
+            timersModal: { isOpen: false },
+          })
+        }
       />
     </header>
   )

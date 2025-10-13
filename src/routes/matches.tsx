@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useQuery, useStore } from '@livestore/react'
+import { useClientDocument, useQuery, useStore } from '@livestore/react'
+import { SessionIdSymbol } from '@livestore/livestore'
 import { Calendar, CheckCircle2, Clock, Play, Trash2 } from 'lucide-react'
-import { useState } from 'react'
 import { DeleteMatchModal } from '../components/modals/DeleteMatchModal'
-import { events } from '../livestore/schema'
+import { events, tables } from '../livestore/schema'
 import { gamesByMatch$, nonArchivedMatches$ } from '../livestore/squash-queries'
 
 // ============================================================================
@@ -399,12 +399,12 @@ export const Route = createFileRoute('/matches')({
 function MatchesListRoute() {
   const { store } = useStore()
   const matches = useQuery(nonArchivedMatches$)
-  const [deleteModalState, setDeleteModalState] = useState<{
-    isOpen: boolean
-    matchId: string | null
-    teamAName: string
-    teamBName: string
-  }>({ isOpen: false, matchId: null, teamAName: '', teamBName: '' })
+  
+  // Use LiveStore client document for modal state (persists across refreshes)
+  const [modalState, updateModalState] = useClientDocument(
+    tables.modalState,
+    SessionIdSymbol,
+  )
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const hasMatches = matches && matches.length > 0
@@ -426,38 +426,47 @@ function MatchesListRoute() {
       match.playerB2LastName,
     )
 
-    setDeleteModalState({
-      isOpen: true,
-      matchId,
-      teamAName,
-      teamBName,
+    updateModalState({
+      ...modalState,
+      deleteModal: {
+        isOpen: true,
+        matchId,
+        teamAName,
+        teamBName,
+      },
     })
   }
 
   const handleDeleteConfirm = () => {
-    if (!deleteModalState.matchId) return
+    if (!modalState.deleteModal.matchId) return
 
     store.commit(
       events.matchArchived({
-        matchId: deleteModalState.matchId,
+        matchId: modalState.deleteModal.matchId,
         timestamp: new Date(),
       }),
     )
 
-    setDeleteModalState({
-      isOpen: false,
-      matchId: null,
-      teamAName: '',
-      teamBName: '',
+    updateModalState({
+      ...modalState,
+      deleteModal: {
+        isOpen: false,
+        matchId: null,
+        teamAName: '',
+        teamBName: '',
+      },
     })
   }
 
   const handleDeleteCancel = () => {
-    setDeleteModalState({
-      isOpen: false,
-      matchId: null,
-      teamAName: '',
-      teamBName: '',
+    updateModalState({
+      ...modalState,
+      deleteModal: {
+        isOpen: false,
+        matchId: null,
+        teamAName: '',
+        teamBName: '',
+      },
     })
   }
 
@@ -470,9 +479,9 @@ function MatchesListRoute() {
         <EmptyState />
       )}
       <DeleteMatchModal
-        isOpen={deleteModalState.isOpen}
-        teamAName={deleteModalState.teamAName}
-        teamBName={deleteModalState.teamBName}
+        isOpen={modalState.deleteModal.isOpen}
+        teamAName={modalState.deleteModal.teamAName}
+        teamBName={modalState.deleteModal.teamBName}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
       />

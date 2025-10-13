@@ -21,7 +21,7 @@ import { squashGameMachine } from '../machines/squashGameMachine'
  */
 export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const { store } = useStore()
-  
+
   // Query the game by match ID and game number
   const gameByNumberResult = useQuery(gameByNumber(matchId, gameNumber))
 
@@ -53,9 +53,12 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   // Initialize machine ONCE when actor is created
   // Use a ref to track if we've initialized this actor
   const initializedRef = useRef(false)
-  
+
   useEffect(() => {
-    if (!initializedRef.current && actorRef.getSnapshot().value === 'notConfigured') {
+    if (
+      !initializedRef.current &&
+      actorRef.getSnapshot().value === 'notConfigured'
+    ) {
       actorRef.send({
         type: 'INITIALIZE',
         gameId: gameData.id,
@@ -74,6 +77,8 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   return {
     actorRef,
     state,
+    // XState actor.send is already bound, safe to extract
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     send: actorRef.send,
     game: gameData,
     rallies: ralliesData,

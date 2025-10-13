@@ -7,7 +7,7 @@ makeWorker({
   schema,
   sync: {
     backend: makeCfSync({
-      url: import.meta.env.VITE_LIVESTORE_SYNC_URL || 'http://localhost:8787',
+      url: (import.meta.env.VITE_LIVESTORE_SYNC_URL as string | undefined) ?? 'http://localhost:8787',
     }),
     initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
   },

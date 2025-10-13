@@ -32,13 +32,11 @@ let storeIdInstance: string | null = null
 const getAdapter = () => {
   if (typeof window === 'undefined') return null
 
-  if (!adapterInstance) {
-    adapterInstance = makePersistedAdapter({
-      storage: { type: 'opfs' }, // Origin Private File System for persistence
-      worker: LiveStoreWorker,
-      sharedWorker: LiveStoreSharedWorker, // For cross-tab sync
-    })
-  }
+  adapterInstance ??= makePersistedAdapter({
+    storage: { type: 'opfs' }, // Origin Private File System for persistence
+    worker: LiveStoreWorker,
+    sharedWorker: LiveStoreSharedWorker, // For cross-tab sync
+  })
 
   return adapterInstance
 }
@@ -46,9 +44,7 @@ const getAdapter = () => {
 const getOrCreateStoreId = () => {
   if (typeof window === 'undefined') return 'ssr-placeholder'
 
-  if (!storeIdInstance) {
-    storeIdInstance = getStoreId()
-  }
+  storeIdInstance ??= getStoreId()
 
   return storeIdInstance
 }

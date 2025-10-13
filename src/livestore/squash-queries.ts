@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { squashTables } from './squash-schema'
+import { squashTables } from './tables'
 
 // ============================================================================
 // MATCH QUERIES
