@@ -82,7 +82,7 @@ function GameRoute() {
 
   // Build players from match data
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const matchPlayers = match
+  const matchPlayers = useMemo(() => match
     ? {
         A1: {
           firstName: match.playerA1FirstName,
@@ -118,7 +118,7 @@ function GameRoute() {
         B2: { firstName: 'B2', lastName: 'Player', fullName: 'B2 Player' },
         teamA: 'Team A',
         teamB: 'Team B',
-      }
+      }, [match])
 
   // Use squashGameMachine hook to create and manage machine
   const { actorRef, game } = useSquashGameMachine(matchId, gameNumber)

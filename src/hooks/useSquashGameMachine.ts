@@ -1,6 +1,6 @@
 import { useQuery, useStore } from '@livestore/react'
 import { useSelector } from '@xstate/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createActor } from 'xstate'
 import {
   gameById$,
@@ -48,19 +48,24 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
     actor.start()
 
     return actor
-  }, [gameId, store])
+  }, [store])
 
   // Initialize machine ONCE when actor is created
-  // IMPORTANT: Only depends on actorRef to run once per actor creation
+  // Use a ref to track if we've initialized this actor
+  const initializedRef = useRef(false)
+  
   useEffect(() => {
-    actorRef.send({
-      type: 'INITIALIZE',
-      gameId: gameData.id,
-      matchId: gameData.matchId,
-      maxPoints: gameData.maxPoints,
-      winBy: gameData.winBy,
-      game: gameData,
-    })
+    if (!initializedRef.current && actorRef.getSnapshot().value === 'notConfigured') {
+      actorRef.send({
+        type: 'INITIALIZE',
+        gameId: gameData.id,
+        matchId: gameData.matchId,
+        maxPoints: gameData.maxPoints,
+        winBy: gameData.winBy,
+        game: gameData,
+      })
+      initializedRef.current = true
+    }
   }, [actorRef, gameData])
 
   // Get current state snapshot for convenience

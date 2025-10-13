@@ -107,7 +107,7 @@ export const ScoreGridContainer = ({
   // Stable callback for toggling serve side
   const onToggleServeSide = useCallback(() => {
     actorRef.send({ type: 'TOGGLE_SERVE_SIDE', game: gameData })
-  }, [actorRef, gameData.id])
+  }, [actorRef, gameData])
 
   return (
     <ScoreTable
