@@ -9,10 +9,12 @@ export const ClearStorageButton = () => {
   const clearAllStorage = async () => {
     try {
       // Clear OPFS (where LiveStore SQLite database lives)
-       
+      // Note: OPFS is only supported in Chromium-based browsers (Chrome 102+, Edge 102+)
       if ('storage' in navigator && 'getDirectory' in navigator.storage) {
         const root = await navigator.storage.getDirectory()
-        // @ts-expect-error - values() exists but TypeScript types may be outdated
+        // Type assertion needed as TypeScript's OPFS types are incomplete
+        // @ts-expect-error - values() exists but not in current TypeScript types
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const entries = root.values() as AsyncIterableIterator<OPFSEntry>
         for await (const entry of entries) {
           try {
