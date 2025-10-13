@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useClientDocument } from '@livestore/react'
+import { SessionIdSymbol } from '@livestore/livestore'
+import { useEffect } from 'react'
+import { tables } from '../../livestore/schema'
 
 type Team = 'A' | 'B'
 type Side = 'R' | 'L'
@@ -39,35 +42,50 @@ export const NextGameSetup = ({
   onCancel,
   onStartGame,
 }: NextGameSetupProps) => {
-  // Default serving team: winning team serves first
-  const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
+  // Use LiveStore client document for form state (persists across refreshes)
+  const [setupState, updateSetupState] = useClientDocument(
+    tables.nextGameSetupState,
+    SessionIdSymbol,
+  )
 
-  const [firstServingTeam, setFirstServingTeam] =
-    useState<Team>(defaultServingTeam)
-
-  // Track which player serves first on hand-in for each team (for this game)
-  const [teamAFirstServer, setTeamAFirstServer] = useState<1 | 2>(1)
-  const [teamBFirstServer, setTeamBFirstServer] = useState<1 | 2>(1)
-
-  // Update serving team when lastWinner changes
+  // Initialize serving team when component mounts or lastWinner changes
   useEffect(() => {
-    setFirstServingTeam(isFirstGame ? 'A' : lastWinner)
-  }, [lastWinner, isFirstGame])
+    const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
+    if (setupState.firstServingTeam !== defaultServingTeam) {
+      updateSetupState({
+        ...setupState,
+        firstServingTeam: defaultServingTeam,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFirstGame, lastWinner])
 
   const handleStartGame = () => {
     // Reorder players based on who serves first on hand-in
     // The first server becomes A1/B1 for this game
     const gamePlayers: PlayerPositions = {
-      A1: teamAFirstServer === 1 ? players.A1.fullName : players.A2.fullName,
-      A2: teamAFirstServer === 1 ? players.A2.fullName : players.A1.fullName,
-      B1: teamBFirstServer === 1 ? players.B1.fullName : players.B2.fullName,
-      B2: teamBFirstServer === 1 ? players.B2.fullName : players.B1.fullName,
+      A1:
+        setupState.teamAFirstServer === 1
+          ? players.A1.fullName
+          : players.A2.fullName,
+      A2:
+        setupState.teamAFirstServer === 1
+          ? players.A2.fullName
+          : players.A1.fullName,
+      B1:
+        setupState.teamBFirstServer === 1
+          ? players.B1.fullName
+          : players.B2.fullName,
+      B2:
+        setupState.teamBFirstServer === 1
+          ? players.B2.fullName
+          : players.B1.fullName,
     }
 
     // Default both teams to start serving from right side
     // Side can be toggled during gameplay by clicking the cell
     onStartGame({
-      firstServingTeam,
+      firstServingTeam: setupState.firstServingTeam,
       players: gamePlayers,
       teamASide: 'R',
       teamBSide: 'R',
@@ -91,8 +109,10 @@ export const NextGameSetup = ({
               type="radio"
               name="firstServingTeam"
               className="radio radio-primary"
-              checked={firstServingTeam === 'A'}
-              onChange={() => setFirstServingTeam('A')}
+              checked={setupState.firstServingTeam === 'A'}
+              onChange={() =>
+                updateSetupState({ ...setupState, firstServingTeam: 'A' })
+              }
             />
           </label>
           <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-300 flex-1">
@@ -104,8 +124,10 @@ export const NextGameSetup = ({
               type="radio"
               name="firstServingTeam"
               className="radio radio-primary"
-              checked={firstServingTeam === 'B'}
-              onChange={() => setFirstServingTeam('B')}
+              checked={setupState.firstServingTeam === 'B'}
+              onChange={() =>
+                updateSetupState({ ...setupState, firstServingTeam: 'B' })
+              }
             />
           </label>
         </div>
@@ -134,8 +156,10 @@ export const NextGameSetup = ({
                     type="radio"
                     name="teamAFirstServer"
                     className="radio radio-primary"
-                    checked={teamAFirstServer === 1}
-                    onChange={() => setTeamAFirstServer(1)}
+                    checked={setupState.teamAFirstServer === 1}
+                    onChange={() =>
+                      updateSetupState({ ...setupState, teamAFirstServer: 1 })
+                    }
                   />
                 </label>
                 <label className="label cursor-pointer flex-1 flex-col gap-2 p-3 border border-base-300 rounded-lg hover:bg-base-300">
@@ -146,8 +170,10 @@ export const NextGameSetup = ({
                     type="radio"
                     name="teamAFirstServer"
                     className="radio radio-primary"
-                    checked={teamAFirstServer === 2}
-                    onChange={() => setTeamAFirstServer(2)}
+                    checked={setupState.teamAFirstServer === 2}
+                    onChange={() =>
+                      updateSetupState({ ...setupState, teamAFirstServer: 2 })
+                    }
                   />
                 </label>
               </div>
@@ -165,8 +191,10 @@ export const NextGameSetup = ({
                     type="radio"
                     name="teamBFirstServer"
                     className="radio radio-primary"
-                    checked={teamBFirstServer === 1}
-                    onChange={() => setTeamBFirstServer(1)}
+                    checked={setupState.teamBFirstServer === 1}
+                    onChange={() =>
+                      updateSetupState({ ...setupState, teamBFirstServer: 1 })
+                    }
                   />
                 </label>
                 <label className="label cursor-pointer flex-1 flex-col gap-2 p-3 border border-base-300 rounded-lg hover:bg-base-300">
@@ -177,8 +205,10 @@ export const NextGameSetup = ({
                     type="radio"
                     name="teamBFirstServer"
                     className="radio radio-primary"
-                    checked={teamBFirstServer === 2}
-                    onChange={() => setTeamBFirstServer(2)}
+                    checked={setupState.teamBFirstServer === 2}
+                    onChange={() =>
+                      updateSetupState({ ...setupState, teamBFirstServer: 2 })
+                    }
                   />
                 </label>
               </div>

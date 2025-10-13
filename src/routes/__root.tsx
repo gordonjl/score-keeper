@@ -73,6 +73,7 @@ const RootComponent = () => {
           batchUpdates={batchUpdates}
           syncPayload={{ authToken: 'insecure-token-change-me' }}
         >
+          <Header />
           <Outlet />
         </LiveStoreProvider>
       </ErrorBoundary>
@@ -104,7 +105,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <title>PCS Squash Score Keeper</title>
       </head>
       <body className="flex flex-col min-h-screen">
-        <Header />
         <main className="flex-1">{children}</main>
         <Footer />
         <UpdateNotification />
