@@ -27,7 +27,6 @@ const ServeAnnouncementContent = ({ gameId }: { gameId: string }) => {
   // Compute announcement
   const serverRowKey = `${server.team}${server.player}` as const
   const serverScore = server.team === 'A' ? scoreA : scoreB
-  const receiverTeam = server.team === 'A' ? 'B' : 'A'
   const receiverScore = server.team === 'A' ? scoreB : scoreA
   const scorePhrase =
     serverScore === receiverScore

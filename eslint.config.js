@@ -1,17 +1,41 @@
 //  @ts-check
 
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
 import { tanstackConfig } from '@tanstack/eslint-config'
 import reactHooks from 'eslint-plugin-react-hooks'
 
-export default [
+export default tseslint.config(
+  // ESLint recommended rules
+  js.configs.recommended,
+  
+  // TypeScript ESLint recommended rules
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  
+  // TanStack specific rules (includes additional TypeScript rules)
   ...tanstackConfig,
+  
+  // React Hooks rules
   {
+    name: 'react-hooks',
     plugins: {
       'react-hooks': reactHooks,
     },
     rules: {
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      ...reactHooks.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'error', // Upgrade from warn to error
+    },
+  },
+  
+  // Project-specific overrides
+  {
+    name: 'project-overrides',
+    rules: {
+      // Prefer type over interface (project convention)
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      // Allow empty functions (sometimes needed for default props)
+      '@typescript-eslint/no-empty-function': 'off',
     },
   },
   {
@@ -29,4 +53,4 @@ export default [
       'src/routeTree.gen.ts',
     ],
   },
-]
+)

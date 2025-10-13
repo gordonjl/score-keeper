@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery, useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { useEffect } from 'react'
 import { Home, RotateCcw, Trophy } from 'lucide-react'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
@@ -11,7 +11,6 @@ export const Route = createFileRoute('/match/$matchId/summary')({
 
 function MatchSummaryRoute() {
   const { matchId } = Route.useParams()
-  const { store } = useStore()
   const { actor: matchActorRef, isLoading } = useLiveStoreMatch()
   const navigate = useNavigate({ from: Route.fullPath })
 

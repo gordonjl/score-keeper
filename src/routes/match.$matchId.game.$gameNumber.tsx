@@ -1,7 +1,8 @@
-import { useQuery, useStore } from '@livestore/react'
+import { useClientDocument, useQuery, useStore } from '@livestore/react'
+import { SessionIdSymbol } from '@livestore/livestore'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSelector } from '@xstate/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchProgress } from '../components/game/MatchProgress'
@@ -13,8 +14,11 @@ import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
-import { events } from '../livestore/schema'
-import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
+import { events, tables } from '../livestore/schema'
+import {
+  gamesByMatch$,
+  matchById$,
+} from '../livestore/squash-queries'
 
 export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
   component: GameRouteWrapper,
@@ -24,7 +28,6 @@ export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
 function GameRouteWrapper() {
   const { matchId, gameNumber } = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { store } = useStore()
   const { isLoading } = useLiveStoreMatch()
 
   // Query games from LiveStore
@@ -74,7 +77,12 @@ function GameRoute() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { store } = useStore()
   const { actor: matchActorRef } = useLiveStoreMatch()
-  const [showNextGameSetup, setShowNextGameSetup] = useState(false)
+  
+  // Use LiveStore client document for next game setup state
+  const [nextGameSetupState, updateNextGameSetupState] = useClientDocument(
+    tables.nextGameSetupState,
+    SessionIdSymbol,
+  )
 
   // Query data from LiveStore
   const match = useQuery(matchById$(matchId))
@@ -178,6 +186,143 @@ function GameRoute() {
     }
   }, [games, scoreA, scoreB])
 
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleGameOverCancel = useCallback(() => {
+    actorRef.send({ type: 'UNDO', game })
+  }, [actorRef, game])
+
+  const handleGameOverConfirm = useCallback(() => {
+    actorRef.send({ type: 'CONFIRM_GAME_OVER' })
+    const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+
+    // Emit gameCompleted event to LiveStore
+    store.commit(
+      events.gameCompleted({
+        gameId,
+        matchId,
+        winner,
+        finalScoreA: scoreA,
+        finalScoreB: scoreB,
+        timestamp: new Date(),
+      }),
+    )
+
+    // Update machine UI state
+    matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
+
+    // Check if match is complete and navigate
+    if (gameStats.willCompleteMatch) {
+      matchActorRef?.send({ type: 'END_MATCH' })
+      navigate({ to: '/match/$matchId/summary', params: { matchId } })
+    }
+  }, [actorRef, scoreA, scoreB, store, gameId, matchId, matchActorRef, gameStats.willCompleteMatch, navigate])
+
+  const handleNextGameClick = useCallback(() => {
+    updateNextGameSetupState({
+      ...nextGameSetupState,
+      isOpen: true,
+    })
+  }, [nextGameSetupState, updateNextGameSetupState])
+
+  const handleNextGameCancel = useCallback(() => {
+    updateNextGameSetupState({
+      ...nextGameSetupState,
+      isOpen: false,
+    })
+  }, [nextGameSetupState, updateNextGameSetupState])
+
+  const handleNextGameStart = useCallback(
+    async (config: {
+      firstServingTeam: 'A' | 'B'
+      players: { A1: string; A2: string; B1: string; B2: string }
+      teamASide: 'R' | 'L'
+      teamBSide: 'R' | 'L'
+    }) => {
+      // Hide the dialog immediately
+      updateNextGameSetupState({
+        ...nextGameSetupState,
+        isOpen: false,
+      })
+
+      // Confirm game over and record result
+      actorRef.send({ type: 'CONFIRM_GAME_OVER' })
+      const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
+
+      // Emit gameCompleted event to LiveStore
+      await store.commit(
+        events.gameCompleted({
+          gameId,
+          matchId,
+          winner,
+          finalScoreA: scoreA,
+          finalScoreB: scoreB,
+          timestamp: new Date(),
+        }),
+      )
+
+      matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
+
+      // Create new game in LiveStore
+      const newGameId = crypto.randomUUID()
+
+      // Calculate next game number based on the highest game number
+      const maxGameNumber =
+        games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 0
+      const newGameNumber = maxGameNumber + 1
+
+      await store.commit(
+        events.gameStarted({
+          gameId: newGameId,
+          matchId,
+          gameNumber: newGameNumber,
+          firstServingTeam: config.firstServingTeam,
+          firstServingPlayer: 1,
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          firstServingSide: config.teamASide || 'R',
+          maxPoints: 15,
+          winBy: 1,
+          timestamp: new Date(),
+        }),
+      )
+
+      // Give LiveStore a brief moment to propagate the event
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // Update machine UI state and navigate
+      matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
+      navigate({
+        to: '/match/$matchId/game/$gameNumber',
+        params: { matchId, gameNumber: String(newGameNumber) },
+      })
+    },
+    [
+      nextGameSetupState,
+      updateNextGameSetupState,
+      actorRef,
+      scoreA,
+      scoreB,
+      store,
+      gameId,
+      matchId,
+      matchActorRef,
+      games,
+      navigate,
+    ],
+  )
+
+  const handleStartNewGame = useCallback(() => {
+    updateNextGameSetupState({
+      ...nextGameSetupState,
+      isOpen: true,
+    })
+  }, [nextGameSetupState, updateNextGameSetupState])
+
+  const handleEndMatch = useCallback(() => {
+    matchActorRef?.send({ type: 'END_MATCH' })
+    // Match is automatically persisted in IndexedDB
+    navigate({ to: '/' })
+  }, [matchActorRef, navigate])
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 p-2 sm:p-4 max-w-full mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
       {/* Match Progress Sidebar - Desktop */}
@@ -212,121 +357,33 @@ function GameRoute() {
 
         <ActionButtons actorRef={actorRef} />
 
-        {isAwaitingConfirmation && !showNextGameSetup && (
+        {isAwaitingConfirmation && !nextGameSetupState.isOpen && (
           <GameOverConfirmation
             actorRef={actorRef}
             winnerTeam={winnerTeam}
             willCompleteMatch={gameStats.willCompleteMatch}
-            onCancel={() => actorRef.send({ type: 'UNDO', game })}
-            onConfirm={() => {
-              actorRef.send({ type: 'CONFIRM_GAME_OVER' })
-              const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-
-              // Emit gameCompleted event to LiveStore
-              store.commit(
-                events.gameCompleted({
-                  gameId,
-                  matchId,
-                  winner,
-                  finalScoreA: scoreA,
-                  finalScoreB: scoreB,
-                  timestamp: new Date(),
-                }),
-              )
-
-              // Update machine UI state
-              matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
-
-              // Check if match is complete and navigate
-              if (gameStats.willCompleteMatch) {
-                matchActorRef?.send({ type: 'END_MATCH' })
-                navigate({ to: '/match/$matchId/summary', params: { matchId } })
-              }
-            }}
-            onNextGame={() => {
-              setShowNextGameSetup(true)
-            }}
+            onCancel={handleGameOverCancel}
+            onConfirm={handleGameOverConfirm}
+            onNextGame={handleNextGameClick}
           />
         )}
 
-        {showNextGameSetup && (
+        {nextGameSetupState.isOpen && (
           <NextGameSetup
             isFirstGame={false}
             lastWinner={gameStats.currentWinner as 'A' | 'B'}
             players={matchPlayers}
-            onCancel={() => setShowNextGameSetup(false)}
-            onStartGame={async (config) => {
-              // Hide the dialog immediately
-              setShowNextGameSetup(false)
-
-              // Confirm game over and record result
-              actorRef.send({ type: 'CONFIRM_GAME_OVER' })
-              const winner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
-
-              // Emit gameCompleted event to LiveStore
-              await store.commit(
-                events.gameCompleted({
-                  gameId,
-                  matchId,
-                  winner,
-                  finalScoreA: scoreA,
-                  finalScoreB: scoreB,
-                  timestamp: new Date(),
-                }),
-              )
-
-              matchActorRef?.send({ type: 'GAME_COMPLETED', gameId })
-
-              // Create new game in LiveStore
-              const newGameId = crypto.randomUUID()
-
-              // Calculate next game number based on the highest game number
-              const maxGameNumber =
-                games.length > 0
-                  ? Math.max(...games.map((g) => g.gameNumber))
-                  : 0
-              const newGameNumber = maxGameNumber + 1
-
-              await store.commit(
-                events.gameStarted({
-                  gameId: newGameId,
-                  matchId,
-                  gameNumber: newGameNumber,
-                  firstServingTeam: config.firstServingTeam,
-                  firstServingPlayer: 1,
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                  firstServingSide: config.teamASide || 'R',
-                  maxPoints: 15,
-                  winBy: 1,
-                  timestamp: new Date(),
-                }),
-              )
-
-              // Give LiveStore a brief moment to propagate the event
-              await new Promise((resolve) => setTimeout(resolve, 50))
-
-              // Update machine UI state and navigate
-              matchActorRef?.send({ type: 'START_GAME', gameId: newGameId })
-              navigate({
-                to: '/match/$matchId/game/$gameNumber',
-                params: { matchId, gameNumber: String(newGameNumber) },
-              })
-            }}
+            onCancel={handleNextGameCancel}
+            onStartGame={handleNextGameStart}
           />
         )}
 
-        {isGameOver && !showNextGameSetup && matchActorRef && (
+        {isGameOver && !nextGameSetupState.isOpen && matchActorRef && (
           <MatchSummary
             matchActorRef={matchActorRef}
             currentWinner={winnerTeam}
-            onStartNewGame={() => {
-              setShowNextGameSetup(true)
-            }}
-            onEndMatch={() => {
-              matchActorRef.send({ type: 'END_MATCH' })
-              // Match is automatically persisted in IndexedDB
-              navigate({ to: '/' })
-            }}
+            onStartNewGame={handleStartNewGame}
+            onEndMatch={handleEndMatch}
           />
         )}
       </div>
