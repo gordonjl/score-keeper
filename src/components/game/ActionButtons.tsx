@@ -2,20 +2,14 @@ import { useQuery } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { gameById$, ralliesByGame$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
 
 type ActionButtonsProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
+  gameId: string
 }
 
-// Inner component that only renders when gameId is available
-const ActionButtonsContent = ({
-  gameId,
-  actorRef,
-}: {
-  gameId: string
-  actorRef: ActorRefFrom<typeof squashGameMachine>
-}) => {
+export const ActionButtons = ({ actorRef, gameId }: ActionButtonsProps) => {
   // Get state from machine
   const { isGameOver, isActive, isAwaitingConfirmation } = useSelector(
     actorRef,
@@ -27,7 +21,7 @@ const ActionButtonsContent = ({
   )
 
   // Query game and rallies from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const rallies = useQuery(ralliesByGame$(gameId))
 
   const canLet = !isGameOver && isActive && !isAwaitingConfirmation
@@ -60,27 +54,4 @@ const ActionButtonsContent = ({
       </button>
     </div>
   )
-}
-
-// Wrapper component that checks for gameId before rendering
-export const ActionButtons = ({ actorRef }: ActionButtonsProps) => {
-  // Get gameId from machine context
-  const gameId = useSelector(actorRef, (s) => s.context.gameId)
-
-  // Show loading state if game not loaded yet
-  if (!gameId) {
-    return (
-      <div className="flex gap-3 flex-wrap">
-        <button className="btn btn-outline btn-neutral shadow-md" disabled>
-          Let
-        </button>
-        <button className="btn btn-warning shadow-md" disabled>
-          Undo
-        </button>
-      </div>
-    )
-  }
-
-  // Render content component with valid gameId
-  return <ActionButtonsContent gameId={gameId} actorRef={actorRef} />
 }

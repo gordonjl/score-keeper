@@ -1,34 +1,25 @@
 import { useQuery } from '@livestore/react'
-import { useSelector } from '@xstate/react'
-import { useLiveStoreMatch } from '../../contexts/LiveStoreMatchContext'
 import {
   gameById$,
   gamesByMatch$,
   matchById$,
 } from '../../livestore/squash-queries'
-import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
 
 type TeamKey = 'teamA' | 'teamB'
 
 type ScoreHeaderProps = {
-  gameActorRef: ActorRefFrom<typeof squashGameMachine>
-  matchActorRef: unknown // Not used, kept for compatibility
-  firstServingTeam: 'A' | 'B'
-}
-
-// Inner component that only renders when gameId is available
-const ScoreHeaderContent = ({
-  gameId,
-  matchId,
-  firstServingTeam,
-}: {
   gameId: string
   matchId: string
   firstServingTeam: 'A' | 'B'
-}) => {
+}
+
+export const ScoreHeader = ({
+  gameId,
+  matchId,
+  firstServingTeam,
+}: ScoreHeaderProps) => {
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const match = useQuery(matchById$(matchId))
   const games = useQuery(gamesByMatch$(matchId))
 
@@ -117,38 +108,5 @@ const ScoreHeaderContent = ({
         </div>
       </div>
     </div>
-  )
-}
-
-// Wrapper component that checks for gameId before rendering
-export const ScoreHeader = ({
-  gameActorRef,
-  firstServingTeam,
-}: ScoreHeaderProps) => {
-  const { matchId } = useLiveStoreMatch()
-
-  // Get gameId from machine context
-  const gameId = useSelector(gameActorRef, (s) => s.context.gameId)
-
-  // Show loading state if game not loaded yet
-  if (!gameId) {
-    return (
-      <div className="card bg-base-100 shadow-xl mb-3 border border-base-300">
-        <div className="card-body p-3 sm:p-4">
-          <div className="flex justify-center items-center">
-            <span className="loading loading-spinner loading-sm"></span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Render content component with valid gameId
-  return (
-    <ScoreHeaderContent
-      gameId={gameId}
-      matchId={matchId}
-      firstServingTeam={firstServingTeam}
-    />
   )
 }

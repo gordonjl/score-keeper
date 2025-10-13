@@ -1,25 +1,21 @@
 import { useQuery } from '@livestore/react'
-import { useSelector } from '@xstate/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
 import { toWords } from './utils'
-import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
 
 type ServeAnnouncementProps = {
-  actorRef: ActorRefFrom<typeof squashGameMachine>
+  gameId: string
 }
 
-// Inner component that only renders when gameId is available
-const ServeAnnouncementContent = ({ gameId }: { gameId: string }) => {
+export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const match = useQuery(matchById$(game.matchId))
 
   // Get server and score from LiveStore
   const server = {
-    team: game.currentServerTeam as 'A' | 'B',
-    player: game.currentServerPlayer as 1 | 2,
-    side: game.currentServerSide as 'R' | 'L',
+    team: game.currentServerTeam,
+    player: game.currentServerPlayer,
+    side: game.currentServerSide,
   }
   const scoreA = game.scoreA
   const scoreB = game.scoreB
@@ -50,22 +46,4 @@ const ServeAnnouncementContent = ({ gameId }: { gameId: string }) => {
       <span className="font-medium">{announcement}</span>
     </div>
   )
-}
-
-// Wrapper component that checks for gameId before rendering
-export const ServeAnnouncement = ({ actorRef }: ServeAnnouncementProps) => {
-  // Get gameId from machine context
-  const gameId = useSelector(actorRef, (s) => s.context.gameId)
-
-  // Show loading state if game not loaded yet
-  if (!gameId) {
-    return (
-      <div className="alert mb-4">
-        <span className="loading loading-spinner loading-sm"></span>
-      </div>
-    )
-  }
-
-  // Render content component with valid gameId
-  return <ServeAnnouncementContent gameId={gameId} />
 }
