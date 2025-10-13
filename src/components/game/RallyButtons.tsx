@@ -6,23 +6,17 @@ import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
 
 type RallyButtonsProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
+  gameId: string
 }
 
-// Inner component that only renders when gameId is available
-const RallyButtonsContent = ({
-  gameId,
-  actorRef,
-}: {
-  gameId: string
-  actorRef: ActorRefFrom<typeof squashGameMachine>
-}) => {
+export const RallyButtons = ({ actorRef, gameId }: RallyButtonsProps) => {
   // Get state from machine
   const { isGameOver, isAwaitingConfirmation } = useSelector(actorRef, (s) => ({
     isGameOver: s.status === 'done',
     isAwaitingConfirmation: s.matches('awaitingConfirmation'),
   }))
 
-  // Query game data from LiveStore (only called when gameId is valid)
+  // Query game data from LiveStore
   const game = useQuery(gameById$(gameId)) as Game
 
   // Query match for player names
@@ -67,27 +61,4 @@ const RallyButtonsContent = ({
       </button>
     </div>
   )
-}
-
-// Wrapper component that checks for gameId before rendering
-export const RallyButtons = ({ actorRef }: RallyButtonsProps) => {
-  // Get gameId from machine context
-  const gameId = useSelector(actorRef, (s) => s.context.gameId)
-
-  // Show loading state if game not loaded yet
-  if (!gameId) {
-    return (
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <button className="btn btn-primary flex-1 btn-lg shadow-lg" disabled>
-          <span className="loading loading-spinner loading-sm"></span>
-        </button>
-        <button className="btn btn-primary flex-1 btn-lg shadow-lg" disabled>
-          <span className="loading loading-spinner loading-sm"></span>
-        </button>
-      </div>
-    )
-  }
-
-  // Render content component with valid gameId
-  return <RallyButtonsContent gameId={gameId} actorRef={actorRef} />
 }

@@ -1,11 +1,9 @@
 import { useQuery } from '@livestore/react'
-import { useSelector } from '@xstate/react'
 import { gameById$ } from '../../livestore/squash-queries'
-import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
+import type { Game } from '../../machines/squashGameMachine'
 
 type GameOverConfirmationProps = {
-  actorRef: ActorRefFrom<typeof squashGameMachine>
+  gameId: string
   winnerTeam: string
   onCancel: () => void
   onConfirm: () => void
@@ -14,22 +12,19 @@ type GameOverConfirmationProps = {
 }
 
 export const GameOverConfirmation = ({
-  actorRef,
+  gameId,
   winnerTeam,
   onCancel,
   onConfirm,
   onNextGame,
   willCompleteMatch = false,
 }: GameOverConfirmationProps) => {
-  // Get gameId from machine context
-  const gameId = useSelector(actorRef, (s) => s.context.gameId)
-
-  // Query game data from LiveStore (always call hooks)
-  const game = useQuery(gameById$(gameId ?? '')) as Game | null
+  // Query game data from LiveStore
+  const game = useQuery(gameById$(gameId)) as Game
 
   // Get scores from LiveStore
-  const scoreA = game?.scoreA ?? 0
-  const scoreB = game?.scoreB ?? 0
+  const scoreA = game.scoreA
+  const scoreB = game.scoreB
 
   return (
     <dialog className="modal modal-open">

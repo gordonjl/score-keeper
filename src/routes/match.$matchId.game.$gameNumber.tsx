@@ -337,29 +337,28 @@ function GameRoute() {
 
       {/* Main Game Area */}
       <div className="flex-1 min-w-0">
-        {matchActorRef && (
-          <ScoreHeader
-            gameActorRef={actorRef}
-            matchActorRef={matchActorRef}
-            firstServingTeam={firstServingTeam}
-          />
-        )}
+        <ScoreHeader
+          gameId={gameId}
+          matchId={matchId}
+          firstServingTeam={firstServingTeam}
+        />
 
-        <ServeAnnouncement actorRef={actorRef} />
+        <ServeAnnouncement gameId={gameId} />
 
         <ScoreGrid
           actorRef={actorRef}
+          gameId={gameId}
           firstServingTeam={firstServingTeam}
           playerLabels={matchPlayerRowLabels}
         />
 
-        <RallyButtons actorRef={actorRef} />
+        <RallyButtons actorRef={actorRef} gameId={gameId} />
 
-        <ActionButtons actorRef={actorRef} />
+        <ActionButtons actorRef={actorRef} gameId={gameId} />
 
         {isAwaitingConfirmation && !nextGameSetupState.isOpen && (
           <GameOverConfirmation
-            actorRef={actorRef}
+            gameId={gameId}
             winnerTeam={winnerTeam}
             willCompleteMatch={gameStats.willCompleteMatch}
             onCancel={handleGameOverCancel}

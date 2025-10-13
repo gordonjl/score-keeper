@@ -61,10 +61,6 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
     ) {
       actorRef.send({
         type: 'INITIALIZE',
-        gameId: gameData.id,
-        matchId: gameData.matchId,
-        maxPoints: gameData.maxPoints,
-        winBy: gameData.winBy,
         game: gameData,
       })
       initializedRef.current = true
