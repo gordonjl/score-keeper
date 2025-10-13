@@ -40,9 +40,9 @@ const config = defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
+    versionPlugin(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
     netlify(),
-    versionPlugin(),
     // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
     {
       name: 'wrangler-dev',

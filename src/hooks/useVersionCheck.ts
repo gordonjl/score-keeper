@@ -11,6 +11,7 @@ export const useVersionCheck = (checkInterval = 60_000) => {
 
   useEffect(() => {
     const checkVersion = async () => {
+      if (import.meta.env.DEV) return
       try {
         const response = await fetch('/version.json', {
           cache: 'no-cache',
