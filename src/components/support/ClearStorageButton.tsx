@@ -1,3 +1,6 @@
+// Type for OPFS directory entries
+type OPFSEntry = { name: string }
+
 /**
  * Debug component to clear all browser storage including OPFS
  * Remove this in production or hide behind a dev flag
@@ -6,16 +9,19 @@ export const ClearStorageButton = () => {
   const clearAllStorage = async () => {
     try {
       // Clear OPFS (where LiveStore SQLite database lives)
+       
       if ('storage' in navigator && 'getDirectory' in navigator.storage) {
         const root = await navigator.storage.getDirectory()
         // @ts-expect-error - values() exists but TypeScript types may be outdated
-        for await (const entry of root.values()) {
+        const entries = root.values() as AsyncIterableIterator<OPFSEntry>
+        for await (const entry of entries) {
           try {
             await root.removeEntry(entry.name, { recursive: true })
             console.log(`✅ Removed OPFS entry: ${entry.name}`)
           } catch (err) {
             // Some entries may be protected or locked, skip them
-            console.warn(`⚠️ Could not remove OPFS entry: ${entry.name}`, err)
+            const errorName = err instanceof Error ? err.name : 'Unknown'
+            console.warn(`⚠️ Could not remove OPFS entry: ${entry.name}`, errorName)
           }
         }
         console.log('✅ OPFS cleared (some entries may be protected)')
@@ -42,13 +48,14 @@ export const ClearStorageButton = () => {
       window.location.reload()
     } catch (error) {
       console.error('Error clearing storage:', error)
-      alert(`Error clearing storage: ${error}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert(`Error clearing storage: ${errorMessage}`)
     }
   }
 
   return (
     <button
-      onClick={clearAllStorage}
+      onClick={() => void clearAllStorage()}
       className="btn btn-error btn-sm"
       type="button"
     >

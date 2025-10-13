@@ -1,4 +1,4 @@
-import { State } from '@livestore/livestore'
+import { State, defineMaterializer } from '@livestore/livestore'
 import { squashEvents, todoEvents } from './events'
 import { squashTables, todoTables, uiTables } from './tables'
 
@@ -186,35 +186,26 @@ const squashMaterializers = {
       })
       .where({ id: matchId }),
 
-  'v1.GameStarted': (
-    {
-      gameId,
-      matchId,
-      gameNumber,
-      firstServingTeam,
-      firstServingPlayer,
-      firstServingSide,
-      maxPoints,
-      winBy,
-      timestamp,
-    }: {
-      gameId: string
-      matchId: string
-      gameNumber: number
-      firstServingTeam: 'A' | 'B'
-      firstServingPlayer: 1 | 2
-      firstServingSide: 'R' | 'L'
-      maxPoints: number
-      winBy: number
-      timestamp: Date
-    },
-    // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
-    ctx,
-  ) => {
-    // Check if game already exists (gameId is globally unique)
-    const existingGames = ctx.query(
-      squashTables.games.where({ id: gameId }),
-    ) as Array<{ id: string; status: string }>
+  'v1.GameStarted': defineMaterializer(
+    squashEvents.gameStarted,
+    (
+      {
+        gameId,
+        matchId,
+        gameNumber,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        maxPoints,
+        winBy,
+        timestamp,
+      },
+      ctx,
+    ) => {
+      // Check if game already exists (gameId is globally unique)
+      const existingGames = ctx.query(
+        squashTables.games.where({ id: gameId }),
+      )
 
     // If game already exists and is completed, don't reset it (idempotent)
     if (existingGames.length > 0 && existingGames[0].status === 'completed') {
@@ -268,7 +259,8 @@ const squashMaterializers = {
       currentServerHandIndex: 0,
       firstHandUsed: false,
     })
-  },
+    },
+  ),
 
   'v1.GameCompleted': ({
     gameId,
@@ -293,43 +285,28 @@ const squashMaterializers = {
       })
       .where({ id: gameId }),
 
-  'v1.RallyWon': (
-    {
-      rallyId,
-      gameId,
-      rallyNumber,
-      winner,
-      serverTeam,
-      serverPlayer,
-      serverSide,
-      serverHandIndex,
-      scoreABefore,
-      scoreBBefore,
-      scoreAAfter,
-      scoreBAfter,
-      timestamp,
-    }: {
-      rallyId: string
-      gameId: string
-      rallyNumber: number
-      winner: 'A' | 'B'
-      serverTeam: 'A' | 'B'
-      serverPlayer: 1 | 2
-      serverSide: 'R' | 'L'
-      serverHandIndex: 0 | 1
-      scoreABefore: number
-      scoreBBefore: number
-      scoreAAfter: number
-      scoreBAfter: number
-      timestamp: Date
-    },
-    // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
-    ctx,
-  ) => {
+  'v1.RallyWon': defineMaterializer(
+    squashEvents.rallyWon,
+    (
+      {
+        rallyId,
+        gameId,
+        rallyNumber,
+        winner,
+        serverTeam,
+        serverPlayer,
+        serverSide,
+        serverHandIndex,
+        scoreABefore,
+        scoreBBefore,
+        scoreAAfter,
+        scoreBAfter,
+        timestamp,
+      },
+      ctx,
+    ) => {
     // Query current game state to get firstHandUsed
-    const games = ctx.query(squashTables.games.where({ id: gameId })) as Array<{
-      firstHandUsed: boolean
-    }>
+    const games = ctx.query(squashTables.games.where({ id: gameId }))
     const currentFirstHandUsed = games[0]?.firstHandUsed ?? false
 
     // Compute next server state
@@ -376,62 +353,29 @@ const squashMaterializers = {
         })
         .where({ id: gameId }),
     ]
-  },
+    },
+  ),
 
-  'v1.RallyUndone': (
-    {
-      gameId,
-      rallyId,
-      timestamp,
-    }: { gameId: string; rallyId: string; timestamp: Date },
-    // @ts-expect-error - LiveStore will provide proper typing when passed to State.SQLite.materializers()
-    ctx,
-  ) => {
+  'v1.RallyUndone': defineMaterializer(
+    squashEvents.rallyUndone,
+    (
+      {
+        gameId,
+        rallyId,
+        timestamp,
+      },
+      ctx,
+    ) => {
     // Query the last rally for this game (if rallyId is empty, find the most recent)
-    let rally:
-      | {
-          id: string
-          rallyNumber: number
-          scoreABefore: number
-          scoreBBefore: number
-          serverTeam: string
-          serverPlayer: number
-          serverSide: string
-          serverHandIndex: number
-        }
-      | undefined
-
-    if (rallyId) {
-      const rallies = ctx.query(
-        squashTables.rallies.where({ id: rallyId, deletedAt: null }),
-      ) as Array<{
-        id: string
-        rallyNumber: number
-        scoreABefore: number
-        scoreBBefore: number
-        serverTeam: string
-        serverPlayer: number
-        serverSide: string
-        serverHandIndex: number
-      }>
-      rally = rallies[0]
-    } else {
-      const rallies = ctx.query(
-        squashTables.rallies
-          .where({ gameId, deletedAt: null })
-          .orderBy('rallyNumber', 'desc'),
-      ) as Array<{
-        id: string
-        rallyNumber: number
-        scoreABefore: number
-        scoreBBefore: number
-        serverTeam: string
-        serverPlayer: number
-        serverSide: string
-        serverHandIndex: number
-      }>
-      rally = rallies[0]
-    }
+    const rallies = rallyId
+      ? ctx.query(squashTables.rallies.where({ id: rallyId, deletedAt: null }))
+      : ctx.query(
+          squashTables.rallies
+            .where({ gameId, deletedAt: null })
+            .orderBy('rallyNumber', 'desc'),
+        )
+    
+    const rally = rallies[0]
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!rally) return []
@@ -441,7 +385,7 @@ const squashMaterializers = {
       squashTables.rallies
         .where({ gameId, deletedAt: null })
         .orderBy('rallyNumber', 'desc'),
-    ) as Array<{ rallyNumber: number }>
+    )
 
     // Filter out the rally we're about to delete
     const remainingRallies = previousRallies.filter(
@@ -467,7 +411,8 @@ const squashMaterializers = {
         })
         .where({ id: gameId }),
     ]
-  },
+    },
+  ),
 
   'v1.ServerSideToggled': ({
     gameId,
