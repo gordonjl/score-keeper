@@ -8,14 +8,14 @@ import reactHooks from 'eslint-plugin-react-hooks'
 export default tseslint.config(
   // ESLint recommended rules
   js.configs.recommended,
-  
+
   // TypeScript ESLint recommended rules
   ...tseslint.configs.recommendedTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
-  
+
   // TanStack specific rules (includes additional TypeScript rules)
   ...tanstackConfig,
-  
+
   // React Hooks rules
   {
     name: 'react-hooks',
@@ -27,7 +27,7 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'error', // Upgrade from warn to error
     },
   },
-  
+
   // Project-specific overrides
   {
     name: 'project-overrides',
@@ -45,8 +45,6 @@ export default tseslint.config(
           ignoreIIFE: false,
         },
       ],
-      // React Compiler - disabled for now
-      'react-compiler/react-compiler': 'off',
     },
   },
   {
