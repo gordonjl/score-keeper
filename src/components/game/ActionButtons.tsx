@@ -2,7 +2,7 @@ import { useQuery } from '@livestore/react'
 import { useSelector } from '@xstate/react'
 import { gameById$, ralliesByGame$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
 
 type ActionButtonsProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
@@ -21,7 +21,7 @@ export const ActionButtons = ({ actorRef, gameId }: ActionButtonsProps) => {
   )
 
   // Query game and rallies from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const rallies = useQuery(ralliesByGame$(gameId))
 
   const canLet = !isGameOver && isActive && !isAwaitingConfirmation

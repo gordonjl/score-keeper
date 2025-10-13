@@ -1,5 +1,28 @@
 import { queryDb } from '@livestore/livestore'
 import { squashTables } from './tables'
+import type { PlayerRow, Side, Team } from '../machines/squashMachine.types'
+
+// Type narrowing helpers for LiveStore data
+const narrowGame = <T extends { currentServerTeam: string; currentServerPlayer: number; currentServerSide: string; currentServerHandIndex: number; firstServingTeam: string; firstServingPlayer: number; firstServingSide: string; winner: string | null }>(game: T) => ({
+  ...game,
+  currentServerTeam: game.currentServerTeam as Team,
+  currentServerPlayer: game.currentServerPlayer as PlayerRow,
+  currentServerSide: game.currentServerSide as Side,
+  currentServerHandIndex: game.currentServerHandIndex as 0 | 1,
+  firstServingTeam: game.firstServingTeam as Team,
+  firstServingPlayer: game.firstServingPlayer as PlayerRow,
+  firstServingSide: game.firstServingSide as Side,
+  winner: game.winner as Team | null,
+})
+
+const narrowRally = <T extends { winner: string; serverTeam: string; serverPlayer: number; serverSide: string; serverHandIndex: number }>(rally: T) => ({
+  ...rally,
+  winner: rally.winner as Team,
+  serverTeam: rally.serverTeam as Team,
+  serverPlayer: rally.serverPlayer as PlayerRow,
+  serverSide: rally.serverSide as Side,
+  serverHandIndex: rally.serverHandIndex as 0 | 1,
+})
 
 // ============================================================================
 // MATCH QUERIES
@@ -68,6 +91,7 @@ export const gamesByMatch$ = (matchId: string) =>
     {
       label: `games-${matchId}`,
       deps: [matchId],
+      map: (games) => games.map(narrowGame),
     },
   )
 
@@ -80,6 +104,7 @@ export const currentGameByMatch$ = (matchId: string) =>
     {
       label: `current-game-${matchId}`,
       deps: [matchId],
+      map: narrowGame,
     },
   )
 
@@ -90,6 +115,7 @@ export const gameById$ = (gameId: string) =>
   queryDb(() => squashTables.games.where({ id: gameId }).first(), {
     label: `game-${gameId}`,
     deps: [gameId],
+    map: narrowGame,
   })
 
 export const gameByNumber = (matchId: string, gameNumber: number) =>
@@ -103,6 +129,7 @@ export const gameByNumber = (matchId: string, gameNumber: number) =>
     {
       label: `game-${matchId}-${gameNumber}`,
       deps: [matchId, gameNumber],
+      map: (game) => (game === null ? null : narrowGame(game)),
     },
   )
 
@@ -118,6 +145,7 @@ export const completedGamesByMatch$ = (matchId: string) =>
     {
       label: `completed-games-${matchId}`,
       deps: [matchId],
+      map: (games) => games.map(narrowGame),
     },
   )
 
@@ -137,6 +165,7 @@ export const ralliesByGame$ = (gameId: string) =>
     {
       label: `rallies-${gameId}`,
       deps: [gameId],
+      map: (rallies) => rallies.map(narrowRally),
     },
   )
 
@@ -163,6 +192,7 @@ export const lastRallyByGame$ = (gameId: string) =>
     {
       label: `last-rally-${gameId}`,
       deps: [gameId],
+      map: narrowRally,
     },
   )
 

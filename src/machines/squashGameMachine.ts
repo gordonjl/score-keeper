@@ -7,9 +7,10 @@ import {
 } from './squashGameMachine.actions'
 import type { Store } from '@livestore/livestore'
 import type { schema } from '../livestore/schema'
-import type { Team } from './squashMachine.types'
+import type { PlayerRow, Side, Team } from './squashMachine.types'
 
 // ===== LiveStore Game Type =====
+// This type represents the narrowed game data returned from queries
 export type Game = {
   id: string
   matchId: string
@@ -17,20 +18,20 @@ export type Game = {
   status: string
   scoreA: number
   scoreB: number
-  winner: string | null
+  winner: Team | null
   maxPoints: number
   winBy: number
   createdAt: Date
   completedAt: Date | null
   // Initial server (immutable)
-  firstServingTeam: string
-  firstServingPlayer: number
-  firstServingSide: string
+  firstServingTeam: Team
+  firstServingPlayer: PlayerRow
+  firstServingSide: Side
   // Current server state (updated after each rally)
-  currentServerTeam: string
-  currentServerPlayer: number
-  currentServerSide: string
-  currentServerHandIndex: number
+  currentServerTeam: Team
+  currentServerPlayer: PlayerRow
+  currentServerSide: Side
+  currentServerHandIndex: 0 | 1
   firstHandUsed: boolean
 }
 

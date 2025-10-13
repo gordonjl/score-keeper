@@ -12,14 +12,8 @@ import {
 } from './score-grid-utils'
 import type { RallyData } from './score-grid-utils'
 import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
-import type {
-  PlayerRow,
-  RowKey,
-  Server,
-  Side,
-  Team,
-} from '../../machines/squashMachine.types'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
+import type { RowKey, Server } from '../../machines/squashMachine.types'
 
 type ScoreGridContainerProps = {
   gameId: string
@@ -42,16 +36,16 @@ export const ScoreGridContainer = ({
   }))
 
   // Query game data and rallies from LiveStore
-  const gameData = useQuery(gameById$(gameId)) as Game
+  const gameData = useQuery(gameById$(gameId))
   const ralliesData = useQuery(ralliesByGame$(gameId))
 
   // Extract server state from game
   const server: Server = useMemo(
     () => ({
-      team: gameData.currentServerTeam as Team,
-      player: gameData.currentServerPlayer as PlayerRow,
-      side: gameData.currentServerSide as Side,
-      handIndex: gameData.currentServerHandIndex as 0 | 1,
+      team: gameData.currentServerTeam,
+      player: gameData.currentServerPlayer,
+      side: gameData.currentServerSide,
+      handIndex: gameData.currentServerHandIndex,
     }),
     [
       gameData.currentServerTeam,
@@ -75,12 +69,12 @@ export const ScoreGridContainer = ({
 
     // Map rallies to processable format
     const processableRallies: Array<RallyData> = ralliesData.map((rally) => ({
-      winner: rally.winner as Team,
+      winner: rally.winner,
       rallyNumber: rally.rallyNumber,
-      serverTeam: rally.serverTeam as Team,
-      serverPlayer: rally.serverPlayer as PlayerRow,
-      serverSide: rally.serverSide as Side,
-      serverHandIndex: rally.serverHandIndex as 0 | 1,
+      serverTeam: rally.serverTeam,
+      serverPlayer: rally.serverPlayer,
+      serverSide: rally.serverSide,
+      serverHandIndex: rally.serverHandIndex,
     }))
 
     // Get initial server from first rally

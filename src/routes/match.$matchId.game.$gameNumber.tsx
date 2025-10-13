@@ -145,7 +145,7 @@ function GameRoute() {
   const teamBName = `${match.playerB1FirstName} & ${match.playerB2FirstName}`
 
   // Get firstServingTeam from game data (source of truth)
-  const firstServingTeam = game.firstServingTeam as 'A' | 'B'
+  const firstServingTeam = game.firstServingTeam
 
   const winnerTeam = useMemo(
     () => (scoreA > scoreB ? teamAName : teamBName),
@@ -172,7 +172,7 @@ function GameRoute() {
     ).length
     const currentGameNumber =
       games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 1
-    const currentWinner = scoreA > scoreB ? 'A' : 'B'
+    const currentWinner: 'A' | 'B' = scoreA > scoreB ? 'A' : 'B'
     const willCompleteMatch =
       (currentWinner === 'A' && gamesWonA + 1 >= 3) ||
       (currentWinner === 'B' && gamesWonB + 1 >= 3)
@@ -370,7 +370,7 @@ function GameRoute() {
         {nextGameSetupState.isOpen && (
           <NextGameSetup
             isFirstGame={false}
-            lastWinner={gameStats.currentWinner as 'A' | 'B'}
+            lastWinner={gameStats.currentWinner}
             players={matchPlayers}
             onCancel={handleNextGameCancel}
             onStartGame={handleNextGameStart}

@@ -2,7 +2,7 @@ import { useSelector } from '@xstate/react'
 import { useQuery } from '@livestore/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
 import type { ActorRefFrom } from 'xstate'
-import type { Game, squashGameMachine } from '../../machines/squashGameMachine'
+import type { squashGameMachine } from '../../machines/squashGameMachine'
 
 type RallyButtonsProps = {
   actorRef: ActorRefFrom<typeof squashGameMachine>
@@ -17,15 +17,10 @@ export const RallyButtons = ({ actorRef, gameId }: RallyButtonsProps) => {
   }))
 
   // Query game data from LiveStore
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
 
   // Query match for player names
-  const match = useQuery(matchById$(game.matchId)) as {
-    playerA1FirstName: string
-    playerA2FirstName: string
-    playerB1FirstName: string
-    playerB2FirstName: string
-  }
+  const match = useQuery(matchById$(game.matchId))
 
   const isDisabled = isGameOver || isAwaitingConfirmation
 

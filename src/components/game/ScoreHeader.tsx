@@ -4,7 +4,6 @@ import {
   gamesByMatch$,
   matchById$,
 } from '../../livestore/squash-queries'
-import type { Game } from '../../machines/squashGameMachine'
 
 type TeamKey = 'teamA' | 'teamB'
 
@@ -20,7 +19,7 @@ export const ScoreHeader = ({
   firstServingTeam,
 }: ScoreHeaderProps) => {
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const match = useQuery(matchById$(matchId))
   const games = useQuery(gamesByMatch$(matchId))
 

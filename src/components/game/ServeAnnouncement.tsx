@@ -1,7 +1,6 @@
 import { useQuery } from '@livestore/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
 import { toWords } from './utils'
-import type { Game } from '../../machines/squashGameMachine'
 
 type ServeAnnouncementProps = {
   gameId: string
@@ -9,14 +8,14 @@ type ServeAnnouncementProps = {
 
 export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
   // Query game and match data from LiveStore (only called when gameId is valid)
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
   const match = useQuery(matchById$(game.matchId))
 
   // Get server and score from LiveStore
   const server = {
-    team: game.currentServerTeam as 'A' | 'B',
-    player: game.currentServerPlayer as 1 | 2,
-    side: game.currentServerSide as 'R' | 'L',
+    team: game.currentServerTeam,
+    player: game.currentServerPlayer,
+    side: game.currentServerSide,
   }
   const scoreA = game.scoreA
   const scoreB = game.scoreB

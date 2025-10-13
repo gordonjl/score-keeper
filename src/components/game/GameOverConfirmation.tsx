@@ -1,6 +1,5 @@
 import { useQuery } from '@livestore/react'
 import { gameById$ } from '../../livestore/squash-queries'
-import type { Game } from '../../machines/squashGameMachine'
 
 type GameOverConfirmationProps = {
   gameId: string
@@ -20,7 +19,7 @@ export const GameOverConfirmation = ({
   willCompleteMatch = false,
 }: GameOverConfirmationProps) => {
   // Query game data from LiveStore
-  const game = useQuery(gameById$(gameId)) as Game
+  const game = useQuery(gameById$(gameId))
 
   // Get scores from LiveStore
   const scoreA = game.scoreA
