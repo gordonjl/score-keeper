@@ -16,10 +16,13 @@ export function Timers() {
 
     if (isActive && time > 0) {
       interval = setInterval(() => {
-        setTime((prevTime) => prevTime - 1)
+        setTime((prevTime) => {
+          if (prevTime <= 1) {
+            setIsActive(false)
+          }
+          return prevTime - 1
+        })
       }, 1000)
-    } else if (time === 0) {
-      setIsActive(false)
     }
 
     return () => {

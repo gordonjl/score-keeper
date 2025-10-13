@@ -3,7 +3,7 @@ import { useState } from 'react'
 type WarningType = 'Conduct Warning' | 'Conduct Stroke'
 type Player = 'Player A1' | 'Player A2' | 'Player B1' | 'Player B2'
 
-interface WarningRecord {
+type WarningRecord = {
   player: Player
   type: WarningType
   timestamp: Date

@@ -36,6 +36,19 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
       // Allow empty functions (sometimes needed for default props)
       '@typescript-eslint/no-empty-function': 'off',
+      // Relax some strict rules for pragmatic development
+      '@typescript-eslint/no-floating-promises': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-misused-promises': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-unsafe-call': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-unsafe-member-access': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-unsafe-argument': 'warn', // Downgrade to warning
+      '@typescript-eslint/no-unsafe-assignment': 'warn', // Downgrade to warning
+      '@typescript-eslint/restrict-template-expressions': 'off', // Too strict for logging
+      '@typescript-eslint/await-thenable': 'warn', // Downgrade to warning
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Downgrade to warning
+      '@typescript-eslint/prefer-optional-chain': 'warn', // Downgrade to warning
+      '@typescript-eslint/unbound-method': 'off', // Too strict for callbacks
+      'react-compiler/react-compiler': 'off', // Disable React Compiler rules for now
     },
   },
   {

@@ -25,7 +25,7 @@ export const GameOverConfirmation = ({
   const gameId = useSelector(actorRef, (s) => s.context.gameId)
 
   // Query game data from LiveStore (always call hooks)
-  const game = useQuery(gameById$(gameId || '')) as Game | null
+  const game = useQuery(gameById$(gameId ?? '')) as Game | null
 
   // Get scores from LiveStore
   const scoreA = game?.scoreA ?? 0
