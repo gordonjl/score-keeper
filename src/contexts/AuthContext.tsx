@@ -1,8 +1,9 @@
-import netlifyIdentity from 'netlify-identity-widget'
+import { useAuth0 } from '@auth0/auth0-react'
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
-type NetlifyUser = {
+// Normalized user type that matches our LiveStore schema
+type AppUser = {
   id: string
   email?: string
   user_metadata: {
@@ -21,87 +22,82 @@ type NetlifyUser = {
 }
 
 type AuthContextType = {
-  user: NetlifyUser | null
+  user: AppUser | null
   login: () => void
   logout: () => void
   isLoading: boolean
-  getToken: () => string | null
+  getToken: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<NetlifyUser | null>(null)
+  const {
+    user: auth0User,
+    isAuthenticated,
+    isLoading: auth0Loading,
+    loginWithRedirect,
+    logout: auth0Logout,
+    getAccessTokenSilently,
+  } = useAuth0()
+
+  const [user, setUser] = useState<AppUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Transform Auth0 user to our AppUser format
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') {
-      setIsLoading(false)
+    if (auth0Loading) {
+      setIsLoading(true)
       return
     }
 
-    // Wait for DOM to be ready before initializing
-    const initializeAuth = () => {
-      // Initialize Netlify Identity
-      netlifyIdentity.init()
+    if (isAuthenticated && auth0User) {
+      const normalizedUser: AppUser = {
+        id: auth0User.sub ?? '',
+        email: auth0User.email,
+        user_metadata: {
+          avatar_url: auth0User.picture,
+          full_name: auth0User.name,
+        },
+        app_metadata: {
+          provider: auth0User.sub?.split('|')[0] ?? 'auth0',
+          roles: [],
+        },
+      }
 
-      // Get current user on mount
-      const currentUser = netlifyIdentity.currentUser() as NetlifyUser | null
-      setUser(currentUser)
-      setIsLoading(false)
-    }
-
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(initializeAuth, 0)
-    
-    if (document.readyState === 'complete') {
-      clearTimeout(timer)
-      initializeAuth()
-    }
-
-    // Listen for login event
-    const handleLogin = (loggedInUser: NetlifyUser) => {
-      console.log('User logged in:', loggedInUser.email)
-      setUser(loggedInUser)
-      netlifyIdentity.close()
-    }
-
-    // Listen for logout event
-    const handleLogout = () => {
-      console.log('User logged out')
+      setUser(normalizedUser)
+      console.log('User logged in:', normalizedUser.email)
+    } else {
       setUser(null)
     }
 
-    // Listen for error event
-    const handleError = (error: Error) => {
-      console.error('Netlify Identity error:', error)
-    }
-
-    // @ts-expect-error - netlify-identity-widget types are incomplete
-    netlifyIdentity.on('login', handleLogin)
-    netlifyIdentity.on('logout', handleLogout)
-    netlifyIdentity.on('error', handleError)
-
-    return () => {
-      clearTimeout(timer)
-      // @ts-expect-error - netlify-identity-widget types are incomplete
-      netlifyIdentity.off('login', handleLogin)
-      netlifyIdentity.off('logout', handleLogout)
-      netlifyIdentity.off('error', handleError)
-    }
-  }, [])
+    setIsLoading(false)
+  }, [auth0User, isAuthenticated, auth0Loading])
 
   const login = () => {
-    netlifyIdentity.open('login')
+    void loginWithRedirect({
+      appState: {
+        returnTo: window.location.pathname,
+      },
+    })
   }
 
   const logout = () => {
-    void netlifyIdentity.logout()
+    void auth0Logout({
+      logoutParams: {
+        returnTo: window.location.origin,
+      },
+    })
   }
 
-  const getToken = (): string | null => {
-    return user?.token?.access_token ?? null
+  const getToken = async (): Promise<string | null> => {
+    try {
+      const token = await getAccessTokenSilently()
+      return token
+    } catch (error) {
+      console.error('Error getting access token:', error)
+      return null
+    }
   }
 
   const value: AuthContextType = {

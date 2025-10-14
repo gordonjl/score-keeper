@@ -17,8 +17,31 @@ import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
 import { events, tables } from '../livestore/schema'
 import { gamesByMatch$, matchById$ } from '../livestore/squash-queries'
 
+function GameErrorComponent({ error }: { error: Error }) {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    console.error('Game route error - match or game not found:', error)
+    // Redirect to home if match/game not found
+    const timer = setTimeout(() => {
+      void navigate({ to: '/' })
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [error, navigate])
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Game Not Found</h1>
+        <p className="mb-4">Redirecting to home...</p>
+      </div>
+    </div>
+  )
+}
+
 export const Route = createFileRoute('/match/$matchId/game/$gameNumber')({
   component: GameRouteWrapper,
+  errorComponent: GameErrorComponent,
 })
 
 // Wrapper component that conditionally renders based on game actor existence

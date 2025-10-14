@@ -4,6 +4,7 @@ import { authTables } from './tables'
 /**
  * Get user by ID
  * Returns undefined if userId is null or user not found
+ * Does NOT throw - user might not be registered yet (valid state)
  */
 export const userById$ = (userId: string | null) => {
   if (!userId) {
@@ -14,10 +15,16 @@ export const userById$ = (userId: string | null) => {
       map: (rows) => rows[0],
     })
   }
-  return queryDb(() => authTables.users.where({ id: userId }).first(), {
-    label: `user-${userId}`,
-    deps: [userId],
-  })
+  return queryDb(
+    () =>
+      authTables.users.where({ id: userId }).first({
+        fallback: () => undefined,
+      }),
+    {
+      label: `user-${userId}`,
+      deps: [userId],
+    },
+  )
 }
 
 /**

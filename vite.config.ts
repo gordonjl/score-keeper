@@ -32,6 +32,9 @@ const config = defineConfig({
     host: true, // Allow access from any host (enables subdomain.localhost)
   },
   worker: { format: 'es' },
+  optimizeDeps: {
+    include: ['react/jsx-runtime', 'react/jsx-dev-runtime'],
+  },
   plugins: [
     // this is the plugin that enables path aliases
     viteTsConfigPaths({

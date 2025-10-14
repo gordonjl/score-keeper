@@ -1,7 +1,7 @@
-import {  usePermissions } from '../../hooks/usePermissions'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useAuth } from '../../contexts/AuthContext'
-import type {Permission} from '../../hooks/usePermissions';
-import type {ReactNode} from 'react';
+import type { Permission } from '../../hooks/usePermissions'
+import type { ReactNode } from 'react'
 
 type ProtectedActionProps = {
   children: ReactNode

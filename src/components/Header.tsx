@@ -1,10 +1,10 @@
-import { Link } from '@tanstack/react-router'
-import { useClientDocument } from '@livestore/react'
 import { SessionIdSymbol } from '@livestore/livestore'
+import { useClientDocument } from '@livestore/react'
+import { Link } from '@tanstack/react-router'
 import { Moon, Sun } from 'lucide-react'
 import { useEffect } from 'react'
 import { tables } from '../livestore/schema'
-import { ClearStorageButton } from './support/ClearStorageButton'
+import { LoginButton } from './auth/LoginButton'
 import { LetStrokeModal } from './modals/LetStrokeModal'
 import { TimersModal } from './modals/TimersModal'
 
@@ -62,7 +62,7 @@ export default function Header() {
         <div className="badge badge-ghost badge-lg">PAR-15 Doubles Scoring</div>
       </div>
       <div className="navbar-end gap-2">
-        {import.meta.env.DEV && <ClearStorageButton />}
+        <LoginButton />
         <button
           onClick={toggleTheme}
           className="btn btn-ghost btn-circle"

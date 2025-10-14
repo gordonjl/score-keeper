@@ -49,8 +49,11 @@ export const usePermissions = () => {
   const [currentUser] = useClientDocument(tables.currentUser, SessionIdSymbol)
 
   const can = (permission: Permission): boolean => {
-    const role = currentUser.role ?? 'anonymous'
-    return rolePermissions[role]?.includes(permission) ?? false
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const role = currentUser.role || 'anonymous'
+    const permissions = rolePermissions[role]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return permissions ? permissions.includes(permission) : false
   }
 
   const canAny = (...permissions: Array<Permission>): boolean => {

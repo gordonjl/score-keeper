@@ -53,6 +53,7 @@ const narrowRally = <
 
 /**
  * Get match by ID
+ * Throws if not found - match ID comes from URL so it MUST exist
  */
 export const matchById$ = (matchId: string) =>
   queryDb(() => squashTables.matches.where({ id: matchId }).first(), {
@@ -120,19 +121,24 @@ export const gamesByMatch$ = (matchId: string) =>
 
 /**
  * Get current in-progress game for a match
+ * Returns undefined if no game in progress (valid state)
  */
 export const currentGameByMatch$ = (matchId: string) =>
   queryDb(
-    () => squashTables.games.where({ matchId, status: 'in_progress' }).first(),
+    () =>
+      squashTables.games.where({ matchId, status: 'in_progress' }).first({
+        fallback: () => undefined,
+      }),
     {
       label: `current-game-${matchId}`,
       deps: [matchId],
-      map: narrowGame,
+      map: (game) => (game ? narrowGame(game) : undefined),
     },
   )
 
 /**
  * Get game by ID
+ * Throws if not found - game ID comes from URL/navigation so it MUST exist
  */
 export const gameById$ = (gameId: string) =>
   queryDb(() => squashTables.games.where({ id: gameId }).first(), {
@@ -145,9 +151,7 @@ export const gameByNumber = (matchId: string, gameNumber: number) =>
   queryDb(
     () =>
       squashTables.games.where({ matchId, gameNumber }).first({
-        fallback() {
-          return null
-        },
+        fallback: () => null,
       }),
     {
       label: `game-${matchId}-${gameNumber}`,
@@ -204,6 +208,7 @@ export const rallyCountByGame$ = (gameId: string) =>
 
 /**
  * Get last rally for a game (for undo)
+ * Returns undefined if no rallies yet (valid state - game just started)
  */
 export const lastRallyByGame$ = (gameId: string) =>
   queryDb(
@@ -211,11 +216,13 @@ export const lastRallyByGame$ = (gameId: string) =>
       squashTables.rallies
         .where({ gameId, deletedAt: null })
         .orderBy('rallyNumber', 'desc')
-        .first(),
+        .first({
+          fallback: () => undefined,
+        }),
     {
       label: `last-rally-${gameId}`,
       deps: [gameId],
-      map: narrowRally,
+      map: (rally) => (rally ? narrowRally(rally) : undefined),
     },
   )
 
