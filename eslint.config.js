@@ -58,6 +58,7 @@ export default tseslint.config(
       'eslint.config.js',
       'prettier.config.js',
       'vite.config.ts',
+      'src/components/support/DevStoreReset.tsx',
       // Generated files
       'src/routeTree.gen.ts',
     ],

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { userById$, userCount$ } from '../livestore/auth-queries'
 import { events, tables } from '../livestore/schema'
+import { authTables } from '../livestore/tables'
 
 export const useSyncAuthToLiveStore = () => {
   const { user, getToken } = useAuth()
@@ -56,7 +57,6 @@ export const useSyncAuthToLiveStore = () => {
       const accessToken = await getToken()
 
       // Check if user exists in database
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       const userExists = dbUser != null
 
       if (!userExists) {
@@ -64,7 +64,7 @@ export const useSyncAuthToLiveStore = () => {
         // Check if this is the first user in the store (should be admin)
         const role = totalUsers === 0 ? 'admin' : 'member'
 
-        // Commit registration event
+        // Commit registration event (synchronous - materializer runs immediately)
         store.commit(
           events.userRegistered({
             userId,
@@ -77,7 +77,7 @@ export const useSyncAuthToLiveStore = () => {
           }),
         )
       } else {
-        // Existing user - just log them in
+        // Existing user - commit login event (synchronous - materializer runs immediately)
         store.commit(
           events.userLoggedIn({
             userId,
@@ -86,16 +86,23 @@ export const useSyncAuthToLiveStore = () => {
         )
       }
 
-      // Update client document
+      // Query the fresh user data from database after materializer has run
+      // Use the table query directly to get the updated user
+      const freshUserRows = store.query(
+        authTables.users.where({ id: userId }).limit(1),
+      )
+      const freshUser = freshUserRows.length > 0 ? freshUserRows[0] : undefined
+
+      // Update client document with fresh data from database
       updateCurrentUser({
         userId,
-        githubUsername,
-        email,
-        avatarUrl,
-        displayName: githubUsername,
-        // dbUser can be undefined if user doesn't exist in DB yet
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        role: (dbUser?.role as 'admin' | 'staff' | 'member' | undefined) ?? 'member',
+        githubUsername: freshUser?.githubUsername ?? githubUsername,
+        email: freshUser?.githubEmail ?? email,
+        avatarUrl: freshUser?.githubAvatarUrl ?? avatarUrl,
+        displayName: freshUser?.displayName ?? githubUsername,
+        role:
+          (freshUser?.role as 'admin' | 'staff' | 'member' | undefined) ??
+          'member',
         accessToken,
       })
 

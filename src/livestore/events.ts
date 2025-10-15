@@ -188,4 +188,79 @@ export const authEvents = {
       timestamp: Schema.Date,
     }),
   }),
+
+  userUpdated: Events.synced({
+    name: 'v1.UserUpdated',
+    schema: Schema.Struct({
+      userId: Schema.String,
+      githubUsername: Schema.String,
+      githubEmail: Schema.NullOr(Schema.String),
+      displayName: Schema.NullOr(Schema.String),
+      role: Schema.Literal('admin', 'staff', 'member'),
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  userDeleted: Events.synced({
+    name: 'v1.UserDeleted',
+    schema: Schema.Struct({
+      userId: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
+}
+
+// ============================================================================
+// PLAYER EVENTS
+// ============================================================================
+
+export const playerEvents = {
+  playerCreated: Events.synced({
+    name: 'v1.PlayerCreated',
+    schema: Schema.Struct({
+      playerId: Schema.String,
+      firstName: Schema.String,
+      lastName: Schema.String,
+      email: Schema.NullOr(Schema.String),
+      phone: Schema.NullOr(Schema.String),
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  playerUpdated: Events.synced({
+    name: 'v1.PlayerUpdated',
+    schema: Schema.Struct({
+      playerId: Schema.String,
+      firstName: Schema.String,
+      lastName: Schema.String,
+      email: Schema.NullOr(Schema.String),
+      phone: Schema.NullOr(Schema.String),
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  playerDeleted: Events.synced({
+    name: 'v1.PlayerDeleted',
+    schema: Schema.Struct({
+      playerId: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  playerLinkedToUser: Events.synced({
+    name: 'v1.PlayerLinkedToUser',
+    schema: Schema.Struct({
+      playerId: Schema.String,
+      userId: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  playerUnlinkedFromUser: Events.synced({
+    name: 'v1.PlayerUnlinkedFromUser',
+    schema: Schema.Struct({
+      playerId: Schema.String,
+      timestamp: Schema.Date,
+    }),
+  }),
 }

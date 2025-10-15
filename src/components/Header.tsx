@@ -3,12 +3,15 @@ import { useClientDocument } from '@livestore/react'
 import { Link } from '@tanstack/react-router'
 import { Moon, Sun } from 'lucide-react'
 import { useEffect } from 'react'
+import { usePermissions } from '../hooks/usePermissions'
 import { tables } from '../livestore/schema'
 import { LoginButton } from './auth/LoginButton'
 import { LetStrokeModal } from './modals/LetStrokeModal'
 import { TimersModal } from './modals/TimersModal'
 
 export default function Header() {
+  const { can } = usePermissions()
+
   // Use LiveStore client documents for persistent state
   const [modalState, updateModalState] = useClientDocument(
     tables.modalState,
@@ -105,6 +108,20 @@ export default function Header() {
                 All Matches
               </Link>
             </li>
+            {can('user.view') && (
+              <>
+                <li>
+                  <Link to="/players" onClick={closeDropdown}>
+                    Player Management
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/users" onClick={closeDropdown}>
+                    User Management
+                  </Link>
+                </li>
+              </>
+            )}
             <li>
               Referee Tools
               <ul>

@@ -3,14 +3,15 @@ import { makeCfSync } from '@livestore/sync-cf'
 
 import { schema } from './schema'
 
+const syncUrl = import.meta.env.VITE_LIVESTORE_SYNC_URL as string | undefined
+
 makeWorker({
   schema,
-  sync: {
-    backend: makeCfSync({
-      url:
-        (import.meta.env.VITE_LIVESTORE_SYNC_URL as string | undefined) ??
-        'http://localhost:8787',
-    }),
-    initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
-  },
+  sync: syncUrl
+    ? {
+        backend: makeCfSync({ url: syncUrl }),
+        // Skip initial sync to avoid blocking - sync happens in background
+        initialSyncOptions: { _tag: 'Skip' },
+      }
+    : undefined,
 })

@@ -28,7 +28,7 @@ export const DevStoreReset = () => {
 
     try {
       // Access the dev helper
-      // @ts-expect-error - dev helper not in types
+
       await window.__debugLiveStore[store.storeId]._dev.hardReset()
 
       // Reload the page
@@ -41,7 +41,6 @@ export const DevStoreReset = () => {
 
   const handleDownloadDb = () => {
     try {
-      // @ts-expect-error - dev helper not in types
       window.__debugLiveStore[store.storeId]._dev.downloadDb()
     } catch (error) {
       console.error('Failed to download database:', error)
@@ -50,8 +49,6 @@ export const DevStoreReset = () => {
 
   const handleDownloadEventlog = () => {
     try {
-      // @ts-expect-error - dev helper not in types
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       window.__debugLiveStore[store.storeId]._dev.downloadEventlogDb()
     } catch (error) {
       console.error('Failed to download eventlog:', error)
@@ -60,7 +57,6 @@ export const DevStoreReset = () => {
 
   const handleCheckSyncState = () => {
     try {
-      // @ts-expect-error - dev helper not in types
       const syncStates =
         window.__debugLiveStore[store.storeId]._dev.syncStates()
       console.log('Sync States:', syncStates)

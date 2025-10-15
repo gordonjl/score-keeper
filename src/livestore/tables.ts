@@ -198,6 +198,32 @@ export const authTables = {
 }
 
 // ============================================================================
+// PLAYER TABLES
+// ============================================================================
+
+export const playerTables = {
+  // Players table - stores player profiles for matches (no auth required)
+  players: State.SQLite.table({
+    name: 'players',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      firstName: State.SQLite.text(),
+      lastName: State.SQLite.text(),
+      email: State.SQLite.text({ nullable: true }),
+      phone: State.SQLite.text({ nullable: true }),
+      // Optional link to authenticated user account
+      linkedUserId: State.SQLite.text({ nullable: true }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      deletedAt: State.SQLite.integer({
+        nullable: true,
+        schema: Schema.DateFromNumber,
+      }),
+    },
+  }),
+}
+
+// ============================================================================
 // UI STATE CLIENT DOCUMENTS
 // ============================================================================
 

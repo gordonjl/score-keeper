@@ -1,6 +1,12 @@
 import { State, defineMaterializer } from '@livestore/livestore'
-import { authEvents, squashEvents, todoEvents } from './events'
-import { authTables, squashTables, todoTables, uiTables } from './tables'
+import { authEvents, playerEvents, squashEvents, todoEvents } from './events'
+import {
+  authTables,
+  playerTables,
+  squashTables,
+  todoTables,
+  uiTables,
+} from './tables'
 
 // ============================================================================
 // TODO MATERIALIZERS (Canary - will be removed after migration)
@@ -426,34 +432,52 @@ const squashMaterializers = {
 // ============================================================================
 
 const authMaterializers = {
-  'v1.UserRegistered': ({
-    userId,
-    githubUsername,
-    githubEmail,
-    githubAvatarUrl,
-    displayName,
-    role,
-    timestamp,
-  }: {
-    userId: string
-    githubUsername: string
-    githubEmail: string | null
-    githubAvatarUrl: string | null
-    displayName: string | null
-    role: 'admin' | 'staff' | 'member'
-    timestamp: Date
-  }) =>
-    authTables.users.insert({
-      id: userId,
-      githubUsername,
-      githubEmail,
-      githubAvatarUrl,
-      displayName,
-      role,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      lastLoginAt: timestamp,
-    }),
+  'v1.UserRegistered': defineMaterializer(
+    authEvents.userRegistered,
+    (
+      {
+        userId,
+        githubUsername,
+        githubEmail,
+        githubAvatarUrl,
+        displayName,
+        role,
+        timestamp,
+      },
+      ctx,
+    ) => {
+      // Check if user already exists
+      const existingUsers = ctx.query(authTables.users.where({ id: userId }))
+
+      // If user exists, update their info and lastLoginAt (idempotent)
+      if (existingUsers.length > 0) {
+        return authTables.users
+          .update({
+            githubUsername,
+            githubEmail,
+            githubAvatarUrl,
+            displayName,
+            role,
+            updatedAt: timestamp,
+            lastLoginAt: timestamp,
+          })
+          .where({ id: userId })
+      }
+
+      // User doesn't exist, insert new record
+      return authTables.users.insert({
+        id: userId,
+        githubUsername,
+        githubEmail,
+        githubAvatarUrl,
+        displayName,
+        role,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastLoginAt: timestamp,
+      })
+    },
+  ),
 
   'v1.UserLoggedIn': ({
     userId,
@@ -483,6 +507,145 @@ const authMaterializers = {
         updatedAt: timestamp,
       })
       .where({ id: userId }),
+
+  'v1.UserUpdated': ({
+    userId,
+    githubUsername,
+    githubEmail,
+    displayName,
+    role,
+    timestamp,
+  }: {
+    userId: string
+    githubUsername: string
+    githubEmail: string | null
+    displayName: string | null
+    role: 'admin' | 'staff' | 'member'
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({
+        githubUsername,
+        githubEmail,
+        displayName,
+        role,
+        updatedAt: timestamp,
+      })
+      .where({ id: userId }),
+
+  'v1.UserDeleted': ({
+    userId,
+    timestamp,
+  }: {
+    userId: string
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({
+        deletedAt: timestamp,
+      })
+      .where({ id: userId }),
+}
+
+// ============================================================================
+// PLAYER MATERIALIZERS
+// ============================================================================
+
+const playerMaterializers = {
+  'v1.PlayerCreated': ({
+    playerId,
+    firstName,
+    lastName,
+    email,
+    phone,
+    timestamp,
+  }: {
+    playerId: string
+    firstName: string
+    lastName: string
+    email: string | null
+    phone: string | null
+    timestamp: Date
+  }) =>
+    playerTables.players.insert({
+      id: playerId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      linkedUserId: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      deletedAt: null,
+    }),
+
+  'v1.PlayerUpdated': ({
+    playerId,
+    firstName,
+    lastName,
+    email,
+    phone,
+    timestamp,
+  }: {
+    playerId: string
+    firstName: string
+    lastName: string
+    email: string | null
+    phone: string | null
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        firstName,
+        lastName,
+        email,
+        phone,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerDeleted': ({
+    playerId,
+    timestamp,
+  }: {
+    playerId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        deletedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerLinkedToUser': ({
+    playerId,
+    userId,
+    timestamp,
+  }: {
+    playerId: string
+    userId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        linkedUserId: userId,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerUnlinkedFromUser': ({
+    playerId,
+    timestamp,
+  }: {
+    playerId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        linkedUserId: null,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
 }
 
 // ============================================================================
@@ -502,6 +665,7 @@ export const createMaterializers = () => {
     gameUiStateSet: squashTables.gameUiState.set,
     ...authEvents,
     currentUserSet: authTables.currentUser.set,
+    ...playerEvents,
     modalStateSet: uiTables.modalState.set,
     nextGameSetupStateSet: uiTables.nextGameSetupState.set,
     themePreferenceSet: uiTables.themePreference.set,
@@ -511,5 +675,6 @@ export const createMaterializers = () => {
     ...todoMaterializers,
     ...squashMaterializers,
     ...authMaterializers,
+    ...playerMaterializers,
   })
 }
