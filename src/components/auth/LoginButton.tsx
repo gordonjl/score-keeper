@@ -44,7 +44,7 @@ export const LoginButton = () => {
   return (
     <button onClick={login} className="btn btn-primary btn-sm">
       <LogIn className="w-4 h-4" />
-      Login with GitHub
+      Login
     </button>
   )
 }
