@@ -11,10 +11,22 @@ class_name = "WebSocketServer"
 tag = "v1"
 new_classes = ["WebSocketServer"]
 
+# ----- local (wrangler dev) -----
 [[d1_databases]]
 binding = "DB"
 database_name = "score-keeper-sync"
 database_id = "local-db-id"
+
+# ----- prod (Cloudflare) -----
+[env.prod]
+[[env.prod.durable_objects.bindings]]
+name = "WEBSOCKET_SERVER"
+class_name = "WebSocketServer"
+
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "score-keeper-sync"
+database_id = "c752b75c-8d5e-4e06-8ff3-0a36cfe1b079"
 
 [vars]
 # should be set via CF dashboard (as secret) for production
