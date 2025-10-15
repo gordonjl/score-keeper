@@ -225,7 +225,10 @@ const getStoreId = (): string | null => {
       potentialSubdomain !== 'localhost' &&
       potentialSubdomain !== 'score-keeper'
     ) {
-      return potentialSubdomain
+      // v2: One-time version bump to fix clientDocument sync bug
+      // Old browsers had invalid client-only events in their eventlog
+      // Future schema changes should use proper event versioning instead
+      return `${potentialSubdomain}-v2`
     }
   }
 

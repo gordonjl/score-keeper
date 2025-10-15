@@ -2,7 +2,7 @@ import { SessionIdSymbol } from '@livestore/livestore'
 import { useClientDocument, useQuery, useStore } from '@livestore/react'
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { userById$, userCount$ } from '../livestore/auth-queries'
+import { userCount$ } from '../livestore/auth-queries'
 import { events, tables } from '../livestore/schema'
 import { authTables } from '../livestore/tables'
 
@@ -18,8 +18,7 @@ export const useSyncAuthToLiveStore = () => {
   const hasSynced = useRef(false)
   const lastUserId = useRef<string | null>(null)
 
-  // Query user from database using the Auth0 user ID (not currentUser.userId which may be null)
-  const dbUser = useQuery(userById$(user?.id ?? null))
+  // Query total user count to determine if this is the first user (admin)
   const totalUsers = useQuery(userCount$)
 
   // Effect to handle logout
@@ -56,35 +55,23 @@ export const useSyncAuthToLiveStore = () => {
       const avatarUrl = user.user_metadata.avatar_url ?? null
       const accessToken = await getToken()
 
-      // Check if user exists in database
-      const userExists = dbUser != null
+      // Determine role: first user in the store becomes admin
+      const role = totalUsers === 0 ? 'admin' : 'member'
 
-      if (!userExists) {
-        // First time user - register them
-        // Check if this is the first user in the store (should be admin)
-        const role = totalUsers === 0 ? 'admin' : 'member'
-
-        // Commit registration event (synchronous - materializer runs immediately)
-        store.commit(
-          events.userRegistered({
-            userId,
-            githubUsername,
-            githubEmail: email,
-            githubAvatarUrl: avatarUrl,
-            displayName: githubUsername,
-            role,
-            timestamp: new Date(),
-          }),
-        )
-      } else {
-        // Existing user - commit login event (synchronous - materializer runs immediately)
-        store.commit(
-          events.userLoggedIn({
-            userId,
-            timestamp: new Date(),
-          }),
-        )
-      }
+      // Always commit userRegistered event - the idempotent materializer
+      // will handle whether to insert (new user) or update (existing user)
+      // This prevents race conditions when multiple browsers log in simultaneously
+      store.commit(
+        events.userRegistered({
+          userId,
+          githubUsername,
+          githubEmail: email,
+          githubAvatarUrl: avatarUrl,
+          displayName: githubUsername,
+          role,
+          timestamp: new Date(),
+        }),
+      )
 
       // Query the fresh user data from database after materializer has run
       // Use the table query directly to get the updated user

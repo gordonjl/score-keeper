@@ -11,6 +11,13 @@ class_name = "WebSocketServer"
 tag = "v1"
 new_classes = ["WebSocketServer"]
 
+[[migrations]]
+tag = "v2"
+# One-time migration to fix clientDocument sync bug
+# Resets storage to clean state, matching client storeId v2 bump
+deleted_classes = ["WebSocketServer"]
+new_classes = ["WebSocketServer"]
+
 # ----- local (wrangler dev) -----
 [[d1_databases]]
 binding = "DB"

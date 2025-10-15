@@ -22,19 +22,15 @@ export const tables = {
   ...uiTables,
 }
 
-// Combine all events
+// Combine all synced events
+// NOTE: clientDocument.set events (like currentUserSet, uiStateSet, etc.) should
+// NOT be included here. They are automatically handled as client-only by LiveStore
+// and are NOT synced to the server. They're available via table.set property.
 export const events = {
   ...todoEvents,
-  uiStateSet: todoTables.uiState.set,
   ...squashEvents,
-  gameUiStateSet: squashTables.gameUiState.set,
   ...authEvents,
-  currentUserSet: authTables.currentUser.set,
   ...playerEvents,
-  // UI state events
-  modalStateSet: uiTables.modalState.set,
-  nextGameSetupStateSet: uiTables.nextGameSetupState.set,
-  themePreferenceSet: uiTables.themePreference.set,
 }
 
 // Create materializers

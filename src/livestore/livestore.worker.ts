@@ -12,6 +12,8 @@ makeWorker({
         backend: makeCfSync({ url: syncUrl }),
         // Skip initial sync to avoid blocking - sync happens in background
         initialSyncOptions: { _tag: 'Skip' },
+        // Don't crash on sync errors - continue as if offline
+        onSyncError: 'ignore',
       }
     : undefined,
 })
