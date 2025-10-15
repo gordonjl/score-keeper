@@ -12,11 +12,15 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ErrorBoundary } from 'react-error-boundary'
+import { Auth0Provider } from '@auth0/auth0-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { UpdateNotification } from '../components/support/UpdateNotification'
+import { DevStoreReset } from '../components/support/DevStoreReset'
 import LiveStoreWorker from '../livestore/livestore.worker?worker'
 import { schema } from '../livestore/schema'
+import { AuthProvider } from '../contexts/AuthContext'
+import { useSyncAuthToLiveStore } from '../hooks/useSyncAuthToLiveStore'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
@@ -25,6 +29,19 @@ import type { QueryClient } from '@tanstack/react-query'
 
 type MyRouterContext = {
   queryClient: QueryClient
+}
+
+// Component that runs inside LiveStoreProvider to sync auth state
+const LiveStoreContent = () => {
+  useSyncAuthToLiveStore()
+
+  return (
+    <>
+      <Header />
+      <Outlet />
+      {import.meta.env.DEV && <DevStoreReset />}
+    </>
+  )
 }
 
 const RootComponent = () => {
@@ -55,28 +72,64 @@ const RootComponent = () => {
     )
   }
 
+  const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN as string | undefined
+  const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID as
+    | string
+    | undefined
+
+  if (!auth0Domain || !auth0ClientId) {
+    console.error(
+      'Auth0 configuration missing. Please set environment variables.',
+    )
+    return (
+      <RootDocument>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md px-4">
+            <h1 className="text-4xl font-bold mb-4">Configuration Error</h1>
+            <p className="text-lg mb-6">
+              Auth0 is not configured. Please set VITE_AUTH0_DOMAIN and
+              VITE_AUTH0_CLIENT_ID environment variables.
+            </p>
+          </div>
+        </div>
+      </RootDocument>
+    )
+  }
+
   return (
     <RootDocument>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <LiveStoreProvider
-          schema={schema}
-          storeId={storeId}
-          renderLoading={() => (
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                <div className="loading loading-spinner loading-lg"></div>
-                <p className="mt-4">Loading...</p>
-              </div>
-            </div>
-          )}
-          adapter={adapter}
-          batchUpdates={batchUpdates}
-          syncPayload={{ authToken: 'insecure-token-change-me' }}
-        >
-          <Header />
-          <Outlet />
-        </LiveStoreProvider>
-      </ErrorBoundary>
+      <Auth0Provider
+        domain={auth0Domain}
+        clientId={auth0ClientId}
+        authorizationParams={{
+          redirect_uri:
+            typeof window !== 'undefined' ? window.location.origin : undefined,
+        }}
+        cacheLocation="localstorage"
+        useRefreshTokens={true}
+      >
+        <AuthProvider>
+          <ErrorBoundary fallback={<div>Something went wrong</div>}>
+            <LiveStoreProvider
+              schema={schema}
+              storeId={storeId}
+              renderLoading={() => (
+                <div className="flex items-center justify-center min-h-screen">
+                  <div className="text-center">
+                    <div className="loading loading-spinner loading-lg"></div>
+                    <p className="mt-4">Loading...</p>
+                  </div>
+                </div>
+              )}
+              adapter={adapter}
+              batchUpdates={batchUpdates}
+              syncPayload={{ storeId }}
+            >
+              <LiveStoreContent />
+            </LiveStoreProvider>
+          </ErrorBoundary>
+        </AuthProvider>
+      </Auth0Provider>
     </RootDocument>
   )
 }

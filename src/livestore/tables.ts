@@ -143,6 +143,87 @@ export const squashTables = {
 }
 
 // ============================================================================
+// AUTH & USER TABLES
+// ============================================================================
+
+export const authTables = {
+  // Users table - stores user profiles and roles per store
+  users: State.SQLite.table({
+    name: 'users',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }), // GitHub user ID
+      githubUsername: State.SQLite.text(),
+      githubEmail: State.SQLite.text({ nullable: true }),
+      githubAvatarUrl: State.SQLite.text({ nullable: true }),
+      displayName: State.SQLite.text({ nullable: true }),
+      role: State.SQLite.text({ default: 'member' }), // 'admin' | 'staff' | 'member'
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      lastLoginAt: State.SQLite.integer({
+        nullable: true,
+        schema: Schema.DateFromNumber,
+      }),
+      deletedAt: State.SQLite.integer({
+        nullable: true,
+        schema: Schema.DateFromNumber,
+      }),
+    },
+  }),
+
+  // Current user client document (not synced)
+  currentUser: State.SQLite.clientDocument({
+    name: 'currentUser',
+    schema: Schema.Struct({
+      userId: Schema.NullOr(Schema.String),
+      githubUsername: Schema.NullOr(Schema.String),
+      email: Schema.NullOr(Schema.String),
+      avatarUrl: Schema.NullOr(Schema.String),
+      displayName: Schema.NullOr(Schema.String),
+      role: Schema.Literal('admin', 'staff', 'member', 'anonymous'),
+      accessToken: Schema.NullOr(Schema.String),
+    }),
+    default: {
+      id: SessionIdSymbol,
+      value: {
+        userId: null,
+        githubUsername: null,
+        email: null,
+        avatarUrl: null,
+        displayName: null,
+        role: 'anonymous',
+        accessToken: null,
+      },
+    },
+  }),
+}
+
+// ============================================================================
+// PLAYER TABLES
+// ============================================================================
+
+export const playerTables = {
+  // Players table - stores player profiles for matches (no auth required)
+  players: State.SQLite.table({
+    name: 'players',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      firstName: State.SQLite.text(),
+      lastName: State.SQLite.text(),
+      email: State.SQLite.text({ nullable: true }),
+      phone: State.SQLite.text({ nullable: true }),
+      // Optional link to authenticated user account
+      linkedUserId: State.SQLite.text({ nullable: true }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      deletedAt: State.SQLite.integer({
+        nullable: true,
+        schema: Schema.DateFromNumber,
+      }),
+    },
+  }),
+}
+
+// ============================================================================
 // UI STATE CLIENT DOCUMENTS
 // ============================================================================
 

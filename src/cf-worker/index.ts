@@ -13,14 +13,12 @@ export class WebSocketServer extends makeDurableObject({
 
 export default makeWorker({
   validatePayload: (payload: unknown) => {
-    if (
-      !payload ||
-      typeof payload !== 'object' ||
-      !('authToken' in payload) ||
-      payload.authToken !== 'insecure-token-change-me'
-    ) {
-      throw new Error('Invalid auth token')
+    // For now, just validate that we have a storeId
+    // TODO: Add JWT validation in Phase 2
+    if (!payload || typeof payload !== 'object' || !('storeId' in payload)) {
+      throw new Error('Invalid payload: storeId required')
     }
+    console.log('✅ Payload validated:', payload)
   },
   enableCORS: true,
 })

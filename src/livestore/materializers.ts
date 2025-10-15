@@ -1,6 +1,12 @@
 import { State, defineMaterializer } from '@livestore/livestore'
-import { squashEvents, todoEvents } from './events'
-import { squashTables, todoTables, uiTables } from './tables'
+import { authEvents, playerEvents, squashEvents, todoEvents } from './events'
+import {
+  authTables,
+  playerTables,
+  squashTables,
+  todoTables,
+  uiTables,
+} from './tables'
 
 // ============================================================================
 // TODO MATERIALIZERS (Canary - will be removed after migration)
@@ -203,62 +209,60 @@ const squashMaterializers = {
       ctx,
     ) => {
       // Check if game already exists (gameId is globally unique)
-      const existingGames = ctx.query(
-        squashTables.games.where({ id: gameId }),
-      )
+      const existingGames = ctx.query(squashTables.games.where({ id: gameId }))
 
-    // If game already exists and is completed, don't reset it (idempotent)
-    if (existingGames.length > 0 && existingGames[0].status === 'completed') {
-      return []
-    }
+      // If game already exists and is completed, don't reset it (idempotent)
+      if (existingGames.length > 0 && existingGames[0].status === 'completed') {
+        return []
+      }
 
-    // If game exists but is in_progress, reset it to fresh state (handle replays/resets)
-    if (existingGames.length > 0) {
-      return squashTables.games
-        .update({
-          status: 'in_progress',
-          scoreA: 0,
-          scoreB: 0,
-          winner: null,
-          maxPoints,
-          winBy,
-          createdAt: timestamp,
-          completedAt: null,
-          firstServingTeam,
-          firstServingPlayer,
-          firstServingSide,
-          // Initialize current server state
-          currentServerTeam: firstServingTeam,
-          currentServerPlayer: firstServingPlayer,
-          currentServerSide: firstServingSide,
-          currentServerHandIndex: 0,
-          firstHandUsed: false,
-        })
-        .where({ id: gameId })
-    }
+      // If game exists but is in_progress, reset it to fresh state (handle replays/resets)
+      if (existingGames.length > 0) {
+        return squashTables.games
+          .update({
+            status: 'in_progress',
+            scoreA: 0,
+            scoreB: 0,
+            winner: null,
+            maxPoints,
+            winBy,
+            createdAt: timestamp,
+            completedAt: null,
+            firstServingTeam,
+            firstServingPlayer,
+            firstServingSide,
+            // Initialize current server state
+            currentServerTeam: firstServingTeam,
+            currentServerPlayer: firstServingPlayer,
+            currentServerSide: firstServingSide,
+            currentServerHandIndex: 0,
+            firstHandUsed: false,
+          })
+          .where({ id: gameId })
+      }
 
-    return squashTables.games.insert({
-      id: gameId,
-      matchId,
-      gameNumber,
-      status: 'in_progress',
-      scoreA: 0,
-      scoreB: 0,
-      winner: null,
-      maxPoints,
-      winBy,
-      createdAt: timestamp,
-      completedAt: null,
-      firstServingTeam,
-      firstServingPlayer,
-      firstServingSide,
-      // Initialize current server state
-      currentServerTeam: firstServingTeam,
-      currentServerPlayer: firstServingPlayer,
-      currentServerSide: firstServingSide,
-      currentServerHandIndex: 0,
-      firstHandUsed: false,
-    })
+      return squashTables.games.insert({
+        id: gameId,
+        matchId,
+        gameNumber,
+        status: 'in_progress',
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        maxPoints,
+        winBy,
+        createdAt: timestamp,
+        completedAt: null,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        // Initialize current server state
+        currentServerTeam: firstServingTeam,
+        currentServerPlayer: firstServingPlayer,
+        currentServerSide: firstServingSide,
+        currentServerHandIndex: 0,
+        firstHandUsed: false,
+      })
     },
   ),
 
@@ -305,112 +309,107 @@ const squashMaterializers = {
       },
       ctx,
     ) => {
-    // Query current game state to get firstHandUsed
-    const games = ctx.query(squashTables.games.where({ id: gameId }))
-    const currentFirstHandUsed = games[0]?.firstHandUsed ?? false
+      // Query current game state to get firstHandUsed
+      const games = ctx.query(squashTables.games.where({ id: gameId }))
+      const currentFirstHandUsed = games[0]?.firstHandUsed ?? false
 
-    // Compute next server state
-    const nextServerState = computeNextServerState({
-      currentServer: {
-        team: serverTeam,
-        player: serverPlayer,
-        side: serverSide,
-        handIndex: serverHandIndex,
-      },
-      firstHandUsed: currentFirstHandUsed,
-      scoreBefore: { A: scoreABefore, B: scoreBBefore },
-      winner,
-    })
-
-    return [
-      // Insert rally record
-      squashTables.rallies.insert({
-        id: rallyId,
-        gameId,
-        rallyNumber,
+      // Compute next server state
+      const nextServerState = computeNextServerState({
+        currentServer: {
+          team: serverTeam,
+          player: serverPlayer,
+          side: serverSide,
+          handIndex: serverHandIndex,
+        },
+        firstHandUsed: currentFirstHandUsed,
+        scoreBefore: { A: scoreABefore, B: scoreBBefore },
         winner,
-        serverTeam,
-        serverPlayer,
-        serverSide,
-        serverHandIndex,
-        scoreABefore,
-        scoreBBefore,
-        scoreAAfter,
-        scoreBAfter,
-        timestamp,
-        deletedAt: null,
-      }),
-      // Update game score and current server state
-      squashTables.games
-        .update({
-          scoreA: scoreAAfter,
-          scoreB: scoreBAfter,
-          currentServerTeam: nextServerState.team,
-          currentServerPlayer: nextServerState.player,
-          currentServerSide: nextServerState.side,
-          currentServerHandIndex: nextServerState.handIndex,
-          firstHandUsed: nextServerState.firstHandUsed,
-        })
-        .where({ id: gameId }),
-    ]
+      })
+
+      return [
+        // Insert rally record
+        squashTables.rallies.insert({
+          id: rallyId,
+          gameId,
+          rallyNumber,
+          winner,
+          serverTeam,
+          serverPlayer,
+          serverSide,
+          serverHandIndex,
+          scoreABefore,
+          scoreBBefore,
+          scoreAAfter,
+          scoreBAfter,
+          timestamp,
+          deletedAt: null,
+        }),
+        // Update game score and current server state
+        squashTables.games
+          .update({
+            scoreA: scoreAAfter,
+            scoreB: scoreBAfter,
+            currentServerTeam: nextServerState.team,
+            currentServerPlayer: nextServerState.player,
+            currentServerSide: nextServerState.side,
+            currentServerHandIndex: nextServerState.handIndex,
+            firstHandUsed: nextServerState.firstHandUsed,
+          })
+          .where({ id: gameId }),
+      ]
     },
   ),
 
   'v1.RallyUndone': defineMaterializer(
     squashEvents.rallyUndone,
-    (
-      {
-        gameId,
-        rallyId,
-        timestamp,
-      },
-      ctx,
-    ) => {
-    // Query the last rally for this game (if rallyId is empty, find the most recent)
-    const rallies = rallyId
-      ? ctx.query(squashTables.rallies.where({ id: rallyId, deletedAt: null }))
-      : ctx.query(
-          squashTables.rallies
-            .where({ gameId, deletedAt: null })
-            .orderBy('rallyNumber', 'desc'),
-        )
-    
-    const rally = rallies[0]
+    ({ gameId, rallyId, timestamp }, ctx) => {
+      // Query the last rally for this game (if rallyId is empty, find the most recent)
+      const rallies = rallyId
+        ? ctx.query(
+            squashTables.rallies.where({ id: rallyId, deletedAt: null }),
+          )
+        : ctx.query(
+            squashTables.rallies
+              .where({ gameId, deletedAt: null })
+              .orderBy('rallyNumber', 'desc'),
+          )
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!rally) return []
+      const rally = rallies[0]
 
-    // Query previous rally to determine what firstHandUsed should be
-    const previousRallies = ctx.query(
-      squashTables.rallies
-        .where({ gameId, deletedAt: null })
-        .orderBy('rallyNumber', 'desc'),
-    )
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!rally) return []
 
-    // Filter out the rally we're about to delete
-    const remainingRallies = previousRallies.filter(
-      (r) => r.rallyNumber < rally.rallyNumber,
-    )
-    const firstHandUsed = remainingRallies.length > 0
+      // Query previous rally to determine what firstHandUsed should be
+      const previousRallies = ctx.query(
+        squashTables.rallies
+          .where({ gameId, deletedAt: null })
+          .orderBy('rallyNumber', 'desc'),
+      )
 
-    return [
-      // Soft delete the rally
-      squashTables.rallies
-        .update({ deletedAt: timestamp })
-        .where({ id: rally.id }),
-      // Restore previous score and server state
-      squashTables.games
-        .update({
-          scoreA: rally.scoreABefore,
-          scoreB: rally.scoreBBefore,
-          currentServerTeam: rally.serverTeam,
-          currentServerPlayer: rally.serverPlayer,
-          currentServerSide: rally.serverSide,
-          currentServerHandIndex: rally.serverHandIndex,
-          firstHandUsed,
-        })
-        .where({ id: gameId }),
-    ]
+      // Filter out the rally we're about to delete
+      const remainingRallies = previousRallies.filter(
+        (r) => r.rallyNumber < rally.rallyNumber,
+      )
+      const firstHandUsed = remainingRallies.length > 0
+
+      return [
+        // Soft delete the rally
+        squashTables.rallies
+          .update({ deletedAt: timestamp })
+          .where({ id: rally.id }),
+        // Restore previous score and server state
+        squashTables.games
+          .update({
+            scoreA: rally.scoreABefore,
+            scoreB: rally.scoreBBefore,
+            currentServerTeam: rally.serverTeam,
+            currentServerPlayer: rally.serverPlayer,
+            currentServerSide: rally.serverSide,
+            currentServerHandIndex: rally.serverHandIndex,
+            firstHandUsed,
+          })
+          .where({ id: gameId }),
+      ]
     },
   ),
 
@@ -429,6 +428,227 @@ const squashMaterializers = {
 }
 
 // ============================================================================
+// AUTH MATERIALIZERS
+// ============================================================================
+
+const authMaterializers = {
+  'v1.UserRegistered': defineMaterializer(
+    authEvents.userRegistered,
+    (
+      {
+        userId,
+        githubUsername,
+        githubEmail,
+        githubAvatarUrl,
+        displayName,
+        role,
+        timestamp,
+      },
+      ctx,
+    ) => {
+      // Check if user already exists
+      const existingUsers = ctx.query(authTables.users.where({ id: userId }))
+
+      // If user exists, update their info and lastLoginAt (idempotent)
+      if (existingUsers.length > 0) {
+        return authTables.users
+          .update({
+            githubUsername,
+            githubEmail,
+            githubAvatarUrl,
+            displayName,
+            role,
+            updatedAt: timestamp,
+            lastLoginAt: timestamp,
+          })
+          .where({ id: userId })
+      }
+
+      // User doesn't exist, insert new record
+      return authTables.users.insert({
+        id: userId,
+        githubUsername,
+        githubEmail,
+        githubAvatarUrl,
+        displayName,
+        role,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastLoginAt: timestamp,
+      })
+    },
+  ),
+
+  'v1.UserLoggedIn': ({
+    userId,
+    timestamp,
+  }: {
+    userId: string
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({ lastLoginAt: timestamp, updatedAt: timestamp })
+      .where({ id: userId }),
+
+  'v1.RoleAssigned': ({
+    userId,
+    newRole,
+    timestamp,
+  }: {
+    userId: string
+    assignedBy: string
+    newRole: 'admin' | 'staff' | 'member'
+    previousRole: 'admin' | 'staff' | 'member'
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({
+        role: newRole,
+        updatedAt: timestamp,
+      })
+      .where({ id: userId }),
+
+  'v1.UserUpdated': ({
+    userId,
+    githubUsername,
+    githubEmail,
+    displayName,
+    role,
+    timestamp,
+  }: {
+    userId: string
+    githubUsername: string
+    githubEmail: string | null
+    displayName: string | null
+    role: 'admin' | 'staff' | 'member'
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({
+        githubUsername,
+        githubEmail,
+        displayName,
+        role,
+        updatedAt: timestamp,
+      })
+      .where({ id: userId }),
+
+  'v1.UserDeleted': ({
+    userId,
+    timestamp,
+  }: {
+    userId: string
+    timestamp: Date
+  }) =>
+    authTables.users
+      .update({
+        deletedAt: timestamp,
+      })
+      .where({ id: userId }),
+}
+
+// ============================================================================
+// PLAYER MATERIALIZERS
+// ============================================================================
+
+const playerMaterializers = {
+  'v1.PlayerCreated': ({
+    playerId,
+    firstName,
+    lastName,
+    email,
+    phone,
+    timestamp,
+  }: {
+    playerId: string
+    firstName: string
+    lastName: string
+    email: string | null
+    phone: string | null
+    timestamp: Date
+  }) =>
+    playerTables.players.insert({
+      id: playerId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      linkedUserId: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      deletedAt: null,
+    }),
+
+  'v1.PlayerUpdated': ({
+    playerId,
+    firstName,
+    lastName,
+    email,
+    phone,
+    timestamp,
+  }: {
+    playerId: string
+    firstName: string
+    lastName: string
+    email: string | null
+    phone: string | null
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        firstName,
+        lastName,
+        email,
+        phone,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerDeleted': ({
+    playerId,
+    timestamp,
+  }: {
+    playerId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        deletedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerLinkedToUser': ({
+    playerId,
+    userId,
+    timestamp,
+  }: {
+    playerId: string
+    userId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        linkedUserId: userId,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
+
+  'v1.PlayerUnlinkedFromUser': ({
+    playerId,
+    timestamp,
+  }: {
+    playerId: string
+    timestamp: Date
+  }) =>
+    playerTables.players
+      .update({
+        linkedUserId: null,
+        updatedAt: timestamp,
+      })
+      .where({ id: playerId }),
+}
+
+// ============================================================================
 // COMBINED MATERIALIZERS
 // ============================================================================
 
@@ -443,6 +663,9 @@ export const createMaterializers = () => {
     uiStateSet: todoTables.uiState.set,
     ...squashEvents,
     gameUiStateSet: squashTables.gameUiState.set,
+    ...authEvents,
+    currentUserSet: authTables.currentUser.set,
+    ...playerEvents,
     modalStateSet: uiTables.modalState.set,
     nextGameSetupStateSet: uiTables.nextGameSetupState.set,
     themePreferenceSet: uiTables.themePreference.set,
@@ -451,5 +674,7 @@ export const createMaterializers = () => {
   return State.SQLite.materializers(allEvents, {
     ...todoMaterializers,
     ...squashMaterializers,
+    ...authMaterializers,
+    ...playerMaterializers,
   })
 }

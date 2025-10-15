@@ -13,7 +13,7 @@
     "check": "prettier --write . && eslint --fix src"
   },
   "dependencies": {
-    "@latest": "link:xstate/@latest",
+    "@auth0/auth0-react": "^2.6.0",
     "@livestore/adapter-web": "^0.3.1",
     "@livestore/devtools-vite": "^0.3.1",
     "@livestore/livestore": "^0.3.1",
@@ -32,16 +32,13 @@
     "@tanstack/react-start": "^1.132.48",
     "@tanstack/router-plugin": "^1.132.47",
     "@xstate/react": "^6.0.0",
-    "effect": "^3.18.4",
     "lucide-react": "^0.544.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-error-boundary": "^6.0.0",
     "tailwindcss": "^4.1.14",
-    "uuid": "^13.0.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "xstate": "^5.22.1",
-    "zod": "^4.1.12"
+    "xstate": "^5.23.0"
   },
   "devDependencies": {
     "@netlify/vite-plugin-tanstack-start": "^1.0.2",
@@ -49,19 +46,17 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.18.8",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.1",
-    "@types/uuid": "^11.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "daisyui": "^5.1.29",
     "eslint-plugin-react-hooks": "^5.1.0",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
-    "vite": "^7.1.9",
+    "vite": "^7.1.10",
     "vitest": "^3.2.4",
     "web-vitals": "^5.1.0",
     "wrangler": "^4.42.1"
-  },
-  "packageManager": "pnpm@8.15.9+sha512.499434c9d8fdd1a2794ebf4552b3b25c0a633abcee5bb15e7b5de90f32f47b513aca98cd5cfd001c31f0db454bc3804edccd578501e4ca293a6816166bbd9f81"
+  }
 }

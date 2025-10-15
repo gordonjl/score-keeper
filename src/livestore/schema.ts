@@ -1,16 +1,24 @@
 import { State, makeSchema } from '@livestore/livestore'
-import { squashEvents, todoEvents } from './events'
+import { authEvents, playerEvents, squashEvents, todoEvents } from './events'
 import { createMaterializers } from './materializers'
-import { squashTables, todoTables, uiTables } from './tables'
+import {
+  authTables,
+  playerTables,
+  squashTables,
+  todoTables,
+  uiTables,
+} from './tables'
 
 // ============================================================================
-// COMPOSED SCHEMA (TODO + Squash + UI)
+// COMPOSED SCHEMA (TODO + Squash + Auth + Players + UI)
 // ============================================================================
 
 // Combine all tables
 export const tables = {
   ...todoTables,
   ...squashTables,
+  ...authTables,
+  ...playerTables,
   ...uiTables,
 }
 
@@ -20,6 +28,9 @@ export const events = {
   uiStateSet: todoTables.uiState.set,
   ...squashEvents,
   gameUiStateSet: squashTables.gameUiState.set,
+  ...authEvents,
+  currentUserSet: authTables.currentUser.set,
+  ...playerEvents,
   // UI state events
   modalStateSet: uiTables.modalState.set,
   nextGameSetupStateSet: uiTables.nextGameSetupState.set,

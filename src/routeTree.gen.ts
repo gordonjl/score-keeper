@@ -9,13 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsersRouteImport } from './routes/users'
+import { Route as PlayersRouteImport } from './routes/players'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlayersLinkRouteImport } from './routes/players.link'
 import { Route as MatchMatchIdRouteImport } from './routes/match.$matchId'
 import { Route as MatchMatchIdSummaryRouteImport } from './routes/match.$matchId.summary'
 import { Route as MatchMatchIdSetupRouteImport } from './routes/match.$matchId.setup'
 import { Route as MatchMatchIdGameGameNumberRouteImport } from './routes/match.$matchId.game.$gameNumber'
 
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayersRoute = PlayersRouteImport.update({
+  id: '/players',
+  path: '/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchesRoute = MatchesRouteImport.update({
   id: '/matches',
   path: '/matches',
@@ -25,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlayersLinkRoute = PlayersLinkRouteImport.update({
+  id: '/link',
+  path: '/link',
+  getParentRoute: () => PlayersRoute,
 } as any)
 const MatchMatchIdRoute = MatchMatchIdRouteImport.update({
   id: '/match/$matchId',
@@ -51,7 +69,10 @@ const MatchMatchIdGameGameNumberRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/matches': typeof MatchesRoute
+  '/players': typeof PlayersRouteWithChildren
+  '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
+  '/players/link': typeof PlayersLinkRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -59,7 +80,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/matches': typeof MatchesRoute
+  '/players': typeof PlayersRouteWithChildren
+  '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
+  '/players/link': typeof PlayersLinkRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -68,7 +92,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/matches': typeof MatchesRoute
+  '/players': typeof PlayersRouteWithChildren
+  '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
+  '/players/link': typeof PlayersLinkRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -78,7 +105,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/matches'
+    | '/players'
+    | '/users'
     | '/match/$matchId'
+    | '/players/link'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -86,7 +116,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/matches'
+    | '/players'
+    | '/users'
     | '/match/$matchId'
+    | '/players/link'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -94,7 +127,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/matches'
+    | '/players'
+    | '/users'
     | '/match/$matchId'
+    | '/players/link'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -103,11 +139,27 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MatchesRoute: typeof MatchesRoute
+  PlayersRoute: typeof PlayersRouteWithChildren
+  UsersRoute: typeof UsersRoute
   MatchMatchIdRoute: typeof MatchMatchIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/players': {
+      id: '/players'
+      path: '/players'
+      fullPath: '/players'
+      preLoaderRoute: typeof PlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/matches': {
       id: '/matches'
       path: '/matches'
@@ -121,6 +173,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/players/link': {
+      id: '/players/link'
+      path: '/link'
+      fullPath: '/players/link'
+      preLoaderRoute: typeof PlayersLinkRouteImport
+      parentRoute: typeof PlayersRoute
     }
     '/match/$matchId': {
       id: '/match/$matchId'
@@ -153,6 +212,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PlayersRouteChildren {
+  PlayersLinkRoute: typeof PlayersLinkRoute
+}
+
+const PlayersRouteChildren: PlayersRouteChildren = {
+  PlayersLinkRoute: PlayersLinkRoute,
+}
+
+const PlayersRouteWithChildren =
+  PlayersRoute._addFileChildren(PlayersRouteChildren)
+
 interface MatchMatchIdRouteChildren {
   MatchMatchIdSetupRoute: typeof MatchMatchIdSetupRoute
   MatchMatchIdSummaryRoute: typeof MatchMatchIdSummaryRoute
@@ -172,6 +242,8 @@ const MatchMatchIdRouteWithChildren = MatchMatchIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MatchesRoute: MatchesRoute,
+  PlayersRoute: PlayersRouteWithChildren,
+  UsersRoute: UsersRoute,
   MatchMatchIdRoute: MatchMatchIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
