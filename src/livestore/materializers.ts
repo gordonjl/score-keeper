@@ -283,6 +283,8 @@ const squashMaterializers = {
         firstServingTeam,
         firstServingPlayer,
         firstServingSide,
+        // v1 events don't have teamAFirstServer/teamBFirstServer, so default to 1
+        // This means old games will always show player 1 as first server
         teamAFirstServer: 1,
         teamBFirstServer: 1,
         // Initialize current server state
