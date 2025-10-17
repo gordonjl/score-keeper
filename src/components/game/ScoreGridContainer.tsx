@@ -86,8 +86,32 @@ export const ScoreGridContainer = ({
       handIndex: 0,
     }
 
-    return buildGridFromRallies(processableRallies, initialServer, false)
-  }, [ralliesData, server.team, server.player, server.side])
+    // Build grid from rallies
+    const gridFromRallies = buildGridFromRallies(
+      processableRallies,
+      initialServer,
+      false,
+    )
+
+    // Always update current server position with live game state
+    // The current position hasn't been played yet, so it should reflect any toggles
+    const currentScore = server.team === 'A' ? gameData.scoreA : gameData.scoreB
+    const currentRow = makeRowKey(server.team, server.player)
+    
+    return writeCell(
+      gridFromRallies,
+      currentRow,
+      currentScore,
+      server.side,
+    )
+  }, [
+    ralliesData,
+    server.team,
+    server.player,
+    server.side,
+    gameData.scoreA,
+    gameData.scoreB,
+  ])
 
   // Compute derived values
   const rows = useMemo(

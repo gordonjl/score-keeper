@@ -28,6 +28,7 @@ export const ActionButtons = ({ actorRef, gameId }: ActionButtonsProps) => {
   // Can undo if there are rallies (which means at least one rally was played)
   const canUndo = rallies.length > 0
 
+  // Don't use useCallback - we want to capture the latest game state
   const onLet = () => {
     actorRef.send({ type: 'LET' })
   }

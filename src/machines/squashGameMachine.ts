@@ -69,7 +69,10 @@ export const squashGameMachine = setup({
     undo,
   },
   guards: {
-    gameEnded,
+    canToggleServeSide: (_, params: { game: Game }) => {
+      return params.game.currentServerHandIndex === 0
+    },
+    gameEnded: gameEnded,
   },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgDEAqgHIAiA8gNoAMAuoqAAcA9rEoAXSkOr8QAD0QB2AIxKAdAA4AnFwCsmpQs06AzHvUAaEAE9ESgEwBfB5dSYc+IqQo0wq6kLEAYSkAM0ooNAAnSDoASSZYgBVYgEEAGViALQBRbj4kEGFRCSkZeQQ7LgA2VQAWOyV1KqquQx0lPUsbBHq7VSUuTTsh5q51LR1apxd0LDxCEnIqWlVyCQA3egAldLSATQB9AHU2JjyZIvFJaQLyluNVY20dF-Va4wU7F67EWurVKrGOwKYwDBrqYzNKrTECuOYeRbeFZrSibOg7NL7Y6nDhKfKCERXUq3RDGP79dQKWpVWr2YEKKqaH4IIHqVTaKp2L7KHQM2oKHQwuHuBZeZa+FFoxJsXC4NLZA4AZWyWwAagrFbEWLleBdCSUbqBypDaqouNT1NV3lUlEMlMy7ED2SZ7FUTE8aVV1ELZiLPEsfKsyBt6PLEucCpcDWVfnY2Qp1PYuCaXpCOszGn1ai6GgNlPoFD63PN-UiJQB3DBXahQYLUMKRAgYA10QKnABisS2xAOuBSxAVbHVWwjBOK1xjCAGQzNoMak2M1TszPqmkeenpWk0oJ0jhh-ggcBkwpLiPFevHxKNiAAtPbrIhNKajIvNPpEyCuK0i-DRQGVv4QShOEUSQBeRKGnIvwKCuXIAoMwx2KM4xGFMziwr6p5ioGkpgOB0Ykj0cHKGMlqJlwSicrosFruoehArUWhUnYjE-n6Z44ZW1a1sBjbNhOkb6gJ14IOMahxiohgcpUxgWA+RG0Rur4UZUvJsVh-6+GQQgEAIAA2YBiHhgmXpB5RKECDxaLotS1G+HwdFUsFsi026UQYNqVLoThOEAA */
@@ -125,6 +128,10 @@ export const squashGameMachine = setup({
           },
         ],
         TOGGLE_SERVE_SIDE: {
+          guard: {
+            type: 'canToggleServeSide',
+            params: ({ event }) => ({ game: event.game }),
+          },
           actions: [
             {
               type: 'toggleServeSide',

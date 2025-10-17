@@ -78,7 +78,13 @@ export const processRally = (
   state: RallyState,
   rally: RallyData,
 ): RallyState => {
-  const cur = state.server
+  // Use the rally's server data (which includes any toggled side)
+  const cur: Server = {
+    team: rally.serverTeam,
+    player: rally.serverPlayer,
+    side: rally.serverSide,
+    handIndex: rally.serverHandIndex,
+  }
   const col = colForTeamServe(state.score, cur.team)
   const currentRow = rowKey(cur.team, cur.player)
   const winner = rally.winner
@@ -221,32 +227,48 @@ export const processRally = (
 
 /**
  * Build grid from rallies by replaying them sequentially.
+ * Each rally writes its own server position first, then processes the result.
  */
 export const buildGridFromRallies = (
   rallies: ReadonlyArray<RallyData>,
   initialServer: Server,
   firstHandUsed: boolean,
 ): ActivityGrid => {
-  // Write initial serve position to column 0
-  const gridWithInitialServe = writeCell(
-    initialGrid(),
-    rowKey(initialServer.team, initialServer.player),
-    0,
-    initialServer.side,
-  )
-
   const initialState: RallyState = {
-    grid: gridWithInitialServe,
+    grid: initialGrid(),
     score: { A: 0, B: 0 },
     server: initialServer,
     firstHandUsed,
   }
 
-  // Replay all rallies
-  const finalState = rallies.reduce(
-    (state, rally) => processRally(state, rally),
-    initialState,
-  )
+  // Process each rally: write its server position, then process the result
+  const finalState = rallies.reduce((state, rally) => {
+    const col = state.score[rally.serverTeam]
+    const serverRow = rowKey(rally.serverTeam, rally.serverPlayer)
+
+    // Write this rally's server position
+    const gridWithServer = writeCell(
+      state.grid,
+      serverRow,
+      col,
+      rally.serverSide,
+    )
+
+    // Process the rally result (add slashes, X, update score)
+    return processRally(
+      {
+        ...state,
+        grid: gridWithServer,
+        server: {
+          team: rally.serverTeam,
+          player: rally.serverPlayer,
+          side: rally.serverSide,
+          handIndex: rally.serverHandIndex,
+        },
+      },
+      rally,
+    )
+  }, initialState)
 
   return finalState.grid
 }

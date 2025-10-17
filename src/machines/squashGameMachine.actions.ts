@@ -47,9 +47,6 @@ export const toggleServeSide = (
 ) => {
   const { game } = params
 
-  // Only toggle if first hand (handIndex === 0)
-  if (game.currentServerHandIndex !== 0) return
-
   const newSide = game.currentServerSide === 'L' ? 'R' : 'L'
   context.store.commit(
     events.serverSideToggled({
