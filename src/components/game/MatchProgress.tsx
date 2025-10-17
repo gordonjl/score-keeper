@@ -2,7 +2,9 @@ import { useQuery } from '@livestore/react'
 import { Clock, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { gamesByMatch$, matchById$ } from '../../livestore/squash-queries'
+import { getTeamNames } from './match-utils'
 import type { ActorRefFrom } from 'xstate'
+
 import type { matchMachine } from '../../machines/matchMachine'
 
 type MatchProgressProps = {
@@ -114,10 +116,7 @@ export const MatchProgress = ({
         teamB: 'Team B',
       }
     }
-    return {
-      teamA: `${match.playerA1FirstName} ${match.playerA1LastName} & ${match.playerA2FirstName} ${match.playerA2LastName}`,
-      teamB: `${match.playerB1FirstName} ${match.playerB1LastName} & ${match.playerB2FirstName} ${match.playerB2LastName}`,
-    }
+    return getTeamNames(match)
   }, [match])
 
   // Compute derived values

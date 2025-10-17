@@ -3,10 +3,12 @@ import { SessionIdSymbol } from '@livestore/livestore'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSelector } from '@xstate/react'
 import { useCallback, useEffect, useMemo } from 'react'
+
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameOverConfirmation } from '../components/game/GameOverConfirmation'
 import { MatchProgress } from '../components/game/MatchProgress'
 import { MatchSummary } from '../components/game/MatchSummary'
+import { getTeamNames } from '../components/game/match-utils'
 import { NextGameSetup } from '../components/game/NextGameSetup'
 import { RallyButtons } from '../components/game/RallyButtons'
 import { ScoreGrid } from '../components/game/ScoreGrid'
@@ -151,15 +153,14 @@ function GameRoute() {
   // Get score and team names from LiveStore (source of truth)
   const scoreA = game.scoreA
   const scoreB = game.scoreB
-  const teamAName = `${match.playerA1FirstName} & ${match.playerA2FirstName}`
-  const teamBName = `${match.playerB1FirstName} & ${match.playerB2FirstName}`
+  const teamNames = getTeamNames(match)
 
   // Get firstServingTeam from game data (source of truth)
   const firstServingTeam = game.firstServingTeam
 
   const winnerTeam = useMemo(
-    () => (scoreA > scoreB ? teamAName : teamBName),
-    [scoreA, scoreB, teamAName, teamBName],
+    () => (scoreA > scoreB ? teamNames.teamA : teamNames.teamB),
+    [scoreA, scoreB, teamNames],
   )
 
   const matchPlayerRowLabels = useMemo(

@@ -1,7 +1,9 @@
 import { useSelector } from '@xstate/react'
 import { useQuery } from '@livestore/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
+import { getTeamNames } from './match-utils'
 import type { ActorRefFrom } from 'xstate'
+
 import type { squashGameMachine } from '../../machines/squashGameMachine'
 
 type RallyButtonsProps = {
@@ -21,6 +23,7 @@ export const RallyButtons = ({ actorRef, gameId }: RallyButtonsProps) => {
 
   // Query match for player names
   const match = useQuery(matchById$(game.matchId))
+  const teamNames = getTeamNames(match)
 
   const isDisabled = isGameOver || isAwaitingConfirmation
 
@@ -36,9 +39,7 @@ export const RallyButtons = ({ actorRef, gameId }: RallyButtonsProps) => {
         disabled={isDisabled}
       >
         <div className="flex flex-col items-center gap-1">
-          <span className="font-bold">
-            {`${match.playerA1FirstName} & ${match.playerA2FirstName}`}
-          </span>
+          <span className="font-bold">{teamNames.teamA}</span>
           <span className="text-xs opacity-80">Won Rally</span>
         </div>
       </button>
@@ -48,9 +49,7 @@ export const RallyButtons = ({ actorRef, gameId }: RallyButtonsProps) => {
         disabled={isDisabled}
       >
         <div className="flex flex-col items-center gap-1">
-          <span className="font-bold">
-            {`${match.playerB1FirstName} & ${match.playerB2FirstName}`}
-          </span>
+          <span className="font-bold">{teamNames.teamB}</span>
           <span className="text-xs opacity-80">Won Rally</span>
         </div>
       </button>

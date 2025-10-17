@@ -4,6 +4,7 @@ import {
   gamesByMatch$,
   matchById$,
 } from '../../livestore/squash-queries'
+import { getTeamNames } from './match-utils'
 
 type TeamKey = 'teamA' | 'teamB'
 
@@ -28,10 +29,7 @@ export const ScoreHeader = ({
   const scoreB = game.scoreB
 
   // Build team names from match data
-  const teamNames = {
-    teamA: `${match.playerA1FirstName} & ${match.playerA2FirstName}`,
-    teamB: `${match.playerB1FirstName} & ${match.playerB2FirstName}`,
-  }
+  const teamNames = getTeamNames(match)
 
   // Compute derived values from games
   const currentGameNumber =

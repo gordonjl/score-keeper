@@ -1,58 +1,58 @@
+import { useEffect } from 'react'
+import { queryDb } from '@livestore/livestore'
+import { useMachine, useSelector } from '@xstate/react'
 import { useQuery } from '@livestore/react'
-import { gameById$, matchById$ } from '../../livestore/squash-queries'
-import { useHasPlayerServedBefore } from '../../hooks/useHasPlayerServedBefore'
-import { toWords } from './utils'
+
+import {
+  gameById$,
+  gamesByMatch$,
+  matchById$,
+} from '../../livestore/squash-queries'
+import { squashTables } from '../../livestore/tables'
+import { serveAnnouncementMachine } from '../../machines/serveAnnouncementMachine'
 
 type ServeAnnouncementProps = {
   gameId: string
 }
 
 export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
-  // Query game and match data from LiveStore (only called when gameId is valid)
+  // Query game and match data from LiveStore
   const game = useQuery(gameById$(gameId))
   const match = useQuery(matchById$(game.matchId))
+  const games = useQuery(gamesByMatch$(game.matchId))
 
-  // Get server and score from LiveStore
-  const server = {
-    team: game.currentServerTeam,
-    player: game.currentServerPlayer,
-    side: game.currentServerSide,
-  }
-  const scoreA = game.scoreA
-  const scoreB = game.scoreB
-
-  // Check if this player has served before in the match
-  const hasServedBefore = useHasPlayerServedBefore(
-    game.matchId,
-    server.team,
-    server.player,
+  // Query all rallies (machine will filter to match)
+  const rallies = useQuery(
+    queryDb(() => squashTables.rallies.where({ deletedAt: null }), {
+      label: 'all-rallies',
+    }),
   )
-  const isFirstServe = !hasServedBefore
 
-  // Compute announcement
-  const serverRowKey = `${server.team}${server.player}` as const
-  const serverScore = server.team === 'A' ? scoreA : scoreB
-  const receiverScore = server.team === 'A' ? scoreB : scoreA
-  const scorePhrase =
-    serverScore === receiverScore
-      ? `${toWords(serverScore)} All`
-      : `${toWords(serverScore)}–${toWords(receiverScore)}`
+  // Initialize state machine
+  const [, send, announcementActorRef] = useMachine(serveAnnouncementMachine, {
+    input: {
+      game,
+      match,
+      games,
+      rallies,
+    },
+  })
 
-  // Get server name from match data
-  const serverName =
-    serverRowKey === 'A1'
-      ? match.playerA1LastName || match.playerA1FirstName
-      : serverRowKey === 'A2'
-        ? match.playerA2LastName || match.playerA2FirstName
-        : serverRowKey === 'B1'
-          ? match.playerB1LastName || match.playerB1FirstName
-          : match.playerB2LastName || match.playerB2FirstName
-  const sideName = server.side === 'R' ? 'Right' : 'Left'
+  // Update machine when game, match, games, or rallies change
+  useEffect(() => {
+    send({
+      type: 'UPDATE',
+      game,
+      match,
+      games,
+      rallies,
+    })
+  }, [send, game, match, games, rallies])
 
-  // Only include player name on first serve
-  const announcement = isFirstServe
-    ? `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
-    : `${scorePhrase}, from the ${sideName}`
+  const announcement = useSelector(
+    announcementActorRef,
+    (state) => state.context.announcement,
+  )
 
   return (
     <div className="alert mb-4">
