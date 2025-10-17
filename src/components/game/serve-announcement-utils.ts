@@ -1,5 +1,4 @@
-import { assign, setup } from 'xstate'
-import type { PlayerRow, Side, Team } from './squashMachine.types'
+import type { PlayerRow, Side, Team } from '../../machines/squashMachine.types'
 
 // ===== Types =====
 type GameData = {
@@ -35,28 +34,8 @@ type MatchData = {
   bestOf?: number
 }
 
-// ===== Context =====
-type Context = {
-  game: GameData
-  match: MatchData
-  games: ReadonlyArray<GameData>
-  rallies: ReadonlyArray<RallyData>
-  serverName: string
-  hasServedBefore: boolean
-  announcement: string
-}
-
-// ===== Input =====
-type Input = {
-  game: GameData
-  match: MatchData
-  games: ReadonlyArray<GameData>
-  rallies: ReadonlyArray<RallyData>
-}
-
-// ===== Events =====
-type Events = {
-  type: 'UPDATE'
+// ===== Public API =====
+export type ServeAnnouncementInput = {
   game: GameData
   match: MatchData
   games: ReadonlyArray<GameData>
@@ -181,8 +160,32 @@ const isMatchBall = (
   return leadingTeamGamesWon + 1 >= gamesToWin
 }
 
-const computeAnnouncement = (context: Context): string => {
-  const { game, match, games, serverName, hasServedBefore } = context
+/**
+ * Generate a serve announcement for the current game state.
+ *
+ * @param input - Game, match, games, and rallies data
+ * @returns Formatted serve announcement string
+ */
+export const generateServeAnnouncement = (
+  input: ServeAnnouncementInput,
+): string => {
+  const { game, match, games, rallies } = input
+
+  // Compute server name
+  const serverName = getServerName(
+    game.currentServerTeam,
+    game.currentServerPlayer,
+    match,
+  )
+
+  // Check if this player has served before in the match
+  const hasServedBefore = computeHasServedBefore(
+    game.matchId,
+    game.currentServerTeam,
+    game.currentServerPlayer,
+    games,
+    rallies,
+  )
 
   // Compute score phrase
   const serverScore = game.currentServerTeam === 'A' ? game.scoreA : game.scoreB
@@ -210,89 +213,3 @@ const computeAnnouncement = (context: Context): string => {
 
   return announcement
 }
-
-// ===== State Machine =====
-export const serveAnnouncementMachine = setup({
-  types: {
-    context: {} as Context,
-    input: {} as Input,
-    events: {} as Events,
-  },
-  actions: {
-    updateContext: assign(
-      (
-        _,
-        params: {
-          game: GameData
-          match: MatchData
-          games: ReadonlyArray<GameData>
-          rallies: ReadonlyArray<RallyData>
-        },
-      ) => ({
-        game: params.game,
-        match: params.match,
-        games: params.games,
-        rallies: params.rallies,
-        serverName: getServerName(
-          params.game.currentServerTeam,
-          params.game.currentServerPlayer,
-          params.match,
-        ),
-        hasServedBefore: computeHasServedBefore(
-          params.game.matchId,
-          params.game.currentServerTeam,
-          params.game.currentServerPlayer,
-          params.games,
-          params.rallies,
-        ),
-      }),
-    ),
-    computeAnnouncement: assign(({ context }) => ({
-      announcement: computeAnnouncement(context),
-    })),
-  },
-}).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5SzAJwG5gIIDscHsBXHAYzAFswcAXAOgEMTqBLTAYgFUAFAESwBUAogH0AyoIBKANUkBtAAwBdRKAAO+WMxb4cKkAA9EAFgBMAGhABPRAEYTADloBWea-kA2dzfvynTgOwAvsEWBBBweigY2HhEpBRU1Hrqmtq6SAaIALTuFtYIWU60AJylZeVl9u4hIFGYuATEZJQ0DEysYMkaWsw6eoYIpSVOAMx2I-L2pUbuI8V5iCZO7iUeJv4jJvLrNv7FTsHBQA */
-  id: 'serveAnnouncement',
-  initial: 'active',
-  context: ({ input }) => ({
-    game: input.game,
-    match: input.match,
-    games: input.games,
-    rallies: input.rallies,
-    serverName: getServerName(
-      input.game.currentServerTeam,
-      input.game.currentServerPlayer,
-      input.match,
-    ),
-    hasServedBefore: computeHasServedBefore(
-      input.game.matchId,
-      input.game.currentServerTeam,
-      input.game.currentServerPlayer,
-      input.games,
-      input.rallies,
-    ),
-    announcement: '',
-  }),
-  entry: 'computeAnnouncement',
-  states: {
-    active: {
-      on: {
-        UPDATE: {
-          actions: [
-            {
-              type: 'updateContext',
-              params: ({ event }) => ({
-                game: event.game,
-                match: event.match,
-                games: event.games,
-                rallies: event.rallies,
-              }),
-            },
-            'computeAnnouncement',
-          ],
-        },
-      },
-    },
-  },
-})

@@ -1,0 +1,9 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@tailwindcss/oxide'
+  - browser-tabs-lock
+  - esbuild
+  - msgpackr-extract
+  - sharp
+  - unrs-resolver
+  - workerd

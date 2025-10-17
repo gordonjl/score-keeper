@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 import { queryDb } from '@livestore/livestore'
-import { useMachine, useSelector } from '@xstate/react'
 import { useQuery } from '@livestore/react'
 
 import {
@@ -9,7 +8,7 @@ import {
   matchById$,
 } from '../../livestore/squash-queries'
 import { squashTables } from '../../livestore/tables'
-import { serveAnnouncementMachine } from '../../machines/serveAnnouncementMachine'
+import { generateServeAnnouncement } from './serve-announcement-utils'
 
 type ServeAnnouncementProps = {
   gameId: string
@@ -21,37 +20,17 @@ export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
   const match = useQuery(matchById$(game.matchId))
   const games = useQuery(gamesByMatch$(game.matchId))
 
-  // Query all rallies (machine will filter to match)
+  // Query all rallies
   const rallies = useQuery(
     queryDb(() => squashTables.rallies.where({ deletedAt: null }), {
       label: 'all-rallies',
     }),
   )
 
-  // Initialize state machine
-  const [, send, announcementActorRef] = useMachine(serveAnnouncementMachine, {
-    input: {
-      game,
-      match,
-      games,
-      rallies,
-    },
-  })
-
-  // Update machine when game, match, games, or rallies change
-  useEffect(() => {
-    send({
-      type: 'UPDATE',
-      game,
-      match,
-      games,
-      rallies,
-    })
-  }, [send, game, match, games, rallies])
-
-  const announcement = useSelector(
-    announcementActorRef,
-    (state) => state.context.announcement,
+  // Generate announcement from current data
+  const announcement = useMemo(
+    () => generateServeAnnouncement({ game, match, games, rallies }),
+    [game, match, games, rallies],
   )
 
   return (
