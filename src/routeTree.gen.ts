@@ -17,6 +17,7 @@ import { Route as PlayersLinkRouteImport } from './routes/players.link'
 import { Route as MatchMatchIdRouteImport } from './routes/match.$matchId'
 import { Route as MatchMatchIdSummaryRouteImport } from './routes/match.$matchId.summary'
 import { Route as MatchMatchIdSetupRouteImport } from './routes/match.$matchId.setup'
+import { Route as MatchMatchIdConfigureRouteImport } from './routes/match.$matchId.configure'
 import { Route as MatchMatchIdGameGameNumberRouteImport } from './routes/match.$matchId.game.$gameNumber'
 
 const UsersRoute = UsersRouteImport.update({
@@ -59,6 +60,11 @@ const MatchMatchIdSetupRoute = MatchMatchIdSetupRouteImport.update({
   path: '/setup',
   getParentRoute: () => MatchMatchIdRoute,
 } as any)
+const MatchMatchIdConfigureRoute = MatchMatchIdConfigureRouteImport.update({
+  id: '/configure',
+  path: '/configure',
+  getParentRoute: () => MatchMatchIdRoute,
+} as any)
 const MatchMatchIdGameGameNumberRoute =
   MatchMatchIdGameGameNumberRouteImport.update({
     id: '/game/$gameNumber',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/players/link': typeof PlayersLinkRoute
+  '/match/$matchId/configure': typeof MatchMatchIdConfigureRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/players/link': typeof PlayersLinkRoute
+  '/match/$matchId/configure': typeof MatchMatchIdConfigureRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/users': typeof UsersRoute
   '/match/$matchId': typeof MatchMatchIdRouteWithChildren
   '/players/link': typeof PlayersLinkRoute
+  '/match/$matchId/configure': typeof MatchMatchIdConfigureRoute
   '/match/$matchId/setup': typeof MatchMatchIdSetupRoute
   '/match/$matchId/summary': typeof MatchMatchIdSummaryRoute
   '/match/$matchId/game/$gameNumber': typeof MatchMatchIdGameGameNumberRoute
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/match/$matchId'
     | '/players/link'
+    | '/match/$matchId/configure'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/match/$matchId'
     | '/players/link'
+    | '/match/$matchId/configure'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/match/$matchId'
     | '/players/link'
+    | '/match/$matchId/configure'
     | '/match/$matchId/setup'
     | '/match/$matchId/summary'
     | '/match/$matchId/game/$gameNumber'
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchMatchIdSetupRouteImport
       parentRoute: typeof MatchMatchIdRoute
     }
+    '/match/$matchId/configure': {
+      id: '/match/$matchId/configure'
+      path: '/configure'
+      fullPath: '/match/$matchId/configure'
+      preLoaderRoute: typeof MatchMatchIdConfigureRouteImport
+      parentRoute: typeof MatchMatchIdRoute
+    }
     '/match/$matchId/game/$gameNumber': {
       id: '/match/$matchId/game/$gameNumber'
       path: '/game/$gameNumber'
@@ -224,12 +243,14 @@ const PlayersRouteWithChildren =
   PlayersRoute._addFileChildren(PlayersRouteChildren)
 
 interface MatchMatchIdRouteChildren {
+  MatchMatchIdConfigureRoute: typeof MatchMatchIdConfigureRoute
   MatchMatchIdSetupRoute: typeof MatchMatchIdSetupRoute
   MatchMatchIdSummaryRoute: typeof MatchMatchIdSummaryRoute
   MatchMatchIdGameGameNumberRoute: typeof MatchMatchIdGameGameNumberRoute
 }
 
 const MatchMatchIdRouteChildren: MatchMatchIdRouteChildren = {
+  MatchMatchIdConfigureRoute: MatchMatchIdConfigureRoute,
   MatchMatchIdSetupRoute: MatchMatchIdSetupRoute,
   MatchMatchIdSummaryRoute: MatchMatchIdSummaryRoute,
   MatchMatchIdGameGameNumberRoute: MatchMatchIdGameGameNumberRoute,

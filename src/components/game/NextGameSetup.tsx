@@ -32,6 +32,8 @@ type NextGameSetupProps = {
     players: PlayerPositions
     teamASide: Side
     teamBSide: Side
+    teamAFirstServer: 1 | 2
+    teamBFirstServer: 1 | 2
   }) => void | Promise<void>
 }
 
@@ -48,13 +50,20 @@ export const NextGameSetup = ({
     SessionIdSymbol,
   )
 
-  // Initialize serving team when component mounts or lastWinner changes
+  // Initialize serving team and first servers when component mounts or lastWinner changes
   useEffect(() => {
     const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
-    if (setupState.firstServingTeam !== defaultServingTeam) {
+    const needsUpdate =
+      setupState.firstServingTeam !== defaultServingTeam ||
+      setupState.teamAFirstServer !== 1 ||
+      setupState.teamBFirstServer !== 1
+
+    if (needsUpdate) {
       updateSetupState({
         ...setupState,
         firstServingTeam: defaultServingTeam,
+        teamAFirstServer: 1,
+        teamBFirstServer: 1,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,20 +98,24 @@ export const NextGameSetup = ({
       players: gamePlayers,
       teamASide: 'R',
       teamBSide: 'R',
+      teamAFirstServer: setupState.teamAFirstServer,
+      teamBFirstServer: setupState.teamBFirstServer,
     })
   }
 
   return (
     <dialog className="modal modal-open">
       <div className="modal-box max-w-2xl">
-        <h3 className="font-bold text-lg mb-4">Setup Next Game</h3>
+        <h3 className="font-bold text-lg mb-4">
+          {isFirstGame ? 'Setup First Game' : 'Setup Next Game'}
+        </h3>
 
         {/* Serving Team Selection */}
         <h4 className="font-semibold mb-3">Who serves first?</h4>
         <div className="flex gap-3 justify-center">
           <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-300 flex-1">
             <span className="label-text font-bold">{players.teamA}</span>
-            {lastWinner === 'A' && (
+            {!isFirstGame && lastWinner === 'A' && (
               <span className="text-xs text-success">(Last Winner)</span>
             )}
             <input
@@ -117,7 +130,7 @@ export const NextGameSetup = ({
           </label>
           <label className="label cursor-pointer flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-300 flex-1">
             <span className="label-text font-bold">{players.teamB}</span>
-            {lastWinner === 'B' && (
+            {!isFirstGame && lastWinner === 'B' && (
               <span className="text-xs text-success">(Last Winner)</span>
             )}
             <input
@@ -131,10 +144,12 @@ export const NextGameSetup = ({
             />
           </label>
         </div>
-        <p className="text-xs text-base-content/70 mt-2 text-center">
-          {lastWinner === 'A' ? players.teamA : players.teamB} won the last
-          game.
-        </p>
+        {!isFirstGame && (
+          <p className="text-xs text-base-content/70 mt-2 text-center">
+            {lastWinner === 'A' ? players.teamA : players.teamB} won the last
+            game.
+          </p>
+        )}
 
         {/* First Server Designation */}
         <div className="card bg-base-200 p-4 mb-4">

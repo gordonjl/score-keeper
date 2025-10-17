@@ -97,13 +97,8 @@ export const ScoreGridContainer = ({
     // The current position hasn't been played yet, so it should reflect any toggles
     const currentScore = server.team === 'A' ? gameData.scoreA : gameData.scoreB
     const currentRow = makeRowKey(server.team, server.player)
-    
-    return writeCell(
-      gridFromRallies,
-      currentRow,
-      currentScore,
-      server.side,
-    )
+
+    return writeCell(gridFromRallies, currentRow, currentScore, server.side)
   }, [
     ralliesData,
     server.team,
@@ -115,8 +110,13 @@ export const ScoreGridContainer = ({
 
   // Compute derived values
   const rows = useMemo(
-    () => getOrderedRows(firstServingTeam),
-    [firstServingTeam],
+    () =>
+      getOrderedRows(
+        firstServingTeam,
+        gameData.teamAFirstServer as 1 | 2,
+        gameData.teamBFirstServer as 1 | 2,
+      ),
+    [firstServingTeam, gameData.teamAFirstServer, gameData.teamBFirstServer],
   )
 
   const serverRowKey = `${server.team}${server.player}` as RowKey

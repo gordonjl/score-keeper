@@ -258,6 +258,8 @@ function GameRoute() {
       players: { A1: string; A2: string; B1: string; B2: string }
       teamASide: 'R' | 'L'
       teamBSide: 'R' | 'L'
+      teamAFirstServer: 1 | 2
+      teamBFirstServer: 1 | 2
     }) => {
       // Hide the dialog immediately
       updateNextGameSetupState({
@@ -297,9 +299,14 @@ function GameRoute() {
           matchId,
           gameNumber: newGameNumber,
           firstServingTeam: config.firstServingTeam,
-          firstServingPlayer: 1,
+          firstServingPlayer:
+            config.firstServingTeam === 'A'
+              ? config.teamAFirstServer
+              : config.teamBFirstServer,
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           firstServingSide: config.teamASide || 'R',
+          teamAFirstServer: config.teamAFirstServer,
+          teamBFirstServer: config.teamBFirstServer,
           maxPoints: 15,
           winBy: 1,
           timestamp: new Date(),

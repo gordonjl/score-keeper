@@ -2,32 +2,22 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useStore } from '@livestore/react'
 import { Either, Schema as S } from 'effect'
-import { Play } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { matchById$ } from '../livestore/squash-queries'
 import { events } from '../livestore/schema'
-import type { PlayerName } from '../machines/squashMachine.types'
 
-// Effect Schema for setup form (no Zod)
-const Team = S.Literal('A', 'B')
-const PlayerRow = S.Literal(1 as const, 2 as const)
-
-type SetupSearch = {
-  teamA?: string
-  teamB?: string
+type ConfigureSearch = {
   A1?: string
   A2?: string
   B1?: string
   B2?: string
 }
 
-export const Route = createFileRoute('/match/$matchId/setup')({
-  component: SetupRoute,
-  validateSearch: (search: Record<string, unknown>): SetupSearch => {
+export const Route = createFileRoute('/match/$matchId/configure')({
+  component: ConfigureRoute,
+  validateSearch: (search: Record<string, unknown>): ConfigureSearch => {
     return {
-      teamA: search.teamA as string | undefined,
-      teamB: search.teamB as string | undefined,
       A1: search.A1 as string | undefined,
       A2: search.A2 as string | undefined,
       B1: search.B1 as string | undefined,
@@ -36,10 +26,9 @@ export const Route = createFileRoute('/match/$matchId/setup')({
   },
 })
 
-function SetupRoute() {
+function ConfigureRoute() {
   const { matchId } = Route.useParams()
   const { store } = useStore()
-  const { actor, isLoading } = useLiveStoreMatch()
   const searchParams = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
@@ -59,9 +48,6 @@ function SetupRoute() {
       B1Last: '',
       B2First: '',
       B2Last: '',
-      teamAFirstServer: 1 as 1 | 2,
-      teamBFirstServer: 1 as 1 | 2,
-      firstServingTeam: 'A' as 'A' | 'B',
     },
     onSubmit: ({ value }) => {
       const payload = {
@@ -73,9 +59,6 @@ function SetupRoute() {
         B1Last: value.B1Last,
         B2First: value.B2First,
         B2Last: value.B2Last,
-        teamAFirstServer: value.teamAFirstServer,
-        teamBFirstServer: value.teamBFirstServer,
-        firstServingTeam: value.firstServingTeam,
       }
 
       const BasicSchema = S.Struct({
@@ -87,9 +70,6 @@ function SetupRoute() {
         B1Last: S.Trim,
         B2First: S.Trim,
         B2Last: S.Trim,
-        teamAFirstServer: PlayerRow,
-        teamBFirstServer: PlayerRow,
-        firstServingTeam: Team,
       })
       const parseResult = S.decodeUnknownEither(BasicSchema)(payload)
 
@@ -115,82 +95,32 @@ function SetupRoute() {
       }
       setSubmitError(null)
 
-      // Reorder players so first servers are in row 1
-      const build = (first: string, last: string): PlayerName => ({
-        firstName: first.trim(),
-        lastName: last.trim(),
-        fullName: `${first.trim()} ${last.trim()}`.trim(),
-      })
-
-      const A1 =
-        parsed.teamAFirstServer === 1
-          ? build(parsed.A1First, parsed.A1Last)
-          : build(parsed.A2First, parsed.A2Last)
-      const A2 =
-        parsed.teamAFirstServer === 1
-          ? build(parsed.A2First, parsed.A2Last)
-          : build(parsed.A1First, parsed.A1Last)
-      const B1 =
-        parsed.teamBFirstServer === 1
-          ? build(parsed.B1First, parsed.B1Last)
-          : build(parsed.B2First, parsed.B2Last)
-      const B2 =
-        parsed.teamBFirstServer === 1
-          ? build(parsed.B2First, parsed.B2Last)
-          : build(parsed.B1First, parsed.B1Last)
-
-      if (!actor) return
-
-      // 1. Emit matchSetup event to LiveStore
+      // Emit matchSetup event to LiveStore (without serving info)
       store.commit(
         events.matchSetup({
           matchId,
           playerA1: {
-            firstName: A1.firstName,
-            lastName: A1.lastName,
+            firstName: parsed.A1First.trim(),
+            lastName: parsed.A1Last.trim(),
           },
           playerA2: {
-            firstName: A2.firstName,
-            lastName: A2.lastName,
+            firstName: parsed.A2First.trim(),
+            lastName: parsed.A2Last.trim(),
           },
           playerB1: {
-            firstName: B1.firstName,
-            lastName: B1.lastName,
+            firstName: parsed.B1First.trim(),
+            lastName: parsed.B1Last.trim(),
           },
           playerB2: {
-            firstName: B2.firstName,
-            lastName: B2.lastName,
+            firstName: parsed.B2First.trim(),
+            lastName: parsed.B2Last.trim(),
           },
           timestamp: new Date(),
         }),
       )
 
-      // 2. Emit gameStarted event to LiveStore
-      const gameId = crypto.randomUUID()
-      store.commit(
-        events.gameStarted({
-          gameId,
-          matchId,
-          gameNumber: 1,
-          firstServingTeam: parsed.firstServingTeam,
-          firstServingPlayer: 1,
-          firstServingSide: 'R',
-          teamAFirstServer: parsed.teamAFirstServer,
-          teamBFirstServer: parsed.teamBFirstServer,
-          maxPoints: 15,
-          winBy: 1,
-          timestamp: new Date(),
-        }),
-      )
-
-      // 3. Update machine UI state
-      actor.send({ type: 'START_GAME', gameId })
-
-      // 4. Navigate to the game
-      void navigate({
-        to: '/match/$matchId/game/$gameNumber',
-        params: { matchId, gameNumber: '1' },
-      })
+      // Navigate back to matches list
+      void navigate({ to: '/matches' })
     },
   })
 
@@ -198,7 +128,7 @@ function SetupRoute() {
   useEffect(() => {
     if (hasPopulatedForm.current) return
 
-    // Priority 1: Search params (from "Start New Match (Same Teams)")
+    // Priority 1: Search params (from copying previous match)
     if (
       searchParams.A1 &&
       searchParams.A2 &&
@@ -240,22 +170,18 @@ function SetupRoute() {
     }
   }, [match, searchParams, form])
 
-  if (isLoading || !actor) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="loading loading-spinner loading-lg"></div>
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-gradient-to-br from-base-200 to-base-300 py-4 px-4">
+    <div className="bg-gradient-to-br from-base-200 to-base-300 py-4 px-4 min-h-screen">
       <div className="max-w-4xl mx-auto pb-4">
-        <div className="text-center mb-2">
-          <h1 className="text-xl sm:text-2xl font-bold">Setup Match</h1>
+        <div className="text-center mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Configure Match</h1>
+          <p className="text-sm text-base-content/70 mt-2">
+            Enter player names. You'll set serving details when you start the
+            first game.
+          </p>
         </div>
         <form
-          className="space-y-2"
+          className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault()
             void form.handleSubmit()
@@ -414,164 +340,6 @@ function SetupRoute() {
             </div>
           </div>
 
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body p-3 sm:p-4">
-              <h2 className="card-title text-base mb-2">
-                First Server Designation
-              </h2>
-              <form.Subscribe
-                selector={(state) => ({
-                  A1First: state.values.A1First,
-                  A1Last: state.values.A1Last,
-                  A2First: state.values.A2First,
-                  A2Last: state.values.A2Last,
-                  B1First: state.values.B1First,
-                  B1Last: state.values.B1Last,
-                  B2First: state.values.B2First,
-                  B2Last: state.values.B2Last,
-                  teamAFirstServer: state.values.teamAFirstServer,
-                  teamBFirstServer: state.values.teamBFirstServer,
-                  firstServingTeam: state.values.firstServingTeam,
-                })}
-              >
-                {({
-                  A1First,
-                  A1Last,
-                  A2First,
-                  A2Last,
-                  B1First,
-                  B1Last,
-                  B2First,
-                  B2Last,
-                  teamAFirstServer,
-                  teamBFirstServer,
-                  firstServingTeam,
-                }) => {
-                  const A1 = `${A1First} ${A1Last}`.trim()
-                  const A2 = `${A2First} ${A2Last}`.trim()
-                  const B1 = `${B1First} ${B1Last}`.trim()
-                  const B2 = `${B2First} ${B2Last}`.trim()
-                  return (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {/* Team A First Server */}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-sm sm:text-base">
-                          {A1 && A2 ? `${A1} & ${A2}` : 'Team A'} - Who serves
-                          first on hand-in?
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-semibold">
-                              {A1 || 'A1'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="teamAFirstServer"
-                              className="radio radio-primary"
-                              checked={teamAFirstServer === 1}
-                              onChange={() =>
-                                form.setFieldValue('teamAFirstServer', 1)
-                              }
-                            />
-                          </label>
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-semibold">
-                              {A2 || 'A2'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="teamAFirstServer"
-                              className="radio radio-primary"
-                              checked={teamAFirstServer === 2}
-                              onChange={() =>
-                                form.setFieldValue('teamAFirstServer', 2)
-                              }
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Team B First Server */}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-sm sm:text-base">
-                          {B1 && B2 ? `${B1} & ${B2}` : 'Team B'} - Who serves
-                          first on hand-in?
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-semibold">
-                              {B1 || 'B1'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="teamBFirstServer"
-                              className="radio radio-primary"
-                              checked={teamBFirstServer === 1}
-                              onChange={() =>
-                                form.setFieldValue('teamBFirstServer', 1)
-                              }
-                            />
-                          </label>
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-semibold">
-                              {B2 || 'B2'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="teamBFirstServer"
-                              className="radio radio-primary"
-                              checked={teamBFirstServer === 2}
-                              onChange={() =>
-                                form.setFieldValue('teamBFirstServer', 2)
-                              }
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Which Team Serves First Overall */}
-                      <div className="lg:col-span-2 space-y-2">
-                        <div className="font-semibold text-sm sm:text-base text-center">
-                          Which team serves first at 0-0?
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-bold">
-                              {A1 && A2 ? `${A1} & ${A2}` : 'Team A'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="firstServingTeam"
-                              className="radio radio-primary"
-                              checked={firstServingTeam === 'A'}
-                              onChange={() =>
-                                form.setFieldValue('firstServingTeam', 'A')
-                              }
-                            />
-                          </label>
-                          <label className="label cursor-pointer flex-1 flex-col gap-2 p-4 border-2 border-base-300 rounded-lg hover:bg-base-200 hover:border-primary transition-all">
-                            <span className="label-text font-bold">
-                              {B1 && B2 ? `${B1} & ${B2}` : 'Team B'}
-                            </span>
-                            <input
-                              type="radio"
-                              name="firstServingTeam"
-                              className="radio radio-primary"
-                              checked={firstServingTeam === 'B'}
-                              onChange={() =>
-                                form.setFieldValue('firstServingTeam', 'B')
-                              }
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }}
-              </form.Subscribe>
-            </div>
-          </div>
-
           {submitError ? (
             <div className="alert alert-error shadow-lg">
               <svg
@@ -595,13 +363,13 @@ function SetupRoute() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => void navigate({ to: '/' })}
+              onClick={() => void navigate({ to: '/matches' })}
             >
               Cancel
             </button>
             <button type="submit" className="btn btn-primary gap-2">
-              <Play className="w-4 h-4" />
-              Start Game
+              <Save className="w-4 h-4" />
+              Save Match
             </button>
           </div>
         </form>

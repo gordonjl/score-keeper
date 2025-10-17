@@ -82,16 +82,6 @@ export const squashGameMachine = setup({
     store: input.store,
     gameId: input.gameId,
   }),
-  on: {
-    UNDO: {
-      actions: [
-        {
-          type: 'undo',
-          params: ({ event }) => ({ game: event.game }),
-        },
-      ],
-    },
-  },
   states: {
     active: {
       on: {
@@ -139,6 +129,14 @@ export const squashGameMachine = setup({
             },
           ],
         },
+        UNDO: {
+          actions: [
+            {
+              type: 'undo',
+              params: ({ event }) => ({ game: event.game }),
+            },
+          ],
+        },
         LET: {},
       },
     },
@@ -146,6 +144,15 @@ export const squashGameMachine = setup({
       on: {
         CONFIRM_GAME_OVER: {
           target: 'complete',
+        },
+        UNDO: {
+          target: 'active',
+          actions: [
+            {
+              type: 'undo',
+              params: ({ event }) => ({ game: event.game }),
+            },
+          ],
         },
       },
     },

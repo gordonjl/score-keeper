@@ -1,8 +1,10 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useClientDocument, useQuery, useStore } from '@livestore/react'
 import { SessionIdSymbol } from '@livestore/livestore'
 import { Calendar, CheckCircle2, Clock, Play, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { DeleteMatchModal } from '../components/modals/DeleteMatchModal'
+import { NextGameSetup } from '../components/game/NextGameSetup'
 import { events, tables } from '../livestore/schema'
 import { gamesByMatch$, nonArchivedMatches$ } from '../livestore/squash-queries'
 
@@ -204,9 +206,15 @@ type MatchCardProps = {
   readonly match: Match
   readonly games: ReadonlyArray<Game>
   readonly onDelete: (matchId: string) => void
+  readonly onStartFirstGame: (matchId: string) => void
 }
 
-const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
+const MatchCard = ({
+  match,
+  games,
+  onDelete,
+  onStartFirstGame,
+}: MatchCardProps) => {
   const stats = computeMatchStats(games)
   const teamAName = formatTeamName(
     match.playerA1FirstName,
@@ -233,9 +241,14 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
     match.playerB1FirstName ||
     match.playerB1LastName
 
-  // Link logic: setup page if not set up, in-progress game if exists, otherwise summary
+  // Determine if we should show a button instead of a link
+  // Only show button for starting first game when no games exist AND no game in progress
+  const shouldStartFirstGame =
+    hasPlayerNames && stats.totalGames === 0 && !stats.hasInProgressGame
+
+  // Link logic: configure page if not set up, in-progress game if exists, otherwise summary
   const linkTo = !hasPlayerNames
-    ? '/match/$matchId/setup'
+    ? '/match/$matchId/configure'
     : stats.hasInProgressGame
       ? '/match/$matchId/game/$gameNumber'
       : '/match/$matchId/summary'
@@ -245,11 +258,14 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
     : { matchId: match.id }
 
   const buttonText = !hasPlayerNames
-    ? 'Set Up Match'
+    ? 'Configure Match'
     : stats.hasInProgressGame
-      ? 'Resume Game'
-      : 'View Details'
-  const ButtonIcon = stats.hasInProgressGame ? Play : null
+      ? 'Go to Game'
+      : stats.totalGames === 0
+        ? 'Start First Game'
+        : 'View Details'
+  const ButtonIcon =
+    stats.hasInProgressGame || shouldStartFirstGame ? Play : null
 
   return (
     <div className="group relative bg-gradient-to-br from-base-200 to-base-300 rounded-xl p-4 hover:shadow-xl transition-all duration-300 border border-base-300/50 hover:border-primary/20">
@@ -335,14 +351,27 @@ const MatchCard = ({ match, games, onDelete }: MatchCardProps) => {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <GameIndicators games={games} stats={stats} />
         </div>
-        <Link
-          to={linkTo}
-          params={linkParams}
-          className="btn btn-sm btn-primary gap-1.5 shadow-md hover:shadow-lg transition-shadow"
-        >
-          {ButtonIcon && <ButtonIcon className="w-4 h-4" />}
-          <span className="font-semibold text-xs">{buttonText}</span>
-        </Link>
+        {shouldStartFirstGame ? (
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              onStartFirstGame(match.id)
+            }}
+            className="btn btn-sm btn-primary gap-1.5 shadow-md hover:shadow-lg transition-shadow"
+          >
+            {ButtonIcon && <ButtonIcon className="w-4 h-4" />}
+            <span className="font-semibold text-xs">{buttonText}</span>
+          </button>
+        ) : (
+          <Link
+            to={linkTo}
+            params={linkParams}
+            className="btn btn-sm btn-primary gap-1.5 shadow-md hover:shadow-lg transition-shadow"
+          >
+            {ButtonIcon && <ButtonIcon className="w-4 h-4" />}
+            <span className="font-semibold text-xs">{buttonText}</span>
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -369,23 +398,45 @@ const MatchesHeader = () => (
 type MatchWithGamesProps = {
   readonly match: Match
   readonly onDelete: (matchId: string) => void
+  readonly onStartFirstGame: (matchId: string) => void
 }
 
-const MatchWithGames = ({ match, onDelete }: MatchWithGamesProps) => {
+const MatchWithGames = ({
+  match,
+  onDelete,
+  onStartFirstGame,
+}: MatchWithGamesProps) => {
   const games = useQuery(gamesByMatch$(match.id))
 
-  return <MatchCard match={match} games={games} onDelete={onDelete} />
+  return (
+    <MatchCard
+      match={match}
+      games={games}
+      onDelete={onDelete}
+      onStartFirstGame={onStartFirstGame}
+    />
+  )
 }
 
 type MatchesListProps = {
   readonly matches: ReadonlyArray<Match>
   readonly onDelete: (matchId: string) => void
+  readonly onStartFirstGame: (matchId: string) => void
 }
 
-const MatchesList = ({ matches, onDelete }: MatchesListProps) => (
+const MatchesList = ({
+  matches,
+  onDelete,
+  onStartFirstGame,
+}: MatchesListProps) => (
   <div className="grid gap-4">
     {matches.map((match) => (
-      <MatchWithGames key={match.id} match={match} onDelete={onDelete} />
+      <MatchWithGames
+        key={match.id}
+        match={match}
+        onDelete={onDelete}
+        onStartFirstGame={onStartFirstGame}
+      />
     ))}
   </div>
 )
@@ -400,7 +451,9 @@ export const Route = createFileRoute('/matches')({
 
 function MatchesListRoute() {
   const { store } = useStore()
+  const navigate = useNavigate({ from: Route.fullPath })
   const matches = useQuery(nonArchivedMatches$)
+  const [gameSetupMatchId, setGameSetupMatchId] = useState<string | null>(null)
 
   // Use LiveStore client document for modal state (persists across refreshes)
   const [modalState, updateModalState] = useClientDocument(
@@ -472,11 +525,84 @@ function MatchesListRoute() {
     })
   }
 
+  const handleStartFirstGame = (matchId: string) => {
+    setGameSetupMatchId(matchId)
+  }
+
+  const handleGameSetupCancel = () => {
+    setGameSetupMatchId(null)
+  }
+
+  const handleGameSetupStart = (config: {
+    firstServingTeam: 'A' | 'B'
+    players: { A1: string; A2: string; B1: string; B2: string }
+    teamASide: 'R' | 'L'
+    teamBSide: 'R' | 'L'
+  }) => {
+    if (!gameSetupMatchId) return
+
+    const match = matches.find((m) => m.id === gameSetupMatchId)
+    if (!match) return
+
+    // Determine which player position serves first for each team based on modal selections
+    // The modal returns reordered players in config.players, so we need to figure out
+    // which original position (1 or 2) is serving first
+    const teamAFirstServer =
+      config.players.A1 ===
+      `${match.playerA1FirstName} ${match.playerA1LastName}`.trim()
+        ? 1
+        : 2
+    const teamBFirstServer =
+      config.players.B1 ===
+      `${match.playerB1FirstName} ${match.playerB1LastName}`.trim()
+        ? 1
+        : 2
+
+    // Emit gameStarted event with serving information
+    // The game will handle displaying players in the correct order
+    const firstServingPlayer =
+      config.firstServingTeam === 'A' ? teamAFirstServer : teamBFirstServer
+
+    const gameId = crypto.randomUUID()
+    store.commit(
+      events.gameStarted({
+        gameId,
+        matchId: gameSetupMatchId,
+        gameNumber: 1,
+        firstServingTeam: config.firstServingTeam,
+        firstServingPlayer,
+        firstServingSide: 'R',
+        teamAFirstServer,
+        teamBFirstServer,
+        maxPoints: 15,
+        winBy: 1,
+        timestamp: new Date(),
+      }),
+    )
+
+    setGameSetupMatchId(null)
+
+    // Navigate to the game
+    void navigate({
+      to: '/match/$matchId/game/$gameNumber',
+      params: { matchId: gameSetupMatchId, gameNumber: '1' },
+    })
+  }
+
+  // Get match for game setup modal
+  const gameSetupMatch = gameSetupMatchId
+    ? matches.find((m) => m.id === gameSetupMatchId)
+    : null
+
   return (
     <div className="container mx-auto p-4">
       <MatchesHeader />
       {hasMatches ? (
-        <MatchesList matches={matches} onDelete={handleDeleteClick} />
+        <MatchesList
+          matches={matches}
+          onDelete={handleDeleteClick}
+          onStartFirstGame={handleStartFirstGame}
+        />
       ) : (
         <EmptyState />
       )}
@@ -487,6 +613,45 @@ function MatchesListRoute() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
       />
+      {gameSetupMatch && (
+        <NextGameSetup
+          key={gameSetupMatchId}
+          isFirstGame={true}
+          lastWinner="A"
+          players={{
+            A1: {
+              firstName: gameSetupMatch.playerA1FirstName,
+              lastName: gameSetupMatch.playerA1LastName,
+              fullName:
+                `${gameSetupMatch.playerA1FirstName} ${gameSetupMatch.playerA1LastName}`.trim(),
+            },
+            A2: {
+              firstName: gameSetupMatch.playerA2FirstName,
+              lastName: gameSetupMatch.playerA2LastName,
+              fullName:
+                `${gameSetupMatch.playerA2FirstName} ${gameSetupMatch.playerA2LastName}`.trim(),
+            },
+            B1: {
+              firstName: gameSetupMatch.playerB1FirstName,
+              lastName: gameSetupMatch.playerB1LastName,
+              fullName:
+                `${gameSetupMatch.playerB1FirstName} ${gameSetupMatch.playerB1LastName}`.trim(),
+            },
+            B2: {
+              firstName: gameSetupMatch.playerB2FirstName,
+              lastName: gameSetupMatch.playerB2LastName,
+              fullName:
+                `${gameSetupMatch.playerB2FirstName} ${gameSetupMatch.playerB2LastName}`.trim(),
+            },
+            teamA:
+              `${gameSetupMatch.playerA1FirstName} ${gameSetupMatch.playerA1LastName} & ${gameSetupMatch.playerA2FirstName} ${gameSetupMatch.playerA2LastName}`.trim(),
+            teamB:
+              `${gameSetupMatch.playerB1FirstName} ${gameSetupMatch.playerB1LastName} & ${gameSetupMatch.playerB2FirstName} ${gameSetupMatch.playerB2LastName}`.trim(),
+          }}
+          onCancel={handleGameSetupCancel}
+          onStartGame={handleGameSetupStart}
+        />
+      )}
     </div>
   )
 }

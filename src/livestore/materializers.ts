@@ -158,8 +158,35 @@ const squashMaterializers = {
         playerB1LastName: playerB1.lastName,
         playerB2FirstName: playerB2.firstName,
         playerB2LastName: playerB2.lastName,
-        teamAFirstServer,
-        teamBFirstServer,
+        updatedAt: timestamp,
+      })
+      .where({ id: matchId }),
+
+  'v2.MatchSetup': ({
+    matchId,
+    playerA1,
+    playerA2,
+    playerB1,
+    playerB2,
+    timestamp,
+  }: {
+    matchId: string
+    playerA1: { firstName: string; lastName: string }
+    playerA2: { firstName: string; lastName: string }
+    playerB1: { firstName: string; lastName: string }
+    playerB2: { firstName: string; lastName: string }
+    timestamp: Date
+  }) =>
+    squashTables.matches
+      .update({
+        playerA1FirstName: playerA1.firstName,
+        playerA1LastName: playerA1.lastName,
+        playerA2FirstName: playerA2.firstName,
+        playerA2LastName: playerA2.lastName,
+        playerB1FirstName: playerB1.firstName,
+        playerB1LastName: playerB1.lastName,
+        playerB2FirstName: playerB2.firstName,
+        playerB2LastName: playerB2.lastName,
         updatedAt: timestamp,
       })
       .where({ id: matchId }),
@@ -193,7 +220,7 @@ const squashMaterializers = {
       .where({ id: matchId }),
 
   'v1.GameStarted': defineMaterializer(
-    squashEvents.gameStarted,
+    squashEvents.gameStartedV1,
     (
       {
         gameId,
@@ -256,6 +283,88 @@ const squashMaterializers = {
         firstServingTeam,
         firstServingPlayer,
         firstServingSide,
+        teamAFirstServer: 1,
+        teamBFirstServer: 1,
+        // Initialize current server state
+        currentServerTeam: firstServingTeam,
+        currentServerPlayer: firstServingPlayer,
+        currentServerSide: firstServingSide,
+        currentServerHandIndex: 0,
+        firstHandUsed: false,
+      })
+    },
+  ),
+
+  'v2.GameStarted': defineMaterializer(
+    squashEvents.gameStarted,
+    (
+      {
+        gameId,
+        matchId,
+        gameNumber,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        teamAFirstServer,
+        teamBFirstServer,
+        maxPoints,
+        winBy,
+        timestamp,
+      },
+      ctx,
+    ) => {
+      // Check if game already exists (gameId is globally unique)
+      const existingGames = ctx.query(squashTables.games.where({ id: gameId }))
+
+      // If game already exists and is completed, don't reset it (idempotent)
+      if (existingGames.length > 0 && existingGames[0].status === 'completed') {
+        return []
+      }
+
+      // If game exists but is in_progress, reset it to fresh state (handle replays/resets)
+      if (existingGames.length > 0) {
+        return squashTables.games
+          .update({
+            status: 'in_progress',
+            scoreA: 0,
+            scoreB: 0,
+            winner: null,
+            maxPoints,
+            winBy,
+            createdAt: timestamp,
+            completedAt: null,
+            firstServingTeam,
+            firstServingPlayer,
+            firstServingSide,
+            teamAFirstServer,
+            teamBFirstServer,
+            // Initialize current server state
+            currentServerTeam: firstServingTeam,
+            currentServerPlayer: firstServingPlayer,
+            currentServerSide: firstServingSide,
+            currentServerHandIndex: 0,
+            firstHandUsed: false,
+          })
+          .where({ id: gameId })
+      }
+
+      return squashTables.games.insert({
+        id: gameId,
+        matchId,
+        gameNumber,
+        status: 'in_progress',
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        maxPoints,
+        winBy,
+        createdAt: timestamp,
+        completedAt: null,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        teamAFirstServer,
+        teamBFirstServer,
         // Initialize current server state
         currentServerTeam: firstServingTeam,
         currentServerPlayer: firstServingPlayer,

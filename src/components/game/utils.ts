@@ -22,10 +22,23 @@ export const toWords = (n: number): string => {
   return words[n] ?? String(n)
 }
 
-export const getOrderedRows = (firstServingTeam: 'A' | 'B'): Array<RowKey> => {
+export const getOrderedRows = (
+  firstServingTeam: 'A' | 'B',
+  teamAFirstServer: 1 | 2,
+  teamBFirstServer: 1 | 2,
+): Array<RowKey> => {
+  // Build team A rows based on who serves first
+  const teamARows: Array<RowKey> =
+    teamAFirstServer === 1 ? ['A1', 'A2'] : ['A2', 'A1']
+
+  // Build team B rows based on who serves first
+  const teamBRows: Array<RowKey> =
+    teamBFirstServer === 1 ? ['B1', 'B2'] : ['B2', 'B1']
+
+  // Return rows with first serving team on top
   return firstServingTeam === 'A'
-    ? ['A1', 'A2', 'B1', 'B2']
-    : ['B1', 'B2', 'A1', 'A2']
+    ? [...teamARows, ...teamBRows]
+    : [...teamBRows, ...teamARows]
 }
 
 /**

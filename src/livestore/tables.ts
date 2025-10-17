@@ -50,9 +50,6 @@ export const squashTables = {
       playerB1LastName: State.SQLite.text({ default: '' }),
       playerB2FirstName: State.SQLite.text({ default: '' }),
       playerB2LastName: State.SQLite.text({ default: '' }),
-      // First servers (1 or 2)
-      teamAFirstServer: State.SQLite.integer({ default: 1 }),
-      teamBFirstServer: State.SQLite.integer({ default: 1 }),
     },
   }),
 
@@ -78,6 +75,9 @@ export const squashTables = {
       firstServingTeam: State.SQLite.text({ default: 'A' }),
       firstServingPlayer: State.SQLite.integer({ default: 1 }),
       firstServingSide: State.SQLite.text({ default: 'R' }),
+      // Which player serves first for each team (1 or 2)
+      teamAFirstServer: State.SQLite.integer({ default: 1 }),
+      teamBFirstServer: State.SQLite.integer({ default: 1 }),
       // Current server state (updated after each rally)
       currentServerTeam: State.SQLite.text({ default: 'A' }), // 'A' | 'B'
       currentServerPlayer: State.SQLite.integer({ default: 1 }), // 1 | 2

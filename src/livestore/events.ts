@@ -42,7 +42,8 @@ export const squashEvents = {
     }),
   }),
 
-  matchSetup: Events.synced({
+  // v1 kept for backward compatibility with existing events
+  matchSetupV1: Events.synced({
     name: 'v1.MatchSetup',
     schema: Schema.Struct({
       matchId: Schema.String,
@@ -68,6 +69,31 @@ export const squashEvents = {
     }),
   }),
 
+  // v2 is the current version (no teamAFirstServer/teamBFirstServer)
+  matchSetup: Events.synced({
+    name: 'v2.MatchSetup',
+    schema: Schema.Struct({
+      matchId: Schema.String,
+      playerA1: Schema.Struct({
+        firstName: Schema.String,
+        lastName: Schema.String,
+      }),
+      playerA2: Schema.Struct({
+        firstName: Schema.String,
+        lastName: Schema.String,
+      }),
+      playerB1: Schema.Struct({
+        firstName: Schema.String,
+        lastName: Schema.String,
+      }),
+      playerB2: Schema.Struct({
+        firstName: Schema.String,
+        lastName: Schema.String,
+      }),
+      timestamp: Schema.Date,
+    }),
+  }),
+
   matchCompleted: Events.synced({
     name: 'v1.MatchCompleted',
     schema: Schema.Struct({
@@ -86,7 +112,8 @@ export const squashEvents = {
   }),
 
   // ===== Game lifecycle events =====
-  gameStarted: Events.synced({
+  // v1 kept for backward compatibility with existing events
+  gameStartedV1: Events.synced({
     name: 'v1.GameStarted',
     schema: Schema.Struct({
       gameId: Schema.String,
@@ -95,6 +122,24 @@ export const squashEvents = {
       firstServingTeam: Schema.Literal('A', 'B'),
       firstServingPlayer: Schema.Literal(1, 2),
       firstServingSide: Schema.Literal('R', 'L'),
+      maxPoints: Schema.Number,
+      winBy: Schema.Number,
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  // v2 is the current version (adds teamAFirstServer/teamBFirstServer)
+  gameStarted: Events.synced({
+    name: 'v2.GameStarted',
+    schema: Schema.Struct({
+      gameId: Schema.String,
+      matchId: Schema.String,
+      gameNumber: Schema.Number,
+      firstServingTeam: Schema.Literal('A', 'B'),
+      firstServingPlayer: Schema.Literal(1, 2),
+      firstServingSide: Schema.Literal('R', 'L'),
+      teamAFirstServer: Schema.Literal(1, 2),
+      teamBFirstServer: Schema.Literal(1, 2),
       maxPoints: Schema.Number,
       winBy: Schema.Number,
       timestamp: Schema.Date,
