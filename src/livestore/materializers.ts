@@ -147,8 +147,13 @@ const squashMaterializers = {
     teamAFirstServer: 1 | 2
     teamBFirstServer: 1 | 2
     timestamp: Date
-  }) =>
-    squashTables.matches
+  }) => {
+    console.log(
+      `ignoring first server props`,
+      teamAFirstServer,
+      teamBFirstServer,
+    )
+    return squashTables.matches
       .update({
         playerA1FirstName: playerA1.firstName,
         playerA1LastName: playerA1.lastName,
@@ -160,7 +165,8 @@ const squashMaterializers = {
         playerB2LastName: playerB2.lastName,
         updatedAt: timestamp,
       })
-      .where({ id: matchId }),
+      .where({ id: matchId })
+  },
 
   'v2.MatchSetup': ({
     matchId,
