@@ -8,7 +8,6 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 // Simple plugin to generate version.json in dist/client
 function versionPlugin(): Plugin {
@@ -33,18 +32,21 @@ const config = defineConfig({
   },
   worker: { format: 'es' },
   optimizeDeps: {
-    include: ['react/jsx-runtime', 'react/jsx-dev-runtime'],
+    exclude: ['@livestore/wa-sqlite'],
   },
   plugins: [
-    // this is the plugin that enables path aliases
+    // CRITICAL: TanStack Start MUST be first, then React
+    // https://tanstack.com/router/latest/docs/framework/react/start/getting-started
+    tanstackStart(),
+    viteReact(),
+    // Path aliases and other plugins can come after
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    tanstackStart(),
-    viteReact(),
     versionPlugin(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    // Temporarily disabled to test JSX runtime issue
+    // livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
     netlify(),
     // Running `wrangler dev` as part of `vite dev` needed for `@livestore/sync-cf`
     {
