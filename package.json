@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "wrangler dev --port 8787 & vite dev --port 3000",
+    "wrangler:dev": "wrangler dev --port 8787",
     "start": "vite --port 3000",
     "build": "pnpm lint && vite build",
     "serve": "vite preview",
