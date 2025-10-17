@@ -363,7 +363,7 @@ function GameRoute() {
           firstServingTeam={firstServingTeam}
         />
 
-        <ServeAnnouncement gameId={gameId} />
+        <ServeAnnouncement key={gameId} gameId={gameId} />
 
         <ScoreGrid
           actorRef={actorRef}

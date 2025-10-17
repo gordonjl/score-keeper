@@ -1,5 +1,6 @@
 import { useQuery } from '@livestore/react'
 import { gameById$, matchById$ } from '../../livestore/squash-queries'
+import { useHasPlayerServedBefore } from '../../hooks/useHasPlayerServedBefore'
 import { toWords } from './utils'
 
 type ServeAnnouncementProps = {
@@ -20,6 +21,14 @@ export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
   const scoreA = game.scoreA
   const scoreB = game.scoreB
 
+  // Check if this player has served before in the match
+  const hasServedBefore = useHasPlayerServedBefore(
+    game.matchId,
+    server.team,
+    server.player,
+  )
+  const isFirstServe = !hasServedBefore
+
   // Compute announcement
   const serverRowKey = `${server.team}${server.player}` as const
   const serverScore = server.team === 'A' ? scoreA : scoreB
@@ -39,7 +48,11 @@ export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
           ? match.playerB1LastName || match.playerB1FirstName
           : match.playerB2LastName || match.playerB2FirstName
   const sideName = server.side === 'R' ? 'Right' : 'Left'
-  const announcement = `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+
+  // Only include player name on first serve
+  const announcement = isFirstServe
+    ? `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+    : `${scorePhrase}, from the ${sideName}`
 
   return (
     <div className="alert mb-4">
