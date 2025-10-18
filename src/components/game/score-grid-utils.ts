@@ -61,7 +61,7 @@ export type RallyState = {
   score: Score
   server: Server
   grid: ActivityGrid
-  firstHandUsed: boolean
+  firstHandUsed: boolean // Has the opening hand at 0-0 been completed?
   teamAFirstServer: 1 | 2
   teamBFirstServer: 1 | 2
 }
@@ -127,13 +127,12 @@ export const processRally = (
     B: winner === 'B' ? state.score.B + 1 : state.score.B,
   }
 
-  // First-hand exception at 0-0 ONLY
-  // Special rule: At the start of the game (0-0), only the first server serves
-  // If they lose, partner gets "/" (didn't serve), NO X marker, immediate hand-out
-  const isStartOfGame = state.score.A === 0 && state.score.B === 0
-  if (isStartOfGame && !state.firstHandUsed) {
+  // Opening hand exception: The first hand of the game has only one server
+  // When the opening server loses (regardless of score), immediate side-out
+  // Partner gets "/" (didn't serve), NO X marker
+  if (cur.handIndex === 0 && !state.firstHandUsed) {
     const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, 0, '/')
+    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, col, '/')
 
     const t = otherTeam(cur.team)
     const firstServerPlayer = getFirstServerForTeam(t)
