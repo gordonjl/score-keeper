@@ -45,6 +45,15 @@ export default tseslint.config(
           ignoreIIFE: false,
         },
       ],
+      // Allow underscore-prefixed unused variables (for intentionally unused params)
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {

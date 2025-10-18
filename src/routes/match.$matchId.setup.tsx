@@ -115,29 +115,18 @@ function SetupRoute() {
       }
       setSubmitError(null)
 
-      // Reorder players so first servers are in row 1
+      // Keep player positions fixed - teamAFirstServer/teamBFirstServer are used
+      // by getOrderedRows() to determine display order, not to swap data
       const build = (first: string, last: string): PlayerName => ({
         firstName: first.trim(),
         lastName: last.trim(),
         fullName: `${first.trim()} ${last.trim()}`.trim(),
       })
 
-      const A1 =
-        parsed.teamAFirstServer === 1
-          ? build(parsed.A1First, parsed.A1Last)
-          : build(parsed.A2First, parsed.A2Last)
-      const A2 =
-        parsed.teamAFirstServer === 1
-          ? build(parsed.A2First, parsed.A2Last)
-          : build(parsed.A1First, parsed.A1Last)
-      const B1 =
-        parsed.teamBFirstServer === 1
-          ? build(parsed.B1First, parsed.B1Last)
-          : build(parsed.B2First, parsed.B2Last)
-      const B2 =
-        parsed.teamBFirstServer === 1
-          ? build(parsed.B2First, parsed.B2Last)
-          : build(parsed.B1First, parsed.B1Last)
+      const A1 = build(parsed.A1First, parsed.A1Last)
+      const A2 = build(parsed.A2First, parsed.A2Last)
+      const B1 = build(parsed.B1First, parsed.B1Last)
+      const B2 = build(parsed.B2First, parsed.B2Last)
 
       if (!actor) return
 

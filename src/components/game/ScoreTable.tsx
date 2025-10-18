@@ -1,5 +1,9 @@
-import { ScoreRow } from './ScoreRow'
-import type { ActivityGrid, RowKey } from '../../machines/squashMachine.types'
+import { TeamRows } from './TeamRows'
+import type {
+  ActivityGrid,
+  RowKey,
+  Team,
+} from '../../machines/squashMachine.types'
 
 type ScoreTableProps = {
   grid: ActivityGrid
@@ -13,6 +17,38 @@ type ScoreTableProps = {
   maxCols: number
 }
 
+type TeamPair = {
+  team: Team
+  player1: RowKey
+  player2: RowKey
+}
+
+/**
+ * Group consecutive rows into team pairs.
+ * Rows come in order like ['A1', 'A2', 'B1', 'B2'] or ['B2', 'B1', 'A1', 'A2']
+ * We need to identify which consecutive pairs belong to the same team.
+ */
+const groupRowsIntoTeamPairs = (
+  rows: ReadonlyArray<RowKey>,
+): Array<TeamPair> => {
+  const pairs: Array<TeamPair> = []
+
+  for (let i = 0; i < rows.length - 1; i += 2) {
+    const player1 = rows[i]
+    const player2 = rows[i + 1]
+
+    const team = player1.startsWith('A') ? 'A' : 'B'
+
+    pairs.push({
+      team,
+      player1,
+      player2,
+    })
+  }
+
+  return pairs
+}
+
 export const ScoreTable = ({
   grid,
   rows,
@@ -24,6 +60,8 @@ export const ScoreTable = ({
   onToggleServeSide,
   maxCols,
 }: ScoreTableProps) => {
+  const teamPairs = groupRowsIntoTeamPairs(rows)
+
   return (
     <div className="card bg-base-100 shadow-xl mb-4 border border-base-300">
       <div className="card-body p-2 sm:p-4">
@@ -45,26 +83,22 @@ export const ScoreTable = ({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
-                // Determine team row for X-cell merging
-                const teamRow = row.startsWith('A') ? 'A' : 'B'
-
-                return (
-                  <ScoreRow
-                    key={row}
-                    rowKey={row}
-                    playerLabel={playerLabels[row]}
-                    cells={grid[row]}
-                    teamCells={grid[teamRow]}
-                    serverRowKey={serverRowKey}
-                    serverScore={serverScore}
-                    handIndex={handIndex}
-                    isGameOver={isGameOver}
-                    onToggleServeSide={onToggleServeSide}
-                    maxCols={maxCols}
-                  />
-                )
-              })}
+              {teamPairs.map((pair) => (
+                <TeamRows
+                  key={pair.team}
+                  team={pair.team}
+                  player1Key={pair.player1}
+                  player2Key={pair.player2}
+                  grid={grid}
+                  playerLabels={playerLabels}
+                  serverRowKey={serverRowKey}
+                  serverScore={serverScore}
+                  handIndex={handIndex}
+                  isGameOver={isGameOver}
+                  onToggleServeSide={onToggleServeSide}
+                  maxCols={maxCols}
+                />
+              ))}
             </tbody>
           </table>
         </div>

@@ -9,6 +9,9 @@ import type {
   Team,
 } from '../../machines/squashMachine.types'
 
+// Re-export types used by tests
+export type { Server }
+
 // ===== Grid Building Utilities =====
 
 export const makeEmptyCols = (n = 30): Array<Cell> =>
@@ -59,6 +62,8 @@ export type RallyState = {
   server: Server
   grid: ActivityGrid
   firstHandUsed: boolean
+  teamAFirstServer: 1 | 2
+  teamBFirstServer: 1 | 2
 }
 
 export type RallyData = {
@@ -78,6 +83,9 @@ export const processRally = (
   state: RallyState,
   rally: RallyData,
 ): RallyState => {
+  const getFirstServerForTeam = (team: Team): PlayerRow => {
+    return team === 'A' ? state.teamAFirstServer : state.teamBFirstServer
+  }
   // Use the rally's server data (which includes any toggled side)
   const cur: Server = {
     team: rally.serverTeam,
@@ -104,6 +112,8 @@ export const processRally = (
       server: nextServer,
       grid: nextGrid,
       firstHandUsed: state.firstHandUsed,
+      teamAFirstServer: state.teamAFirstServer,
+      teamBFirstServer: state.teamBFirstServer,
     }
   }
 
@@ -117,23 +127,26 @@ export const processRally = (
     B: winner === 'B' ? state.score.B + 1 : state.score.B,
   }
 
-  // First-hand exception at 0-0
+  // First-hand exception at 0-0 ONLY
+  // Special rule: At the start of the game (0-0), only the first server serves
+  // If they lose, partner gets "/" (didn't serve), NO X marker, immediate hand-out
   const isStartOfGame = state.score.A === 0 && state.score.B === 0
   if (isStartOfGame && !state.firstHandUsed) {
     const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
     const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, 0, '/')
 
     const t = otherTeam(cur.team)
+    const firstServerPlayer = getFirstServerForTeam(t)
     const nextServer: Server = {
       team: t,
-      player: 1,
+      player: firstServerPlayer,
       side: 'R',
       handIndex: 0,
     }
     const nextCol = nextScore[t]
     const finalGrid = writeCell(
       gridWithPartnerSlash,
-      rowKey(t, 1),
+      rowKey(t, firstServerPlayer),
       nextCol,
       nextServer.side,
     )
@@ -143,34 +156,8 @@ export const processRally = (
       server: nextServer,
       grid: finalGrid,
       firstHandUsed: true,
-    }
-  }
-
-  // First hand lost (not start of game)
-  if (cur.handIndex === 0 && !state.firstHandUsed) {
-    const partnerRow = rowKey(cur.team, cur.player === 1 ? 2 : 1)
-    const gridWithPartnerSlash = writeCell(gridWithSlash, partnerRow, col, '/')
-
-    const t = otherTeam(cur.team)
-    const nextServer: Server = {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-    }
-    const nextCol = nextScore[t]
-    const finalGrid = writeCell(
-      gridWithPartnerSlash,
-      rowKey(t, 1),
-      nextCol,
-      nextServer.side,
-    )
-
-    return {
-      score: nextScore,
-      server: nextServer,
-      grid: finalGrid,
-      firstHandUsed: true,
+      teamAFirstServer: state.teamAFirstServer,
+      teamBFirstServer: state.teamBFirstServer,
     }
   }
 
@@ -185,34 +172,36 @@ export const processRally = (
       side: flip(cur.side),
       handIndex: 1,
     }
-    const nextCol = state.score[cur.team]
-    const finalGrid = writeCell(
-      gridWithX,
-      rowKey(partner.team, partner.player),
-      nextCol,
-      partner.side,
-    )
+    // Partner serves at the same column as the first server (serving team's score hasn't changed)
+    // Note: Do NOT write the partner's serve position here - it will be written by buildGridFromRallies
+    // when processing the next rally where the partner actually serves
 
     return {
       score: nextScore,
       server: partner,
-      grid: finalGrid,
+      grid: gridWithX,
       firstHandUsed: true,
+      teamAFirstServer: state.teamAFirstServer,
+      teamBFirstServer: state.teamBFirstServer,
     }
   }
 
   // Second hand lost - hand-out to other team
+  // Don't write X marker because the team that won is now serving
+  // The serving position will be written instead
+
   const t = otherTeam(cur.team)
+  const firstServerPlayer = getFirstServerForTeam(t)
   const nextServer: Server = {
     team: t,
-    player: 1,
+    player: firstServerPlayer,
     side: 'R',
     handIndex: 0,
   }
   const nextCol = nextScore[t]
   const finalGrid = writeCell(
     gridWithSlash,
-    rowKey(t, 1),
+    rowKey(t, firstServerPlayer),
     nextCol,
     nextServer.side,
   )
@@ -222,6 +211,8 @@ export const processRally = (
     server: nextServer,
     grid: finalGrid,
     firstHandUsed: true,
+    teamAFirstServer: state.teamAFirstServer,
+    teamBFirstServer: state.teamBFirstServer,
   }
 }
 
@@ -233,12 +224,16 @@ export const buildGridFromRallies = (
   rallies: ReadonlyArray<RallyData>,
   initialServer: Server,
   firstHandUsed: boolean,
+  teamAFirstServer: 1 | 2,
+  teamBFirstServer: 1 | 2,
 ): ActivityGrid => {
   const initialState: RallyState = {
     grid: initialGrid(),
     score: { A: 0, B: 0 },
     server: initialServer,
     firstHandUsed,
+    teamAFirstServer,
+    teamBFirstServer,
   }
 
   // Process each rally: write its server position, then process the result

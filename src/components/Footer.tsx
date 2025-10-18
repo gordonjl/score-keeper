@@ -6,7 +6,7 @@ export default function Footer() {
           <a href="https://www.pcsquash.com" target="_blank">
             <img
               src="/PCS_Logo.png.avif"
-              alt="Philadelphia Cricket Squash"
+              alt="Portland Coummunity Squash"
               className="h-12 object-contain opacity-70"
             />
           </a>

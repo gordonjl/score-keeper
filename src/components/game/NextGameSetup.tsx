@@ -70,25 +70,13 @@ export const NextGameSetup = ({
   }, [isFirstGame, lastWinner])
 
   const handleStartGame = () => {
-    // Reorder players based on who serves first on hand-in
-    // The first server becomes A1/B1 for this game
+    // Keep player positions fixed - teamAFirstServer/teamBFirstServer are passed
+    // to the game and used by getOrderedRows() to determine display order
     const gamePlayers: PlayerPositions = {
-      A1:
-        setupState.teamAFirstServer === 1
-          ? players.A1.fullName
-          : players.A2.fullName,
-      A2:
-        setupState.teamAFirstServer === 1
-          ? players.A2.fullName
-          : players.A1.fullName,
-      B1:
-        setupState.teamBFirstServer === 1
-          ? players.B1.fullName
-          : players.B2.fullName,
-      B2:
-        setupState.teamBFirstServer === 1
-          ? players.B2.fullName
-          : players.B1.fullName,
+      A1: players.A1.fullName,
+      A2: players.A2.fullName,
+      B1: players.B1.fullName,
+      B2: players.B2.fullName,
     }
 
     // Default both teams to start serving from right side

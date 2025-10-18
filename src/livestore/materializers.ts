@@ -48,11 +48,23 @@ const computeNextServerState = (params: {
   firstHandUsed: boolean
   scoreBefore: { A: number; B: number }
   winner: 'A' | 'B'
+  teamAFirstServer: 1 | 2
+  teamBFirstServer: 1 | 2
 }): ServerState => {
-  const { currentServer, firstHandUsed, scoreBefore, winner } = params
+  const {
+    currentServer,
+    firstHandUsed,
+    scoreBefore: _scoreBefore,
+    winner,
+    teamAFirstServer,
+    teamBFirstServer,
+  } = params
 
   const flip = (side: 'R' | 'L'): 'R' | 'L' => (side === 'R' ? 'L' : 'R')
   const otherTeam = (team: 'A' | 'B'): 'A' | 'B' => (team === 'A' ? 'B' : 'A')
+  const getFirstServerForTeam = (team: 'A' | 'B'): 1 | 2 => {
+    return team === 'A' ? teamAFirstServer : teamBFirstServer
+  }
 
   // Server won the rally
   if (winner === currentServer.team) {
@@ -66,26 +78,15 @@ const computeNextServerState = (params: {
   }
 
   // Receiving team won
-  const isStartOfGame = scoreBefore.A === 0 && scoreBefore.B === 0
 
-  // First-hand exception at 0-0
-  if (isStartOfGame && !firstHandUsed) {
-    const t = otherTeam(currentServer.team)
-    return {
-      team: t,
-      player: 1,
-      side: 'R',
-      handIndex: 0,
-      firstHandUsed: true,
-    }
-  }
-
-  // First hand lost (not start of game)
+  // First hand lost (at 0-0 or after) - immediate hand-out to other team
+  // This is the first-hand exception rule: only first server serves, if they lose, immediate hand-out
   if (currentServer.handIndex === 0 && !firstHandUsed) {
     const t = otherTeam(currentServer.team)
+    const firstServerPlayer = getFirstServerForTeam(t)
     return {
       team: t,
-      player: 1,
+      player: firstServerPlayer,
       side: 'R',
       handIndex: 0,
       firstHandUsed: true,
@@ -105,9 +106,10 @@ const computeNextServerState = (params: {
 
   // Second hand lost - hand-out to other team
   const t = otherTeam(currentServer.team)
+  const firstServerPlayer = getFirstServerForTeam(t)
   return {
     team: t,
-    player: 1,
+    player: firstServerPlayer,
     side: 'R',
     handIndex: 0,
     firstHandUsed: true,
@@ -426,9 +428,11 @@ const squashMaterializers = {
       },
       ctx,
     ) => {
-      // Query current game state to get firstHandUsed
+      // Query current game state to get firstHandUsed and first server info
       const games = ctx.query(squashTables.games.where({ id: gameId }))
       const currentFirstHandUsed = games[0]?.firstHandUsed ?? false
+      const teamAFirstServer = (games[0]?.teamAFirstServer ?? 1) as 1 | 2
+      const teamBFirstServer = (games[0]?.teamBFirstServer ?? 1) as 1 | 2
 
       // Compute next server state
       const nextServerState = computeNextServerState({
@@ -441,6 +445,8 @@ const squashMaterializers = {
         firstHandUsed: currentFirstHandUsed,
         scoreBefore: { A: scoreABefore, B: scoreBBefore },
         winner,
+        teamAFirstServer,
+        teamBFirstServer,
       })
 
       return [

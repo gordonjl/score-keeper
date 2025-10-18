@@ -538,30 +538,20 @@ function MatchesListRoute() {
     players: { A1: string; A2: string; B1: string; B2: string }
     teamASide: 'R' | 'L'
     teamBSide: 'R' | 'L'
+    teamAFirstServer: 1 | 2
+    teamBFirstServer: 1 | 2
   }) => {
     if (!gameSetupMatchId) return
 
     const match = matches.find((m) => m.id === gameSetupMatchId)
     if (!match) return
 
-    // Determine which player position serves first for each team based on modal selections
-    // The modal returns reordered players in config.players, so we need to figure out
-    // which original position (1 or 2) is serving first
-    const teamAFirstServer =
-      config.players.A1 ===
-      `${match.playerA1FirstName} ${match.playerA1LastName}`.trim()
-        ? 1
-        : 2
-    const teamBFirstServer =
-      config.players.B1 ===
-      `${match.playerB1FirstName} ${match.playerB1LastName}`.trim()
-        ? 1
-        : 2
-
-    // Emit gameStarted event with serving information
-    // The game will handle displaying players in the correct order
+    // Use the teamAFirstServer and teamBFirstServer from the modal
+    // These indicate which player position serves first for each team
     const firstServingPlayer =
-      config.firstServingTeam === 'A' ? teamAFirstServer : teamBFirstServer
+      config.firstServingTeam === 'A'
+        ? config.teamAFirstServer
+        : config.teamBFirstServer
 
     const gameId = crypto.randomUUID()
     store.commit(
@@ -572,8 +562,8 @@ function MatchesListRoute() {
         firstServingTeam: config.firstServingTeam,
         firstServingPlayer,
         firstServingSide: 'R',
-        teamAFirstServer,
-        teamBFirstServer,
+        teamAFirstServer: config.teamAFirstServer,
+        teamBFirstServer: config.teamBFirstServer,
         maxPoints: 15,
         winBy: 1,
         timestamp: new Date(),

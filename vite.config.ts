@@ -43,10 +43,18 @@ const config = defineConfig({
     }),
     tailwindcss(),
     versionPlugin(),
-    // Temporarily disabled to test JSX runtime issue
-    // livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
     netlify(),
   ],
+  test: {
+    globals: true,
+    setupFiles: './vitest.setup.ts',
+    browser: {
+      enabled: true,
+      name: 'chromium',
+      provider: 'playwright',
+      headless: true,
+    },
+  },
 })
 
 export default config
