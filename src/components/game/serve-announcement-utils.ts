@@ -7,6 +7,7 @@ type GameData = {
   currentServerTeam: Team
   currentServerPlayer: PlayerRow
   currentServerSide: Side
+  currentServerHandIndex: 0 | 1
   scoreA: number
   scoreB: number
   maxPoints: number
@@ -19,6 +20,8 @@ type RallyData = {
   gameId: string
   serverTeam: string
   serverPlayer: number
+  scoreABefore: number
+  scoreBBefore: number
   deletedAt: Date | null
 }
 
@@ -196,13 +199,43 @@ export const generateServeAnnouncement = (
       ? `${toWords(serverScore)} All`
       : `${toWords(serverScore)}–${toWords(receiverScore)}`
 
-  // Compute side name
+  // Determine if this is hand out (first serve of hand)
+  // Hand out = handIndex 0 (first server) AND first serve at this score
+  // BUT NOT the very first serve of the game (0-0, no rallies yet)
+  const prevScore = serverScore - 1
+  const gameRallies = rallies.filter(
+    (r) => r.gameId === game.id && !r.deletedAt,
+  )
+  const hasServedAtPrevScore =
+    prevScore >= 0 &&
+    gameRallies.some((r) => {
+      const rallyServerScore =
+        r.serverTeam === 'A' ? r.scoreABefore : r.scoreBBefore
+      return (
+        r.serverTeam === game.currentServerTeam &&
+        rallyServerScore === prevScore
+      )
+    })
+  const isFirstServeOfHand = prevScore < 0 || !hasServedAtPrevScore
+  const isVeryFirstServe =
+    serverScore === 0 && receiverScore === 0 && gameRallies.length === 0
+  const isHandOut =
+    game.currentServerHandIndex === 0 && isFirstServeOfHand && !isVeryFirstServe
+
   const sideName = game.currentServerSide === 'R' ? 'Right' : 'Left'
 
   // Build base announcement
-  let announcement = hasServedBefore
-    ? `${scorePhrase}, from the ${sideName}`
-    : `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+  // Format: "Hand Out, Score" or "Score, from the Side"
+  let announcement = ''
+  if (isHandOut) {
+    announcement = hasServedBefore
+      ? `Hand Out, ${scorePhrase}`
+      : `Hand Out, ${scorePhrase}, ${serverName} to Serve`
+  } else {
+    announcement = hasServedBefore
+      ? `${scorePhrase}, from the ${sideName}`
+      : `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+  }
 
   // Add game/match ball suffix
   if (isMatchBall(game, games, match)) {
