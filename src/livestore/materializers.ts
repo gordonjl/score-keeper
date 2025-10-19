@@ -449,6 +449,17 @@ const squashMaterializers = {
         teamBFirstServer,
       })
 
+      // If next server is hand-in (team changed), use preferred side
+      const isHandOut = nextServerState.team !== serverTeam
+      const preferredSideA = games[0]?.teamAPreferredServiceSide ?? 'R'
+      const preferredSideB = games[0]?.teamBPreferredServiceSide ?? 'R'
+      const nextSide =
+        isHandOut && nextServerState.handIndex === 0
+          ? nextServerState.team === 'A'
+            ? preferredSideA
+            : preferredSideB
+          : nextServerState.side
+
       return [
         // Insert rally record
         squashTables.rallies.insert({
@@ -474,7 +485,7 @@ const squashMaterializers = {
             scoreB: scoreBAfter,
             currentServerTeam: nextServerState.team,
             currentServerPlayer: nextServerState.player,
-            currentServerSide: nextServerState.side,
+            currentServerSide: nextSide,
             currentServerHandIndex: nextServerState.handIndex,
             firstHandUsed: nextServerState.firstHandUsed,
           })
@@ -536,18 +547,31 @@ const squashMaterializers = {
     },
   ),
 
-  'v1.ServerSideToggled': ({
-    gameId,
-    newSide,
-  }: {
-    gameId: string
-    newSide: 'R' | 'L'
-  }) =>
-    squashTables.games
-      .update({
-        currentServerSide: newSide,
-      })
-      .where({ id: gameId }),
+  'v1.ServerSideToggled': defineMaterializer(
+    squashEvents.serverSideToggled,
+    ({ gameId, newSide }, ctx) => {
+      // Get current game state to determine which team is serving
+      const games = ctx.query(squashTables.games.where({ id: gameId }))
+      const game = games[0]
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!game) return []
+
+      const currentTeam = game.currentServerTeam as 'A' | 'B'
+
+      // Update both current side and the preferred side for the current team
+      return [
+        squashTables.games
+          .update({
+            currentServerSide: newSide,
+            ...(currentTeam === 'A'
+              ? { teamAPreferredServiceSide: newSide }
+              : { teamBPreferredServiceSide: newSide }),
+          })
+          .where({ id: gameId }),
+      ]
+    },
+  ),
 }
 
 // ============================================================================

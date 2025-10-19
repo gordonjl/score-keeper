@@ -15,6 +15,8 @@ type ScoreTableProps = {
   isGameOver: boolean
   onToggleServeSide: () => void
   maxCols: number
+  teamAPreferredSide: 'R' | 'L'
+  teamBPreferredSide: 'R' | 'L'
 }
 
 type TeamPair = {
@@ -59,6 +61,8 @@ export const ScoreTable = ({
   isGameOver,
   onToggleServeSide,
   maxCols,
+  teamAPreferredSide,
+  teamBPreferredSide,
 }: ScoreTableProps) => {
   const teamPairs = groupRowsIntoTeamPairs(rows)
 
@@ -97,6 +101,9 @@ export const ScoreTable = ({
                   isGameOver={isGameOver}
                   onToggleServeSide={onToggleServeSide}
                   maxCols={maxCols}
+                  preferredSide={
+                    pair.team === 'A' ? teamAPreferredSide : teamBPreferredSide
+                  }
                 />
               ))}
             </tbody>

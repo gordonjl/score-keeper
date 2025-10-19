@@ -84,6 +84,8 @@ export const squashTables = {
       currentServerSide: State.SQLite.text({ default: 'R' }), // 'R' | 'L'
       currentServerHandIndex: State.SQLite.integer({ default: 0 }), // 0 | 1
       firstHandUsed: State.SQLite.boolean({ default: false }),
+      teamAPreferredServiceSide: State.SQLite.text({ default: 'R' }), // 'R' | 'L'
+      teamBPreferredServiceSide: State.SQLite.text({ default: 'R' }), // 'R' | 'L'
     },
   }),
 

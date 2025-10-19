@@ -19,6 +19,7 @@ type TeamRowsProps = {
   isGameOver: boolean
   onToggleServeSide: () => void
   maxCols: number
+  preferredSide: 'R' | 'L'
 }
 
 /**
@@ -38,6 +39,7 @@ export const TeamRows = memo(
     isGameOver,
     onToggleServeSide,
     maxCols,
+    preferredSide,
   }: TeamRowsProps) => {
     const player1Cells = grid[player1Key]
     const player2Cells = grid[player2Key]
@@ -80,14 +82,19 @@ export const TeamRows = memo(
       }
 
       // Regular cell rendering
-      const cell = cells[col]
+      const cellValue = cells[col]
       const isActive = rowKey === serverRowKey && col === serverScore
 
       // Determine if clickable (hand-in, first serve of hand, not game over)
       const prevCol = serverScore - 1
       const isFirstServeOfHand = prevCol < 0 || !cells[prevCol]
+      const isHandIn = handIndex === 0
       const isClickable =
-        isActive && handIndex === 0 && isFirstServeOfHand && !isGameOver
+        isActive && isHandIn && isFirstServeOfHand && !isGameOver
+
+      // Use preferred side when it's hand-in and first serve (Choice situation)
+      const cell =
+        isActive && isHandIn && isFirstServeOfHand ? preferredSide : cellValue
 
       return (
         <ScoreCell
