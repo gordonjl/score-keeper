@@ -21,7 +21,7 @@ export const ScoreCell = memo(
       <td
         rowSpan={rowSpan}
         onClick={onClick}
-        className={`border border-base-300 p-0.5 sm:p-1 text-center text-xs sm:text-sm min-w-[28px] sm:min-w-[32px] ${bgColor} ${isClickable ? 'cursor-pointer hover:bg-primary/40' : ''}`}
+        className={`border border-base-300 p-0.5 sm:p-1 text-center text-[10px] sm:text-xs min-w-[24px] sm:min-w-[28px] md:min-w-[32px] ${bgColor} ${isClickable ? 'cursor-pointer hover:bg-primary/40' : ''}`}
         title={isClickable ? 'Click to toggle R/L' : ''}
       >
         {cell || ''}

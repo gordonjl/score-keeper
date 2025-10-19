@@ -7,6 +7,10 @@ import { DeleteMatchModal } from '../components/modals/DeleteMatchModal'
 import { NextGameSetup } from '../components/game/NextGameSetup'
 import { events, tables } from '../livestore/schema'
 import { gamesByMatch$, nonArchivedMatches$ } from '../livestore/squash-queries'
+import {
+  formatTeamNameAbbreviated,
+  formatTeamNameFull,
+} from '../utils/nameUtils'
 
 // ============================================================================
 // TYPES
@@ -48,20 +52,7 @@ type MatchStats = {
 // PURE FUNCTIONS
 // ============================================================================
 
-const formatPlayerName = (firstName: string, lastName: string): string =>
-  `${firstName} ${lastName}`
-
-const formatTeamName = (
-  player1FirstName: string,
-  player1LastName: string,
-  player2FirstName: string,
-  player2LastName: string,
-): string => {
-  const hasNames =
-    player1FirstName || player1LastName || player2FirstName || player2LastName
-  if (!hasNames) return 'Team (Names not set)'
-  return `${formatPlayerName(player1FirstName, player1LastName)} & ${formatPlayerName(player2FirstName, player2LastName)}`
-}
+// Removed formatPlayerName and formatTeamName - now using utils
 
 const computeMatchStats = (games: ReadonlyArray<Game>): MatchStats => {
   const completedGames = games.filter((g) => g.status === 'completed')
@@ -216,13 +207,29 @@ const MatchCard = ({
   onStartFirstGame,
 }: MatchCardProps) => {
   const stats = computeMatchStats(games)
-  const teamAName = formatTeamName(
+
+  // Full names for desktop
+  const teamANameFull = formatTeamNameFull(
     match.playerA1FirstName,
     match.playerA1LastName,
     match.playerA2FirstName,
     match.playerA2LastName,
   )
-  const teamBName = formatTeamName(
+  const teamBNameFull = formatTeamNameFull(
+    match.playerB1FirstName,
+    match.playerB1LastName,
+    match.playerB2FirstName,
+    match.playerB2LastName,
+  )
+
+  // Abbreviated names for mobile/tablet
+  const teamANameAbbr = formatTeamNameAbbreviated(
+    match.playerA1FirstName,
+    match.playerA1LastName,
+    match.playerA2FirstName,
+    match.playerA2LastName,
+  )
+  const teamBNameAbbr = formatTeamNameAbbreviated(
     match.playerB1FirstName,
     match.playerB1LastName,
     match.playerB2FirstName,
@@ -268,13 +275,13 @@ const MatchCard = ({
     stats.hasInProgressGame || shouldStartFirstGame ? Play : null
 
   return (
-    <div className="group relative bg-gradient-to-br from-base-200 to-base-300 rounded-xl p-4 hover:shadow-xl transition-all duration-300 border border-base-300/50 hover:border-primary/20">
+    <div className="group relative bg-gradient-to-br from-base-200 to-base-300 rounded-xl p-3 sm:p-4 hover:shadow-xl transition-all duration-300 border border-base-300/50 hover:border-primary/20">
       {/* Compact header row */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1.5 text-xs text-base-content/50">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>
+            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="text-[10px] sm:text-xs">
               {new Date(match.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -295,36 +302,41 @@ const MatchCard = ({
           className="transition-opacity btn btn-xs btn-ghost btn-circle text-error hover:bg-error/10"
           aria-label="Delete match"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
       </div>
 
-      {/* Score display - horizontal layout */}
-      <div className="flex items-center justify-between mb-3 bg-base-100/50 rounded-lg p-3">
-        <div className="flex-1">
-          <div className="text-[9px] text-base-content/40 uppercase tracking-wider font-bold mb-1">
+      {/* Score display - responsive layout */}
+      <div className="flex items-center justify-between mb-3 bg-base-100/50 rounded-lg p-1.5 sm:p-2 md:p-3">
+        <div className="flex-1 min-w-0 pr-1">
+          <div className="text-[7px] sm:text-[8px] text-base-content/40 uppercase tracking-wider font-bold mb-0.5">
             Team A
           </div>
+          {/* Show abbreviated on mobile/tablet, full on desktop */}
           <div
-            className={`font-bold text-sm truncate ${
+            className={`font-bold text-[10px] sm:text-xs md:text-sm line-clamp-2 leading-tight ${
               isTeamAWinner ? 'text-primary' : 'text-base-content'
             }`}
+            title={teamANameFull}
           >
-            {teamAName}
+            <span className="lg:hidden">{teamANameAbbr}</span>
+            <span className="hidden lg:inline">{teamANameFull}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-4">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-1.5 sm:px-2 md:px-4 flex-shrink-0">
           <div
-            className={`text-3xl font-black tabular-nums ${
+            className={`text-xl sm:text-2xl md:text-3xl font-black tabular-nums ${
               isTeamAWinner ? 'text-primary' : 'text-base-content/40'
             }`}
           >
             {stats.gamesWonA}
           </div>
-          <div className="text-base-content/20 font-bold">-</div>
+          <div className="text-base-content/20 font-bold text-xs sm:text-sm">
+            -
+          </div>
           <div
-            className={`text-3xl font-black tabular-nums ${
+            className={`text-xl sm:text-2xl md:text-3xl font-black tabular-nums ${
               isTeamBWinner ? 'text-primary' : 'text-base-content/40'
             }`}
           >
@@ -332,23 +344,25 @@ const MatchCard = ({
           </div>
         </div>
 
-        <div className="flex-1 text-right">
-          <div className="text-[9px] text-base-content/40 uppercase tracking-wider font-bold mb-1">
+        <div className="flex-1 text-right min-w-0 pl-1">
+          <div className="text-[7px] sm:text-[8px] text-base-content/40 uppercase tracking-wider font-bold mb-0.5">
             Team B
           </div>
           <div
-            className={`font-bold text-sm truncate ${
+            className={`font-bold text-[10px] sm:text-xs md:text-sm line-clamp-2 leading-tight ${
               isTeamBWinner ? 'text-primary' : 'text-base-content'
             }`}
+            title={teamBNameFull}
           >
-            {teamBName}
+            <span className="lg:hidden">{teamBNameAbbr}</span>
+            <span className="hidden lg:inline">{teamBNameFull}</span>
           </div>
         </div>
       </div>
 
-      {/* Games and action row */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      {/* Games and action row - stack on very small screens */}
+      <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 overflow-x-auto">
           <GameIndicators games={games} stats={stats} />
         </div>
         {shouldStartFirstGame ? (
@@ -357,19 +371,23 @@ const MatchCard = ({
               e.preventDefault()
               onStartFirstGame(match.id)
             }}
-            className="btn btn-sm btn-primary gap-1.5 shadow-md hover:shadow-lg transition-shadow"
+            className="btn btn-xs sm:btn-sm btn-primary gap-1 sm:gap-1.5 shadow-md hover:shadow-lg transition-shadow flex-shrink-0"
           >
-            {ButtonIcon && <ButtonIcon className="w-4 h-4" />}
-            <span className="font-semibold text-xs">{buttonText}</span>
+            {ButtonIcon && <ButtonIcon className="w-3 h-3 sm:w-4 sm:h-4" />}
+            <span className="font-semibold text-[10px] sm:text-xs">
+              {buttonText}
+            </span>
           </button>
         ) : (
           <Link
             to={linkTo}
             params={linkParams}
-            className="btn btn-sm btn-primary gap-1.5 shadow-md hover:shadow-lg transition-shadow"
+            className="btn btn-xs sm:btn-sm btn-primary gap-1 sm:gap-1.5 shadow-md hover:shadow-lg transition-shadow flex-shrink-0"
           >
-            {ButtonIcon && <ButtonIcon className="w-4 h-4" />}
-            <span className="font-semibold text-xs">{buttonText}</span>
+            {ButtonIcon && <ButtonIcon className="w-3 h-3 sm:w-4 sm:h-4" />}
+            <span className="font-semibold text-[10px] sm:text-xs">
+              {buttonText}
+            </span>
           </Link>
         )}
       </div>
@@ -386,11 +404,14 @@ const EmptyState = () => (
 )
 
 const MatchesHeader = () => (
-  <div className="flex justify-between items-center mb-6">
-    <h1 className="text-3xl font-bold">Match History</h1>
-    <Link to="/" className="btn btn-primary">
-      <Play className="w-4 h-4 mr-2" />
-      New Match
+  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+    <h1 className="text-2xl sm:text-3xl font-bold">Match History</h1>
+    <Link
+      to="/"
+      className="btn btn-sm sm:btn-md btn-primary gap-2 w-full sm:w-auto"
+    >
+      <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+      <span>New Match</span>
     </Link>
   </div>
 )
@@ -468,13 +489,13 @@ function MatchesListRoute() {
     const match = matches.find((m) => m.id === matchId)
     if (!match) return
 
-    const teamAName = formatTeamName(
+    const teamAName = formatTeamNameFull(
       match.playerA1FirstName,
       match.playerA1LastName,
       match.playerA2FirstName,
       match.playerA2LastName,
     )
-    const teamBName = formatTeamName(
+    const teamBName = formatTeamNameFull(
       match.playerB1FirstName,
       match.playerB1LastName,
       match.playerB2FirstName,
@@ -585,7 +606,7 @@ function MatchesListRoute() {
     : null
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-5xl">
       <MatchesHeader />
       {hasMatches ? (
         <MatchesList
