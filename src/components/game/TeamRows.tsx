@@ -62,13 +62,11 @@ export const TeamRows = memo(
       // If first player row and X exists, render merged cell with rowspan
       if (isFirstPlayer && hasX) {
         const isActive = rowKey === serverRowKey && col === serverScore
-        const isHandOut = isActive && handIndex === 1
         return (
           <ScoreCell
             key={`${rowKey}-${col}`}
             cell="X"
             isActive={isActive}
-            isHandOut={isHandOut}
             isClickable={false}
             onClick={noopClick}
             rowSpan={2}
@@ -84,7 +82,6 @@ export const TeamRows = memo(
       // Regular cell rendering
       const cell = cells[col]
       const isActive = rowKey === serverRowKey && col === serverScore
-      const isHandOut = isActive && handIndex === 1
 
       // Determine if clickable (hand-in, first serve of hand, not game over)
       const prevCol = serverScore - 1
@@ -97,7 +94,6 @@ export const TeamRows = memo(
           key={`${rowKey}-${col}`}
           cell={cell}
           isActive={isActive}
-          isHandOut={isHandOut}
           isClickable={isClickable}
           onClick={isClickable ? handleClickableCell : noopClick}
         />

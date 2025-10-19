@@ -4,21 +4,13 @@ import type { Cell } from '../../machines/squashMachine.types'
 type ScoreCellProps = {
   cell: Cell
   isActive: boolean
-  isHandOut: boolean
   isClickable: boolean
   onClick: () => void
   rowSpan?: number
 }
 
 export const ScoreCell = memo(
-  ({
-    cell,
-    isActive,
-    isHandOut: _isHandOut,
-    isClickable,
-    onClick,
-    rowSpan,
-  }: ScoreCellProps) => {
+  ({ cell, isActive, isClickable, onClick, rowSpan }: ScoreCellProps) => {
     const bgColor = isClickable
       ? 'bg-warning/20 font-bold'
       : isActive
