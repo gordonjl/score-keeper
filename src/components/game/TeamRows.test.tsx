@@ -40,6 +40,7 @@ describe('TeamRows', () => {
             isGameOver={false}
             onToggleServeSide={() => {}}
             maxCols={5}
+            preferredSide="R"
           />
         </tbody>
       </table>,
@@ -68,6 +69,7 @@ describe('TeamRows', () => {
             isGameOver={false}
             onToggleServeSide={() => {}}
             maxCols={5}
+            preferredSide="R"
           />
         </tbody>
       </table>,
@@ -92,11 +94,12 @@ describe('TeamRows', () => {
             grid={grid}
             playerLabels={mockPlayerLabels}
             serverRowKey="B1"
-            serverScore={0}
-            handIndex={0}
+            serverScore={1}
+            handIndex={1}
             isGameOver={false}
             onToggleServeSide={() => {}}
             maxCols={5}
+            preferredSide="R"
           />
         </tbody>
       </table>,
@@ -125,6 +128,7 @@ describe('TeamRows', () => {
             isGameOver={false}
             onToggleServeSide={() => {}}
             maxCols={5}
+            preferredSide="R"
           />
         </tbody>
       </table>,
