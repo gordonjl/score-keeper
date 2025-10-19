@@ -229,8 +229,8 @@ export const generateServeAnnouncement = (
   let announcement = ''
   if (isHandOut) {
     announcement = hasServedBefore
-      ? `Hand Out, ${scorePhrase}`
-      : `Hand Out, ${scorePhrase}, ${serverName} to Serve`
+      ? `${scorePhrase}, Choice`
+      : `${scorePhrase}, ${serverName} to Serve`
   } else {
     announcement = hasServedBefore
       ? `${scorePhrase}, from the ${sideName}`
