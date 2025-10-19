@@ -142,6 +142,8 @@ export const ScoreGridContainer = ({
       isGameOver={machineState.isGameOver}
       onToggleServeSide={onToggleServeSide}
       maxCols={MAX_COLS}
+      teamAPreferredSide={gameData.teamAPreferredServiceSide as 'R' | 'L'}
+      teamBPreferredSide={gameData.teamBPreferredServiceSide as 'R' | 'L'}
     />
   )
 }
