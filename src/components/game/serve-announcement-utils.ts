@@ -7,6 +7,7 @@ type GameData = {
   currentServerTeam: Team
   currentServerPlayer: PlayerRow
   currentServerSide: Side
+  currentServerHandIndex: 0 | 1
   scoreA: number
   scoreB: number
   maxPoints: number
@@ -196,13 +197,18 @@ export const generateServeAnnouncement = (
       ? `${toWords(serverScore)} All`
       : `${toWords(serverScore)}–${toWords(receiverScore)}`
 
-  // Compute side name
+  // Determine if this is hand out (first serve of hand)
+  // Hand out = handIndex 0 (first server) AND it's the beginning of their serve
+  // This happens when the serving team's score is 0 (start of game/after side-out)
+  const isHandOut = game.currentServerHandIndex === 0 && serverScore === 0
+
   const sideName = game.currentServerSide === 'R' ? 'Right' : 'Left'
+  const positionPhrase = isHandOut ? 'Hand Out' : `from the ${sideName}`
 
   // Build base announcement
   let announcement = hasServedBefore
-    ? `${scorePhrase}, from the ${sideName}`
-    : `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+    ? `${scorePhrase}, ${positionPhrase}`
+    : `${scorePhrase}, ${isHandOut ? 'Hand Out, ' : ''}${serverName} to Serve ${isHandOut ? '' : positionPhrase}`
 
   // Add game/match ball suffix
   if (isMatchBall(game, games, match)) {

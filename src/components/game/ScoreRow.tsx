@@ -53,11 +53,13 @@ export const ScoreRow = memo(
 
       // If top row and team has X, render merged cell
       if (isTopOfTeam && teamCell === 'X') {
+        const isHandOut = isActive && handIndex === 1
         return (
           <ScoreCell
             key={`${rowKey}-${col}`}
             cell="X"
             isActive={isActive}
+            isHandOut={isHandOut}
             isClickable={false}
             onClick={noopClick}
             rowSpan={2}
@@ -70,11 +72,13 @@ export const ScoreRow = memo(
         return null
       }
 
+      const isHandOut = isActive && handIndex === 1
       return (
         <ScoreCell
           key={`${rowKey}-${col}`}
           cell={cell}
           isActive={isActive}
+          isHandOut={isHandOut}
           isClickable={isClickable}
           onClick={isClickable ? handleClickableCell : noopClick}
         />
