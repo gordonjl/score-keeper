@@ -201,7 +201,7 @@ export const generateServeAnnouncement = (
 
   // Determine if this is hand out (first serve of hand)
   // Hand out = handIndex 0 (first server) AND first serve at this score
-  // Check if there was a previous rally where this team served at (currentScore - 1)
+  // BUT NOT the very first serve of the game (0-0, no rallies yet)
   const prevScore = serverScore - 1
   const gameRallies = rallies.filter(
     (r) => r.gameId === game.id && !r.deletedAt,
@@ -217,15 +217,25 @@ export const generateServeAnnouncement = (
       )
     })
   const isFirstServeOfHand = prevScore < 0 || !hasServedAtPrevScore
-  const isHandOut = game.currentServerHandIndex === 0 && isFirstServeOfHand
+  const isVeryFirstServe =
+    serverScore === 0 && receiverScore === 0 && gameRallies.length === 0
+  const isHandOut =
+    game.currentServerHandIndex === 0 && isFirstServeOfHand && !isVeryFirstServe
 
   const sideName = game.currentServerSide === 'R' ? 'Right' : 'Left'
-  const positionPhrase = isHandOut ? 'Hand Out' : `from the ${sideName}`
 
   // Build base announcement
-  let announcement = hasServedBefore
-    ? `${scorePhrase}, ${positionPhrase}`
-    : `${scorePhrase}, ${isHandOut ? 'Hand Out, ' : ''}${serverName} to Serve ${isHandOut ? '' : positionPhrase}`
+  // Format: "Hand Out, Score" or "Score, from the Side"
+  let announcement = ''
+  if (isHandOut) {
+    announcement = hasServedBefore
+      ? `Hand Out, ${scorePhrase}`
+      : `Hand Out, ${scorePhrase}, ${serverName} to Serve`
+  } else {
+    announcement = hasServedBefore
+      ? `${scorePhrase}, from the ${sideName}`
+      : `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
+  }
 
   // Add game/match ball suffix
   if (isMatchBall(game, games, match)) {
