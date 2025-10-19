@@ -137,14 +137,14 @@ function MatchSummaryRoute() {
               <div
                 className={`stat bg-base-200 rounded-lg ${matchWinnerTeam === 'A' ? 'ring-2 ring-success' : ''}`}
               >
-                <div className="stat-title">{players.teamA}</div>
+                <div className="stat-title truncate">{players.teamA}</div>
                 <div className="stat-value text-primary">{gamesWonA}</div>
                 <div className="stat-desc">Games Won</div>
               </div>
               <div
                 className={`stat bg-base-200 rounded-lg ${matchWinnerTeam === 'B' ? 'ring-2 ring-success' : ''}`}
               >
-                <div className="stat-title">{players.teamB}</div>
+                <div className="stat-title truncate">{players.teamB}</div>
                 <div className="stat-value text-secondary">{gamesWonB}</div>
                 <div className="stat-desc">Games Won</div>
               </div>

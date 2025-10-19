@@ -42,125 +42,157 @@ export default function Header() {
     document.documentElement.setAttribute('data-theme', newTheme)
   }
 
-  const closeDropdown = () => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur()
+  const closeDrawer = () => {
+    const drawerToggle = document.getElementById(
+      'header-drawer',
+    ) as HTMLInputElement | null
+    if (drawerToggle) {
+      drawerToggle.checked = false
     }
   }
 
   return (
-    <header className="navbar bg-base-100 shadow-lg sticky top-0 z-50 border-b border-base-300">
-      <div className="navbar-start">
-        <Link to="/" className="btn btn-ghost text-xl gap-2">
-          <img
-            src="/pcs_shield.png"
-            alt="PCS Logo"
-            className="w-6 h-6 object-contain"
+    <>
+      <div className="drawer drawer-end z-50">
+        <input
+          id="header-drawer"
+          type="checkbox"
+          className="drawer-toggle"
+          aria-label="Toggle navigation menu"
+        />
+        <div className="drawer-content">
+          {/* Navbar */}
+          <header className="navbar bg-base-100 shadow-lg sticky top-0 z-40 border-b border-base-300">
+            <div className="navbar-start">
+              <Link to="/" className="btn btn-ghost text-base sm:text-xl gap-2">
+                <img
+                  src="/pcs_shield.png"
+                  alt="PCS Logo"
+                  className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
+                />
+                <span className="hidden sm:inline">Squash Score Keeper</span>
+                <span className="sm:hidden">Squash</span>
+              </Link>
+            </div>
+            <div className="navbar-center hidden lg:flex">
+              <div className="badge badge-ghost badge-md lg:badge-lg">
+                PAR-15 Doubles Scoring
+              </div>
+            </div>
+            <div className="navbar-end gap-1 sm:gap-2">
+              <LoginButton />
+              <button
+                onClick={toggleTheme}
+                className="btn btn-ghost btn-circle btn-sm sm:btn-md"
+                aria-label="Toggle theme"
+              >
+                {theme === 'pcsquash' ? (
+                  <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
+              </button>
+              {/* Hamburger menu button - visible on all screens */}
+              <label
+                htmlFor="header-drawer"
+                className="btn btn-ghost btn-circle btn-sm sm:btn-md drawer-button"
+                aria-label="Open menu"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 sm:h-5 sm:w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </label>
+            </div>
+          </header>
+        </div>
+        {/* Drawer sidebar */}
+        <div className="drawer-side">
+          <label
+            htmlFor="header-drawer"
+            aria-label="Close menu"
+            className="drawer-overlay"
           />
-          <span className="hidden sm:inline">Squash Score Keeper</span>
-          <span className="sm:hidden">Squash</span>
-        </Link>
-      </div>
-      <div className="navbar-center hidden md:flex">
-        <div className="badge badge-ghost badge-lg">PAR-15 Doubles Scoring</div>
-      </div>
-      <div className="navbar-end gap-2">
-        <LoginButton />
-        <button
-          onClick={toggleTheme}
-          className="btn btn-ghost btn-circle"
-          aria-label="Toggle theme"
-        >
-          {theme === 'pcsquash' ? (
-            <Moon className="w-5 h-5" />
-          ) : (
-            <Sun className="w-5 h-5" />
-          )}
-        </button>
-        <div className="dropdown dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h7"
-              />
-            </svg>
-          </div>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow-xl border border-base-300"
-          >
+          <ul className="menu bg-base-100 min-h-full w-72 sm:w-80 p-4 gap-1">
+            {/* Drawer header */}
+            <li className="menu-title">
+              <span className="text-lg font-bold">Navigation</span>
+            </li>
             <li>
-              <Link to="/" onClick={closeDropdown}>
+              <Link to="/" onClick={closeDrawer}>
                 Home
               </Link>
             </li>
             <li>
-              <Link to="/matches" onClick={closeDropdown}>
+              <Link to="/matches" onClick={closeDrawer}>
                 All Matches
               </Link>
             </li>
             {can('user.view') && (
               <>
+                <li className="menu-title mt-4">
+                  <span>Management</span>
+                </li>
                 <li>
-                  <Link to="/players" onClick={closeDropdown}>
+                  <Link to="/players" onClick={closeDrawer}>
                     Player Management
                   </Link>
                 </li>
                 <li>
-                  <Link to="/users" onClick={closeDropdown}>
+                  <Link to="/users" onClick={closeDrawer}>
                     User Management
                   </Link>
                 </li>
               </>
             )}
+            <li className="menu-title mt-4">
+              <span>Referee Tools</span>
+            </li>
             <li>
-              Referee Tools
-              <ul>
-                <li>
-                  <button
-                    onClick={() => {
-                      updateModalState({
-                        ...modalState,
-                        letStrokeModal: { isOpen: true },
-                      })
-                      closeDropdown()
-                    }}
-                  >
-                    Let/Stroke Helper
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      updateModalState({
-                        ...modalState,
-                        timersModal: { isOpen: true },
-                      })
-                      closeDropdown()
-                    }}
-                  >
-                    Timers & Conduct
-                  </button>
-                </li>
-                <li>
-                  <a
-                    href="https://ussquash.org/wp-content/uploads/2024/11/2024-Hardball-Squash-Doubles-Rules.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Hardball Rules (PDF)
-                  </a>
-                </li>
-              </ul>
+              <button
+                onClick={() => {
+                  updateModalState({
+                    ...modalState,
+                    letStrokeModal: { isOpen: true },
+                  })
+                  closeDrawer()
+                }}
+              >
+                Let/Stroke Helper
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  updateModalState({
+                    ...modalState,
+                    timersModal: { isOpen: true },
+                  })
+                  closeDrawer()
+                }}
+              >
+                Timers & Conduct
+              </button>
+            </li>
+            <li>
+              <a
+                href="https://ussquash.org/wp-content/uploads/2024/11/2024-Hardball-Squash-Doubles-Rules.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeDrawer}
+              >
+                Hardball Rules (PDF)
+              </a>
             </li>
           </ul>
         </div>
@@ -183,6 +215,6 @@ export default function Header() {
           })
         }
       />
-    </header>
+    </>
   )
 }

@@ -4,7 +4,11 @@ import {
   gamesByMatch$,
   matchById$,
 } from '../../livestore/squash-queries'
-import { getTeamNames } from './match-utils'
+import {
+  getTeamNames,
+  getTeamNamesAbbreviated,
+  getTeamNamesCompact,
+} from './match-utils'
 
 type TeamKey = 'teamA' | 'teamB'
 
@@ -30,6 +34,8 @@ export const ScoreHeader = ({
 
   // Build team names from match data
   const teamNames = getTeamNames(match)
+  const teamNamesAbbr = getTeamNamesAbbreviated(match)
+  const teamNamesCompact = getTeamNamesCompact(match)
 
   // Compute derived values from games
   const currentGameNumber =
@@ -52,23 +58,30 @@ export const ScoreHeader = ({
 
   return (
     <div className="card bg-base-100 shadow-xl mb-3 border border-base-300">
-      <div className="card-body p-3 sm:p-4">
-        <div className="flex justify-between items-center gap-4">
-          <div className="flex-1 flex items-center gap-3">
+      <div className="card-body p-2 sm:p-3 md:p-4">
+        <div className="flex justify-between items-center gap-1.5 sm:gap-2 md:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-1 min-w-0">
             <div
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-2xl sm:text-4xl font-bold transition-all bg-base-200 text-base-content`}
+              className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-bold transition-all bg-base-200 text-base-content flex-shrink-0`}
             >
               {topScore}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-sm sm:text-lg font-bold truncate">
-                {teamNames[topTeam]}
+              <h1
+                className="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold line-clamp-2 leading-tight"
+                title={teamNames[topTeam]}
+              >
+                <span className="sm:hidden">{teamNamesCompact[topTeam]}</span>
+                <span className="hidden sm:inline lg:hidden">
+                  {teamNamesAbbr[topTeam]}
+                </span>
+                <span className="hidden lg:inline">{teamNames[topTeam]}</span>
               </h1>
-              <div className="flex gap-1 mt-1">
+              <div className="flex gap-1 mt-0.5 sm:mt-1">
                 {Array.from({ length: topTeamGamesWon }).map((_, i) => (
                   <div
                     key={i}
-                    className="w-2 h-2 rounded-full bg-success"
+                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success"
                     title={`Game ${i + 1} won`}
                   />
                 ))}
@@ -76,27 +89,38 @@ export const ScoreHeader = ({
             </div>
           </div>
 
-          <div className="text-center px-2 flex-shrink-0">
-            <div className="badge badge-primary badge-lg">
+          <div className="text-center px-1 sm:px-2 flex-shrink-0">
+            <div className="badge badge-primary badge-sm sm:badge-md md:badge-lg whitespace-nowrap">
               Game {currentGameNumber}
             </div>
           </div>
 
-          <div className="flex-1 flex items-center gap-3 flex-row-reverse">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-row-reverse flex-1 min-w-0">
             <div
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-2xl sm:text-4xl font-bold transition-all bg-base-200 text-base-content`}
+              className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-bold transition-all bg-base-200 text-base-content flex-shrink-0`}
             >
               {bottomScore}
             </div>
             <div className="flex-1 min-w-0 text-right">
-              <h1 className="text-sm sm:text-lg font-bold truncate">
-                {teamNames[bottomTeam]}
+              <h1
+                className="text-[10px] sm:text-xs md:text-sm lg:text-lg font-bold line-clamp-2 leading-tight"
+                title={teamNames[bottomTeam]}
+              >
+                <span className="sm:hidden">
+                  {teamNamesCompact[bottomTeam]}
+                </span>
+                <span className="hidden sm:inline lg:hidden">
+                  {teamNamesAbbr[bottomTeam]}
+                </span>
+                <span className="hidden lg:inline">
+                  {teamNames[bottomTeam]}
+                </span>
               </h1>
-              <div className="flex gap-1 mt-1 justify-end">
+              <div className="flex gap-1 mt-0.5 sm:mt-1 justify-end">
                 {Array.from({ length: bottomTeamGamesWon }).map((_, i) => (
                   <div
                     key={i}
-                    className="w-2 h-2 rounded-full bg-success"
+                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success"
                     title={`Game ${i + 1} won`}
                   />
                 ))}

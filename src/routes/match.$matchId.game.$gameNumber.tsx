@@ -352,7 +352,7 @@ function GameRoute() {
   }, [matchActorRef, navigate])
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 p-2 sm:p-4 max-w-full mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
+    <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 p-2 sm:p-3 md:p-4 max-w-7xl mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
       {/* Match Progress Sidebar - Desktop */}
       {matchActorRef && (
         <div className="hidden lg:block lg:w-80 flex-shrink-0">

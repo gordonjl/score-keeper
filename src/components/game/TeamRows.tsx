@@ -104,12 +104,15 @@ export const TeamRows = memo(
       <>
         {/* First player row */}
         <tr>
-          <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-200 z-10">
-            <div className="flex flex-col">
-              <span className="text-[10px] sm:text-xs text-primary font-semibold">
+          <td className="border border-base-300 p-0.5 sm:p-1 font-bold sticky left-0 bg-base-200 z-10">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] sm:text-[10px] text-primary font-semibold">
                 {player1Key}
               </span>
-              <span className="text-xs sm:text-sm truncate max-w-[50px] sm:max-w-[70px]">
+              <span
+                className="text-[10px] sm:text-xs truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px]"
+                title={playerLabels[player1Key]}
+              >
                 {playerLabels[player1Key]}
               </span>
             </div>
@@ -121,12 +124,15 @@ export const TeamRows = memo(
 
         {/* Second player row */}
         <tr>
-          <td className="border border-base-300 p-1 font-bold sticky left-0 bg-base-200 z-10">
-            <div className="flex flex-col">
-              <span className="text-[10px] sm:text-xs text-primary font-semibold">
+          <td className="border border-base-300 p-0.5 sm:p-1 font-bold sticky left-0 bg-base-200 z-10">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] sm:text-[10px] text-primary font-semibold">
                 {player2Key}
               </span>
-              <span className="text-xs sm:text-sm truncate max-w-[50px] sm:max-w-[70px]">
+              <span
+                className="text-[10px] sm:text-xs truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px]"
+                title={playerLabels[player2Key]}
+              >
                 {playerLabels[player2Key]}
               </span>
             </div>

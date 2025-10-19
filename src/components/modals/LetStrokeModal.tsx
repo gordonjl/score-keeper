@@ -11,15 +11,17 @@ export const LetStrokeModal = ({ isOpen, onClose }: LetStrokeModalProps) => {
 
   return (
     <div className="modal modal-open">
-      <div className="modal-box max-w-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Let/Stroke Decision Helper</h2>
+      <div className="modal-box max-w-2xl p-4 sm:p-6">
+        <div className="flex justify-between items-center gap-2 mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold">
+            Let/Stroke Decision Helper
+          </h2>
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-circle btn-sm"
+            className="btn btn-ghost btn-circle btn-xs sm:btn-sm flex-shrink-0"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
         <LetStrokeDecision />
