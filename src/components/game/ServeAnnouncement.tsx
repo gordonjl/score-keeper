@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 
@@ -33,9 +33,30 @@ export const ServeAnnouncement = ({ gameId }: ServeAnnouncementProps) => {
     [game, match, games, rallies],
   )
 
+  // Animation state for announcement updates
+  const [animate, setAnimate] = useState(false)
+
+  // Trigger subtle animation when announcement changes
+  useEffect(() => {
+    setAnimate(true)
+    const timer = setTimeout(() => setAnimate(false), 400)
+    return () => clearTimeout(timer)
+  }, [announcement])
+
   return (
-    <div className="alert mb-4">
-      <span className="font-medium">{announcement}</span>
+    <div
+      className="alert bg-primary text-primary-content shadow-lg mb-4 border-2 border-primary transition-all duration-300"
+      style={{
+        boxShadow: animate
+          ? '0 0 0 3px rgba(45, 212, 191, 0.2), 0 0 25px rgba(45, 212, 191, 0.3), 0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          : undefined,
+      }}
+    >
+      <div className="flex-1 text-center">
+        <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold">
+          {announcement}
+        </span>
+      </div>
     </div>
   )
 }
