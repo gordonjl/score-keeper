@@ -1,9 +1,7 @@
-import { TeamRows } from './TeamRows'
-import type {
-  ActivityGrid,
-  RowKey,
-  Team,
-} from '../../machines/squashMachine.types'
+import { useMemo } from 'react'
+import { computeGridMetadata } from './score-table-logic'
+import type { ActivityGrid, RowKey } from '../../machines/squashMachine.types'
+import type { CellMetadata } from './score-table-logic'
 
 type ScoreTableProps = {
   grid: ActivityGrid
@@ -19,36 +17,32 @@ type ScoreTableProps = {
   teamBPreferredSide: 'R' | 'L'
 }
 
-type TeamPair = {
-  team: Team
-  player1: RowKey
-  player2: RowKey
-}
-
 /**
- * Group consecutive rows into team pairs.
- * Rows come in order like ['A1', 'A2', 'B1', 'B2'] or ['B2', 'B1', 'A1', 'A2']
- * We need to identify which consecutive pairs belong to the same team.
+ * Simple cell component - no logic, just presentation.
  */
-const groupRowsIntoTeamPairs = (
-  rows: ReadonlyArray<RowKey>,
-): Array<TeamPair> => {
-  const pairs: Array<TeamPair> = []
+const Cell = ({
+  cell,
+  onClick,
+}: {
+  cell: CellMetadata
+  onClick: () => void
+}) => {
+  const bgColor = cell.isClickable
+    ? 'bg-warning/20 font-bold'
+    : cell.isActive
+      ? 'bg-primary/20 font-bold'
+      : ''
 
-  for (let i = 0; i < rows.length - 1; i += 2) {
-    const player1 = rows[i]
-    const player2 = rows[i + 1]
-
-    const team = player1.startsWith('A') ? 'A' : 'B'
-
-    pairs.push({
-      team,
-      player1,
-      player2,
-    })
-  }
-
-  return pairs
+  return (
+    <td
+      rowSpan={cell.rowSpan}
+      onClick={cell.isClickable ? onClick : undefined}
+      className={`border border-base-300 p-0.5 sm:p-1 text-center text-[10px] sm:text-xs min-w-[24px] sm:min-w-[28px] md:min-w-[32px] ${bgColor} ${cell.isClickable ? 'cursor-pointer hover:bg-primary/40' : ''}`}
+      title={cell.isClickable ? 'Click to toggle R/L' : ''}
+    >
+      {cell.content || ''}
+    </td>
+  )
 }
 
 export const ScoreTable = ({
@@ -64,8 +58,36 @@ export const ScoreTable = ({
   teamAPreferredSide,
   teamBPreferredSide,
 }: ScoreTableProps) => {
-  const teamPairs = groupRowsIntoTeamPairs(rows)
+  // Compute all render metadata upfront - pure function, easy to test
+  const rowsMetadata = useMemo(
+    () =>
+      computeGridMetadata({
+        grid,
+        rows,
+        playerLabels,
+        serverRowKey,
+        serverScore,
+        handIndex,
+        isGameOver,
+        maxCols,
+        teamAPreferredSide,
+        teamBPreferredSide,
+      }),
+    [
+      grid,
+      rows,
+      playerLabels,
+      serverRowKey,
+      serverScore,
+      handIndex,
+      isGameOver,
+      maxCols,
+      teamAPreferredSide,
+      teamBPreferredSide,
+    ],
+  )
 
+  // Simple rendering - just map over computed metadata
   return (
     <div className="card bg-base-100 shadow-xl mb-3 sm:mb-4 border border-base-300">
       <div className="card-body p-1.5 sm:p-2 md:p-4">
@@ -87,24 +109,31 @@ export const ScoreTable = ({
               </tr>
             </thead>
             <tbody>
-              {teamPairs.map((pair) => (
-                <TeamRows
-                  key={pair.team}
-                  team={pair.team}
-                  player1Key={pair.player1}
-                  player2Key={pair.player2}
-                  grid={grid}
-                  playerLabels={playerLabels}
-                  serverRowKey={serverRowKey}
-                  serverScore={serverScore}
-                  handIndex={handIndex}
-                  isGameOver={isGameOver}
-                  onToggleServeSide={onToggleServeSide}
-                  maxCols={maxCols}
-                  preferredSide={
-                    pair.team === 'A' ? teamAPreferredSide : teamBPreferredSide
-                  }
-                />
+              {rowsMetadata.map((row) => (
+                <tr key={row.rowKey}>
+                  <td className="border border-base-300 p-0.5 sm:p-1 font-bold sticky left-0 bg-base-200 z-10">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[9px] sm:text-[10px] text-primary font-semibold">
+                        {row.rowKey}
+                      </span>
+                      <span
+                        className="text-[10px] sm:text-xs truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px]"
+                        title={row.playerLabel}
+                      >
+                        {row.playerLabel}
+                      </span>
+                    </div>
+                  </td>
+                  {row.cells
+                    .filter((cell) => cell.shouldRender)
+                    .map((cell) => (
+                      <Cell
+                        key={`${cell.rowKey}-${cell.col}`}
+                        cell={cell}
+                        onClick={onToggleServeSide}
+                      />
+                    ))}
+                </tr>
               ))}
             </tbody>
           </table>

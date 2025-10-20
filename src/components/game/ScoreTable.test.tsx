@@ -36,6 +36,8 @@ describe('ScoreTable', () => {
         isGameOver={false}
         onToggleServeSide={() => {}}
         maxCols={5}
+        teamAPreferredSide="R"
+        teamBPreferredSide="L"
       />,
     )
 
@@ -61,6 +63,8 @@ describe('ScoreTable', () => {
         isGameOver={false}
         onToggleServeSide={() => {}}
         maxCols={5}
+        teamAPreferredSide="R"
+        teamBPreferredSide="L"
       />,
     )
 
@@ -83,6 +87,8 @@ describe('ScoreTable', () => {
         isGameOver={false}
         onToggleServeSide={() => {}}
         maxCols={5}
+        teamAPreferredSide="R"
+        teamBPreferredSide="L"
       />,
     )
 
