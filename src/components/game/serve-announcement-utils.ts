@@ -222,27 +222,29 @@ export const generateServeAnnouncement = (
   const isHandOut =
     game.currentServerHandIndex === 0 && isFirstServeOfHand && !isVeryFirstServe
 
+  // Very first serve of the match
+  if (isVeryFirstServe) {
+    return 'Love All'
+  }
+
   const sideName = game.currentServerSide === 'R' ? 'Right' : 'Left'
 
   // Build base announcement
   // Format: "Hand Out, Score" or "Score, from the Side"
-  let announcement = ''
-  if (isHandOut) {
-    announcement = hasServedBefore
+  const baseAnnouncement = isHandOut
+    ? hasServedBefore
       ? `${scorePhrase}, Choice`
-      : `${scorePhrase}, ${serverName} to Serve`
-  } else {
-    announcement = hasServedBefore
-      ? `${scorePhrase}, from the ${sideName}`
+      : `${scorePhrase}, ${serverName} to Serve. Choice`
+    : hasServedBefore
+      ? `${scorePhrase}, ${sideName}`
       : `${scorePhrase}, ${serverName} to Serve from the ${sideName}`
-  }
 
   // Add game/match ball suffix
-  if (isMatchBall(game, games, match)) {
-    announcement += ', Match Ball'
-  } else if (isGameBall(game)) {
-    announcement += ', Game Ball'
-  }
+  const suffix = isMatchBall(game, games, match)
+    ? ', Match Ball'
+    : isGameBall(game)
+      ? ', Game Ball'
+      : ''
 
-  return announcement
+  return `"${baseAnnouncement}${suffix}"`
 }
