@@ -48,8 +48,8 @@ const computeNextServerState = (params: {
   firstHandUsed: boolean
   scoreBefore: { A: number; B: number }
   winner: 'A' | 'B'
-  teamAFirstServer: 1 | 2
-  teamBFirstServer: 1 | 2
+  teamAFirstServer: 1 | 2 | null
+  teamBFirstServer: 1 | 2 | null
 }): ServerState => {
   const {
     currentServer,
@@ -63,7 +63,9 @@ const computeNextServerState = (params: {
   const flip = (side: 'R' | 'L'): 'R' | 'L' => (side === 'R' ? 'L' : 'R')
   const otherTeam = (team: 'A' | 'B'): 'A' | 'B' => (team === 'A' ? 'B' : 'A')
   const getFirstServerForTeam = (team: 'A' | 'B'): 1 | 2 => {
-    return team === 'A' ? teamAFirstServer : teamBFirstServer
+    // Default to player 1 if first server not yet set
+    const firstServer = team === 'A' ? teamAFirstServer : teamBFirstServer
+    return firstServer ?? 1
   }
 
   // Server won the rally
@@ -385,6 +387,104 @@ const squashMaterializers = {
     },
   ),
 
+  'v3.GameStarted': defineMaterializer(
+    squashEvents.gameStartedV3,
+    (
+      {
+        gameId,
+        matchId,
+        gameNumber,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        teamAFirstServer,
+        teamBFirstServer,
+        maxPoints,
+        winBy,
+        timestamp,
+      },
+      ctx,
+    ) => {
+      // Check if game already exists (gameId is globally unique)
+      const existingGames = ctx.query(squashTables.games.where({ id: gameId }))
+
+      // If game already exists and is completed, don't reset it (idempotent)
+      if (existingGames.length > 0 && existingGames[0].status === 'completed') {
+        return []
+      }
+
+      // If game exists but is in_progress, reset it to fresh state (handle replays/resets)
+      if (existingGames.length > 0) {
+        return squashTables.games
+          .update({
+            status: 'in_progress',
+            scoreA: 0,
+            scoreB: 0,
+            winner: null,
+            maxPoints,
+            winBy,
+            createdAt: timestamp,
+            completedAt: null,
+            firstServingTeam,
+            firstServingPlayer,
+            firstServingSide,
+            teamAFirstServer,
+            teamBFirstServer,
+            // Initialize current server state
+            currentServerTeam: firstServingTeam,
+            currentServerPlayer: firstServingPlayer,
+            currentServerSide: firstServingSide,
+            currentServerHandIndex: 0,
+            firstHandUsed: false,
+          })
+          .where({ id: gameId })
+      }
+
+      return squashTables.games.insert({
+        id: gameId,
+        matchId,
+        gameNumber,
+        status: 'in_progress',
+        scoreA: 0,
+        scoreB: 0,
+        winner: null,
+        maxPoints,
+        winBy,
+        createdAt: timestamp,
+        completedAt: null,
+        firstServingTeam,
+        firstServingPlayer,
+        firstServingSide,
+        teamAFirstServer,
+        teamBFirstServer,
+        // Initialize current server state
+        currentServerTeam: firstServingTeam,
+        currentServerPlayer: firstServingPlayer,
+        currentServerSide: firstServingSide,
+        currentServerHandIndex: 0,
+        firstHandUsed: false,
+      })
+    },
+  ),
+
+  'v1.SecondTeamFirstServerSet': ({
+    gameId,
+    team,
+    firstServer,
+  }: {
+    gameId: string
+    team: 'A' | 'B'
+    firstServer: 1 | 2
+    timestamp: Date
+  }) =>
+    squashTables.games
+      .update(
+        team === 'A'
+          ? { teamAFirstServer: firstServer, currentServerPlayer: firstServer }
+          : { teamBFirstServer: firstServer, currentServerPlayer: firstServer },
+      )
+      .where({ id: gameId }),
+
   'v1.GameCompleted': ({
     gameId,
     winner,
@@ -526,6 +626,26 @@ const squashMaterializers = {
       )
       const firstHandUsed = remainingRallies.length > 0
 
+      // Check if either team has served in the remaining rallies
+      const teamAHasServed = remainingRallies.some((r) => r.serverTeam === 'A')
+      const teamBHasServed = remainingRallies.some((r) => r.serverTeam === 'B')
+
+      // Get current game state to check current first server values and first serving team
+      const games = ctx.query(squashTables.games.where({ id: gameId }))
+      const game = games[0]
+
+      // Only clear a team's first server if:
+      // 1. They haven't served in remaining rallies, AND
+      // 2. They are NOT the first serving team (first serving team's first server is set at game start)
+      const shouldClearTeamA =
+        !teamAHasServed &&
+        game?.teamAFirstServer !== null &&
+        game?.firstServingTeam !== 'A'
+      const shouldClearTeamB =
+        !teamBHasServed &&
+        game?.teamBFirstServer !== null &&
+        game?.firstServingTeam !== 'B'
+
       return [
         // Soft delete the rally
         squashTables.rallies
@@ -541,6 +661,9 @@ const squashMaterializers = {
             currentServerSide: rally.serverSide,
             currentServerHandIndex: rally.serverHandIndex,
             firstHandUsed,
+            // Clear first server if team hasn't served in remaining rallies
+            ...(shouldClearTeamA ? { teamAFirstServer: null } : {}),
+            ...(shouldClearTeamB ? { teamBFirstServer: null } : {}),
           })
           .where({ id: gameId }),
       ]

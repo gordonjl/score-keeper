@@ -32,8 +32,7 @@ type NextGameSetupProps = {
     players: PlayerPositions
     teamASide: Side
     teamBSide: Side
-    teamAFirstServer: 1 | 2
-    teamBFirstServer: 1 | 2
+    firstServingTeamFirstServer: 1 | 2
   }) => void | Promise<void>
 }
 
@@ -50,27 +49,25 @@ export const NextGameSetup = ({
     SessionIdSymbol,
   )
 
-  // Initialize serving team and first servers when component mounts or lastWinner changes
+  // Initialize serving team and first server when component mounts or lastWinner changes
   useEffect(() => {
     const defaultServingTeam: Team = isFirstGame ? 'A' : lastWinner
     const needsUpdate =
       setupState.firstServingTeam !== defaultServingTeam ||
-      setupState.teamAFirstServer !== 1 ||
-      setupState.teamBFirstServer !== 1
+      setupState.teamAFirstServer !== 1
 
     if (needsUpdate) {
       updateSetupState({
         ...setupState,
         firstServingTeam: defaultServingTeam,
         teamAFirstServer: 1,
-        teamBFirstServer: 1,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFirstGame, lastWinner])
 
   const handleStartGame = () => {
-    // Keep player positions fixed - teamAFirstServer/teamBFirstServer are passed
+    // Keep player positions fixed - firstServingTeamFirstServer is passed
     // to the game and used by getOrderedRows() to determine display order
     const gamePlayers: PlayerPositions = {
       A1: players.A1.fullName,
@@ -79,6 +76,12 @@ export const NextGameSetup = ({
       B2: players.B2.fullName,
     }
 
+    // Get the first server for the first serving team
+    const firstServingTeamFirstServer =
+      setupState.firstServingTeam === 'A'
+        ? setupState.teamAFirstServer
+        : setupState.teamBFirstServer
+
     // Default both teams to start serving from right side
     // Side can be toggled during gameplay by clicking the cell
     void onStartGame({
@@ -86,8 +89,7 @@ export const NextGameSetup = ({
       players: gamePlayers,
       teamASide: 'R',
       teamBSide: 'R',
-      teamAFirstServer: setupState.teamAFirstServer,
-      teamBFirstServer: setupState.teamBFirstServer,
+      firstServingTeamFirstServer,
     })
   }
 
@@ -151,26 +153,19 @@ export const NextGameSetup = ({
           </p>
         )}
 
-        {/* First Server Designation */}
+        {/* First Server for First Serving Team */}
         <div className="card bg-base-200 p-3 sm:p-4 mb-3 sm:mb-4">
           <h4 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3">
-            First Server Designation
+            First Server for {setupState.firstServingTeam === 'A' ? players.teamA : players.teamB}
           </h4>
           <div className="text-[10px] sm:text-xs text-base-content/70 mb-2 sm:mb-3">
-            Who serves first on hand-in for each team?
+            Who serves first for the serving team?
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            {/* Team A First Server */}
-            <div className="space-y-2">
-              <div
-                className="font-semibold text-xs sm:text-sm line-clamp-1"
-                title={players.teamA}
-              >
-                {players.teamA}
-              </div>
-              <div className="flex gap-2">
-                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0">
+          <div className="flex gap-2 justify-center">
+            {setupState.firstServingTeam === 'A' ? (
+              <>
+                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0 max-w-xs">
                   <span
                     className="label-text font-semibold text-[10px] sm:text-xs line-clamp-2 leading-tight text-center"
                     title={players.A1.fullName}
@@ -179,7 +174,7 @@ export const NextGameSetup = ({
                   </span>
                   <input
                     type="radio"
-                    name="teamAFirstServer"
+                    name="firstServer"
                     className="radio radio-primary"
                     checked={setupState.teamAFirstServer === 1}
                     onChange={() =>
@@ -187,7 +182,7 @@ export const NextGameSetup = ({
                     }
                   />
                 </label>
-                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0">
+                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0 max-w-xs">
                   <span
                     className="label-text font-semibold text-[10px] sm:text-xs line-clamp-2 leading-tight text-center"
                     title={players.A2.fullName}
@@ -196,7 +191,7 @@ export const NextGameSetup = ({
                   </span>
                   <input
                     type="radio"
-                    name="teamAFirstServer"
+                    name="firstServer"
                     className="radio radio-primary"
                     checked={setupState.teamAFirstServer === 2}
                     onChange={() =>
@@ -204,19 +199,10 @@ export const NextGameSetup = ({
                     }
                   />
                 </label>
-              </div>
-            </div>
-
-            {/* Team B First Server */}
-            <div className="space-y-2">
-              <div
-                className="font-semibold text-xs sm:text-sm line-clamp-1"
-                title={players.teamB}
-              >
-                {players.teamB}
-              </div>
-              <div className="flex gap-2">
-                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0">
+              </>
+            ) : (
+              <>
+                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0 max-w-xs">
                   <span
                     className="label-text font-semibold text-[10px] sm:text-xs line-clamp-2 leading-tight text-center"
                     title={players.B1.fullName}
@@ -225,7 +211,7 @@ export const NextGameSetup = ({
                   </span>
                   <input
                     type="radio"
-                    name="teamBFirstServer"
+                    name="firstServer"
                     className="radio radio-primary"
                     checked={setupState.teamBFirstServer === 1}
                     onChange={() =>
@@ -233,7 +219,7 @@ export const NextGameSetup = ({
                     }
                   />
                 </label>
-                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0">
+                <label className="label cursor-pointer flex-1 flex-col gap-1 sm:gap-2 p-2 sm:p-3 border border-base-300 rounded-lg hover:bg-base-300 min-w-0 max-w-xs">
                   <span
                     className="label-text font-semibold text-[10px] sm:text-xs line-clamp-2 leading-tight text-center"
                     title={players.B2.fullName}
@@ -242,7 +228,7 @@ export const NextGameSetup = ({
                   </span>
                   <input
                     type="radio"
-                    name="teamBFirstServer"
+                    name="firstServer"
                     className="radio radio-primary"
                     checked={setupState.teamBFirstServer === 2}
                     onChange={() =>
@@ -250,8 +236,8 @@ export const NextGameSetup = ({
                     }
                   />
                 </label>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
 

@@ -559,32 +559,34 @@ function MatchesListRoute() {
     players: { A1: string; A2: string; B1: string; B2: string }
     teamASide: 'R' | 'L'
     teamBSide: 'R' | 'L'
-    teamAFirstServer: 1 | 2
-    teamBFirstServer: 1 | 2
+    firstServingTeamFirstServer: 1 | 2
   }) => {
     if (!gameSetupMatchId) return
 
     const match = matches.find((m) => m.id === gameSetupMatchId)
     if (!match) return
 
-    // Use the teamAFirstServer and teamBFirstServer from the modal
-    // These indicate which player position serves first for each team
-    const firstServingPlayer =
-      config.firstServingTeam === 'A'
-        ? config.teamAFirstServer
-        : config.teamBFirstServer
+    // Only the first serving team's first server is set
+    // The other team's first server will be set when they first serve
+    const firstServingPlayer = config.firstServingTeamFirstServer
 
     const gameId = crypto.randomUUID()
     store.commit(
-      events.gameStarted({
+      events.gameStartedV3({
         gameId,
         matchId: gameSetupMatchId,
         gameNumber: 1,
         firstServingTeam: config.firstServingTeam,
         firstServingPlayer,
         firstServingSide: 'R',
-        teamAFirstServer: config.teamAFirstServer,
-        teamBFirstServer: config.teamBFirstServer,
+        teamAFirstServer:
+          config.firstServingTeam === 'A'
+            ? config.firstServingTeamFirstServer
+            : null,
+        teamBFirstServer:
+          config.firstServingTeam === 'B'
+            ? config.firstServingTeamFirstServer
+            : null,
         maxPoints: 15,
         winBy: 1,
         timestamp: new Date(),

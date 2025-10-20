@@ -81,6 +81,27 @@ export const undo = (
   )
 }
 
+/**
+ * Set second team first server action - emits event to LiveStore
+ * @param context - Machine context (only needs store reference)
+ * @param params - Extracted data (game, team, and first server)
+ */
+export const setSecondTeamFirstServer = (
+  { context }: { context: Context },
+  params: { game: Game; team: Team; firstServer: 1 | 2 },
+) => {
+  const { game, team, firstServer } = params
+
+  context.store.commit(
+    events.secondTeamFirstServerSet({
+      gameId: game.id,
+      team,
+      firstServer,
+      timestamp: new Date(),
+    }),
+  )
+}
+
 // ===== Guards (boolean functions that work with params only) =====
 
 /**
@@ -115,4 +136,64 @@ export const gameEnded = (
 
   if (scoreA < maxPoints && scoreB < maxPoints) return false
   return Math.abs(scoreA - scoreB) >= winBy
+}
+
+/**
+ * Check if we need to get the second team's first server
+ * Triggers when:
+ * - Current server team changed from first serving team
+ * - The new team's first server is null
+ * - Current server hand index is 0 (first hand)
+ * @param params - Extracted data (game and winner)
+ */
+export const needsSecondTeamFirstServer = (
+  _: { context: Context },
+  params: { game: Game; winner: Team },
+) => {
+  const { game, winner } = params
+
+  // Only check if receiving team won (hand-out scenario)
+  if (winner === game.currentServerTeam) {
+    return false
+  }
+
+  // Determine which team will serve next
+  const nextServingTeam: Team =
+    game.currentServerHandIndex === 0 && !game.firstHandUsed
+      ? winner // First hand exception: immediate hand-out
+      : game.currentServerHandIndex === 0
+        ? winner // Second hand lost: hand-out
+        : game.currentServerTeam // First hand lost: partner serves
+
+  // Check if next serving team's first server is null and it's their first hand
+  const nextTeamFirstServer =
+    nextServingTeam === 'A' ? game.teamAFirstServer : game.teamBFirstServer
+
+  // Need modal if next team's first server is null and they're about to serve
+  return nextTeamFirstServer === null && nextServingTeam === winner
+}
+
+/**
+ * Check if we need to be in gettingSecondTeamFirstServer state during initialization
+ * This happens when:
+ * - One team has served (their first server is set)
+ * - The other team is now serving (current server team is different from first serving team)
+ * - The current serving team's first server is null
+ * @param params - Extracted data (game)
+ */
+export const needsSecondTeamFirstServerOnInit = (
+  _: { context: Context },
+  params: { game: Game },
+) => {
+  const { game } = params
+
+  // Check if current serving team's first server is null
+  const currentTeamFirstServer =
+    game.currentServerTeam === 'A'
+      ? game.teamAFirstServer
+      : game.teamBFirstServer
+
+  // If current team's first server is null and they're serving, we need the modal
+  // This means we're in the middle of getting the second team's first server
+  return currentTeamFirstServer === null && game.currentServerHandIndex === 0
 }

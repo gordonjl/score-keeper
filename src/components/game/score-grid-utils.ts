@@ -223,16 +223,17 @@ export const buildGridFromRallies = (
   rallies: ReadonlyArray<RallyData>,
   initialServer: Server,
   firstHandUsed: boolean,
-  teamAFirstServer: 1 | 2,
-  teamBFirstServer: 1 | 2,
+  teamAFirstServer: 1 | 2 | null,
+  teamBFirstServer: 1 | 2 | null,
 ): ActivityGrid => {
   const initialState: RallyState = {
     grid: initialGrid(),
     score: { A: 0, B: 0 },
     server: initialServer,
     firstHandUsed,
-    teamAFirstServer,
-    teamBFirstServer,
+    // Default to player 1 if first server not yet set
+    teamAFirstServer: teamAFirstServer ?? 1,
+    teamBFirstServer: teamBFirstServer ?? 1,
   }
 
   // Process each rally: write its server position, then process the result

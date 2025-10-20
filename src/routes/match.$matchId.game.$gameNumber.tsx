@@ -14,6 +14,7 @@ import { RallyButtons } from '../components/game/RallyButtons'
 import { ScoreGrid } from '../components/game/ScoreGrid'
 import { ScoreHeader } from '../components/game/ScoreHeader'
 import { ServeAnnouncement } from '../components/game/ServeAnnouncement'
+import { ServerSelectionModal } from '../components/modals/ServerSelectionModal'
 import { useLiveStoreMatch } from '../contexts/LiveStoreMatchContext'
 import { useSquashGameMachine } from '../hooks/useSquashGameMachine'
 import { events, tables } from '../livestore/schema'
@@ -145,10 +146,12 @@ function GameRoute() {
   const gameId = game.id
 
   // Only select state that the route component DIRECTLY uses for its own logic
-  const { isGameOver, isAwaitingConfirmation } = useSelector(actorRef, (s) => ({
-    isGameOver: s.status === 'done', // XState v5: Use status === 'done' for final state
-    isAwaitingConfirmation: s.matches('awaitingConfirmation'),
-  }))
+  const { isGameOver, isAwaitingConfirmation, needsSecondTeamFirstServer } =
+    useSelector(actorRef, (s) => ({
+      isGameOver: s.status === 'done', // XState v5: Use status === 'done' for final state
+      isAwaitingConfirmation: s.matches('awaitingConfirmation'),
+      needsSecondTeamFirstServer: s.matches('gettingSecondTeamFirstServer'),
+    }))
 
   // Get score and team names from LiveStore (source of truth)
   const scoreA = game.scoreA
@@ -258,8 +261,7 @@ function GameRoute() {
       players: { A1: string; A2: string; B1: string; B2: string }
       teamASide: 'R' | 'L'
       teamBSide: 'R' | 'L'
-      teamAFirstServer: 1 | 2
-      teamBFirstServer: 1 | 2
+      firstServingTeamFirstServer: 1 | 2
     }) => {
       // Hide the dialog immediately
       updateNextGameSetupState({
@@ -293,20 +295,25 @@ function GameRoute() {
         games.length > 0 ? Math.max(...games.map((g) => g.gameNumber)) : 0
       const newGameNumber = maxGameNumber + 1
 
+      // Only the first serving team's first server is set
+      // The other team's first server will be set when they first serve
       store.commit(
-        events.gameStarted({
+        events.gameStartedV3({
           gameId: newGameId,
           matchId,
           gameNumber: newGameNumber,
           firstServingTeam: config.firstServingTeam,
-          firstServingPlayer:
-            config.firstServingTeam === 'A'
-              ? config.teamAFirstServer
-              : config.teamBFirstServer,
+          firstServingPlayer: config.firstServingTeamFirstServer,
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           firstServingSide: config.teamASide || 'R',
-          teamAFirstServer: config.teamAFirstServer,
-          teamBFirstServer: config.teamBFirstServer,
+          teamAFirstServer:
+            config.firstServingTeam === 'A'
+              ? config.firstServingTeamFirstServer
+              : null,
+          teamBFirstServer:
+            config.firstServingTeam === 'B'
+              ? config.firstServingTeamFirstServer
+              : null,
           maxPoints: 15,
           winBy: 1,
           timestamp: new Date(),
@@ -350,6 +357,26 @@ function GameRoute() {
     // Match is automatically persisted in IndexedDB
     void navigate({ to: '/' })
   }, [matchActorRef, navigate])
+
+  const handleSecondTeamFirstServerSelect = useCallback(
+    (playerNumber: 1 | 2) => {
+      // Determine which team needs their first server set
+      const team: 'A' | 'B' =
+        game.teamAFirstServer === null
+          ? 'A'
+          : game.teamBFirstServer === null
+            ? 'B'
+            : 'A' // Fallback (shouldn't happen)
+
+      actorRef.send({
+        type: 'SECOND_TEAM_FIRST_SERVER_SET',
+        game,
+        team,
+        firstServer: playerNumber,
+      })
+    },
+    [actorRef, game],
+  )
 
   return (
     <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 p-2 sm:p-3 md:p-4 max-w-7xl mx-auto bg-gradient-to-br from-base-200 to-base-300 min-h-full">
@@ -402,6 +429,28 @@ function GameRoute() {
             players={matchPlayers}
             onCancel={handleNextGameCancel}
             onStartGame={handleNextGameStart}
+          />
+        )}
+
+        {needsSecondTeamFirstServer && (
+          <ServerSelectionModal
+            isOpen={needsSecondTeamFirstServer}
+            teamName={
+              game.teamAFirstServer === null
+                ? teamNames.teamA
+                : teamNames.teamB
+            }
+            player1Name={
+              game.teamAFirstServer === null
+                ? matchPlayers.A1.fullName
+                : matchPlayers.B1.fullName
+            }
+            player2Name={
+              game.teamAFirstServer === null
+                ? matchPlayers.A2.fullName
+                : matchPlayers.B2.fullName
+            }
+            onSelect={handleSecondTeamFirstServerSelect}
           />
         )}
 

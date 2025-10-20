@@ -1,5 +1,6 @@
 import { useQuery, useStore } from '@livestore/react'
 import { useActorRef, useSelector } from '@xstate/react'
+import { useEffect } from 'react'
 import {
   gameById$,
   gameByNumber,
@@ -18,6 +19,7 @@ import { squashGameMachine } from '../machines/squashGameMachine'
  * - useSelector() provides fine-grained reactivity
  * - When switching games, React creates a fresh actor with new input
  * - Server state is read directly from game table (no rally replay needed)
+ * - INITIALIZE event is sent to restore correct state on page reload
  */
 export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const { store } = useStore()
@@ -43,6 +45,12 @@ export const useSquashGameMachine = (matchId: string, gameNumber: number) => {
   const actorRef = useActorRef(squashGameMachine, {
     input: { store, gameId },
   })
+
+  // Send INITIALIZE event to restore correct state based on game data
+  // This runs once when the actor is created (when gameId changes)
+  useEffect(() => {
+    actorRef.send({ type: 'INITIALIZE', game: gameData })
+  }, [actorRef, gameData])
 
   // Get current state snapshot for convenience
   const state = useSelector(actorRef, (s) => s)

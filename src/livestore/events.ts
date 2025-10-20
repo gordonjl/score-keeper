@@ -146,6 +146,34 @@ export const squashEvents = {
     }),
   }),
 
+  // v3 only requires first serving team's first server (other team is null)
+  gameStartedV3: Events.synced({
+    name: 'v3.GameStarted',
+    schema: Schema.Struct({
+      gameId: Schema.String,
+      matchId: Schema.String,
+      gameNumber: Schema.Number,
+      firstServingTeam: Schema.Literal('A', 'B'),
+      firstServingPlayer: Schema.Literal(1, 2),
+      firstServingSide: Schema.Literal('R', 'L'),
+      teamAFirstServer: Schema.NullOr(Schema.Literal(1, 2)),
+      teamBFirstServer: Schema.NullOr(Schema.Literal(1, 2)),
+      maxPoints: Schema.Number,
+      winBy: Schema.Number,
+      timestamp: Schema.Date,
+    }),
+  }),
+
+  secondTeamFirstServerSet: Events.synced({
+    name: 'v1.SecondTeamFirstServerSet',
+    schema: Schema.Struct({
+      gameId: Schema.String,
+      team: Schema.Literal('A', 'B'),
+      firstServer: Schema.Literal(1, 2),
+      timestamp: Schema.Date,
+    }),
+  }),
+
   gameCompleted: Events.synced({
     name: 'v1.GameCompleted',
     schema: Schema.Struct({

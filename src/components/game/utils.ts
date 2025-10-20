@@ -24,16 +24,20 @@ export const toWords = (n: number): string => {
 
 export const getOrderedRows = (
   firstServingTeam: 'A' | 'B',
-  teamAFirstServer: 1 | 2,
-  teamBFirstServer: 1 | 2,
+  teamAFirstServer: 1 | 2 | null,
+  teamBFirstServer: 1 | 2 | null,
 ): Array<RowKey> => {
+  // Default to player 1 if first server not yet set
+  const teamAFirst = teamAFirstServer ?? 1
+  const teamBFirst = teamBFirstServer ?? 1
+
   // Build team A rows based on who serves first
   const teamARows: Array<RowKey> =
-    teamAFirstServer === 1 ? ['A1', 'A2'] : ['A2', 'A1']
+    teamAFirst === 1 ? ['A1', 'A2'] : ['A2', 'A1']
 
   // Build team B rows based on who serves first
   const teamBRows: Array<RowKey> =
-    teamBFirstServer === 1 ? ['B1', 'B2'] : ['B2', 'B1']
+    teamBFirst === 1 ? ['B1', 'B2'] : ['B2', 'B1']
 
   // Return rows with first serving team on top
   return firstServingTeam === 'A'

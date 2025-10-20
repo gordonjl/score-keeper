@@ -91,8 +91,8 @@ export const ScoreGridContainer = ({
       processableRallies,
       initialServer,
       false,
-      gameData.teamAFirstServer as 1 | 2,
-      gameData.teamBFirstServer as 1 | 2,
+      gameData.teamAFirstServer,
+      gameData.teamBFirstServer,
     )
 
     // Always update current server position with live game state
@@ -117,8 +117,8 @@ export const ScoreGridContainer = ({
     () =>
       getOrderedRows(
         firstServingTeam,
-        gameData.teamAFirstServer as 1 | 2,
-        gameData.teamBFirstServer as 1 | 2,
+        gameData.teamAFirstServer,
+        gameData.teamBFirstServer,
       ),
     [firstServingTeam, gameData.teamAFirstServer, gameData.teamBFirstServer],
   )

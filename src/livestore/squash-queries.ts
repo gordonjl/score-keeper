@@ -12,6 +12,8 @@ const narrowGame = <
     firstServingTeam: string
     firstServingPlayer: number
     firstServingSide: string
+    teamAFirstServer: number | null
+    teamBFirstServer: number | null
     winner: string | null
   },
 >(
@@ -25,6 +27,8 @@ const narrowGame = <
   firstServingTeam: game.firstServingTeam as Team,
   firstServingPlayer: game.firstServingPlayer as PlayerRow,
   firstServingSide: game.firstServingSide as Side,
+  teamAFirstServer: game.teamAFirstServer as PlayerRow | null,
+  teamBFirstServer: game.teamBFirstServer as PlayerRow | null,
   winner: game.winner as Team | null,
 })
 

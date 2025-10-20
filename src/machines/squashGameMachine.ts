@@ -1,7 +1,10 @@
 import { setup } from 'xstate'
 import {
   gameEnded,
+  needsSecondTeamFirstServer,
+  needsSecondTeamFirstServerOnInit,
   rallyWon,
+  setSecondTeamFirstServer,
   toggleServeSide,
   undo,
 } from './squashGameMachine.actions'
@@ -26,6 +29,9 @@ export type Game = {
   firstServingTeam: Team
   firstServingPlayer: PlayerRow
   firstServingSide: Side
+  // First server for each team (set when team first serves)
+  teamAFirstServer: PlayerRow | null
+  teamBFirstServer: PlayerRow | null
   // Current server state (updated after each rally)
   currentServerTeam: Team
   currentServerPlayer: PlayerRow
@@ -47,11 +53,18 @@ export type Context = {
 
 // ===== Events =====
 export type Events =
+  | { type: 'INITIALIZE'; game: Game }
   | { type: 'RALLY_WON'; winner: Team; game: Game }
   | { type: 'TOGGLE_SERVE_SIDE'; game: Game }
   | { type: 'CONFIRM_GAME_OVER' }
   | { type: 'LET' }
   | { type: 'UNDO'; game: Game }
+  | {
+      type: 'SECOND_TEAM_FIRST_SERVER_SET'
+      game: Game
+      team: Team
+      firstServer: 1 | 2
+    }
 
 // ===== State Machine =====
 export const squashGameMachine = setup({
@@ -67,15 +80,18 @@ export const squashGameMachine = setup({
     rallyWon,
     toggleServeSide,
     undo,
+    setSecondTeamFirstServer,
   },
   guards: {
     canToggleServeSide: (_, params: { game: Game }) => {
       return params.game.currentServerHandIndex === 0
     },
     gameEnded: gameEnded,
+    needsSecondTeamFirstServer: needsSecondTeamFirstServer,
+    needsSecondTeamFirstServerOnInit: needsSecondTeamFirstServerOnInit,
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgDEAqgHIAiA8gNoAMAuoqAAcA9rEoAXSkOr8QAD0QB2AIxKAdAA4AnFwCsmpQs06AzHvUAaEAE9ESgEwBfB5dSYc+IqQo0wq6kLEAYSkAM0ooNAAnSDoASSZYgBVYgEEAGViALQBRbj4kEGFRCSkZeQQ7LgA2VQAWOyV1KqquQx0lPUsbBHq7VSUuTTsh5q51LR1apxd0LDxCEnIqWlVyCQA3egAldLSATQB9AHU2JjyZIvFJaQLyluNVY20dF-Va4wU7F67EWurVKrGOwKYwDBrqYzNKrTECuOYeRbeFZrSibOg7NL7Y6nDhKfKCERXUq3RDGP79dQKWpVWr2YEKKqaH4IIHqVTaKp2L7KHQM2oKHQwuHuBZeZa+FFoxJsXC4NLZA4AZWyWwAagrFbEWLleBdCSUbqBypDaqouNT1NV3lUlEMlMy7ED2SZ7FUTE8aVV1ELZiLPEsfKsyBt6PLEucCpcDWVfnY2Qp1PYuCaXpCOszGn1ai6GgNlPoFD63PN-UiJQB3DBXahQYLUMKRAgYA10QKnABisS2xAOuBSxAVbHVWwjBOK1xjCAGQzNoMak2M1TszPqmkeenpWk0oJ0jhh-ggcBkwpLiPFevHxKNiAAtPbrIhNKajIvNPpEyCuK0i-DRQGVv4QShOEUSQBeRKGnIvwKCuXIAoMwx2KM4xGFMziwr6p5ioGkpgOB0Ykj0cHKGMlqJlwSicrosFruoehArUWhUnYjE-n6Z44ZW1a1sBjbNhOkb6gJ14IOMahxiohgcpUxgWA+RG0Rur4UZUvJsVh-6+GQQgEAIAA2YBiHhgmXpB5RKECDxaLotS1G+HwdFUsFsi026UQYNqVLoThOEAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5SwI4FcCGsAWBxDAtmALIYDG2AlgHZgB05ALpQG5gDEASgIIAyvATQD6AdQDyAOQDaABgC6iUAAcA9rErMV1RSAAeiACwBmAIx0ATEYPWDATgCs5gBwyT5+wBoQAT0MmAbHTG5v5ORk7mBk4mJrZGAL7xXqiYOPhEpBQ09EysHDz8wuLSJgpIIKrqmtrl+gjGZpY2do4ubp4+iOaWdI7+4QDsMvYyTgNGA06JyehYeIQk5FS0DGTMbFx8gqKSUuZlymoalFo6dQ50Mk32Y1b2trb+Jl6+CEaRdLYyTwP+Bs7mGS2cbTEApObpRZZFa5DYAFTEuFwvAAokIAMoozgANTR6IAkgARFGyA4VI7VM6GcwvLrOIL2IyjOy2SwBUHgtILTLLHJrPLsACqEkJYlJOkqx1OtUQJgGBkuwP8tliIweRiMtIQJlMnwe6vs9j+3WcHNmXIyS2yq3WHFRcPF5UllJl2rCdH8QIMMn+Tn89gG4y10V6MjDblsESNhpMZtS80t0PoMEYzGoUHRYDIWggcLAhAAYpQAE6wRiZ4tsYvsTEAYUkhKEcJR3GIQgL+M46LhGKxuM4vYd8glFJONVAdUc5l6k3McqcRqBDi1bgGl3GJmiAzcEVZ5jjEO5VphAHcMMd07WtAAzEsEDDVdj1iQdzht3CttFifuOw5VMdUtqEYMu80YGP4AyRh0rzGEYdBRk4Dz+KEVgBP4B4WlCvIMGeF5QFe1C3sW96PsKoq-uS-7ShOiDjE4lwmAGrIuI8fxaqYtifJB9yWE4iGbgkoLUCoEBwDonIJlh2QjlR456IgAC0-hakpGGSTy1qwmAMlSnJdRymu9jGGG-xAoxkFav8gRGDxEF+gYJgyFY6FJGC5rqceyZgKmNAZlmOZ5oWJZlhWVY6S6NEIE4USXEZkHKl6Tmap0CCRGYDmPHx7yOWh+6uRJkIaae55pvhN53g+AFOqO1HyVFyqfN6gJhoCDnQYYVh0KBzEmMYYxxAMamFZ5dDZgQSgADbedp1WyYBOpPF1Poqjc4GhAMNIpbB673KMkaPOBUyJPEQA */
   id: 'squashGameMachine',
   initial: 'active',
   context: ({ input }) => ({
@@ -85,6 +101,27 @@ export const squashGameMachine = setup({
   states: {
     active: {
       on: {
+        INITIALIZE: [
+          {
+            guard: {
+              type: 'gameEnded',
+              params: ({ event }) => ({
+                game: event.game,
+                isInitialize: true,
+              }),
+            },
+            target: 'complete',
+          },
+          {
+            guard: {
+              type: 'needsSecondTeamFirstServerOnInit',
+              params: ({ event }) => ({
+                game: event.game,
+              }),
+            },
+            target: 'gettingSecondTeamFirstServer',
+          },
+        ],
         RALLY_WON: [
           {
             guard: {
@@ -95,6 +132,25 @@ export const squashGameMachine = setup({
               }),
             },
             target: 'awaitingConfirmation',
+            actions: [
+              {
+                type: 'rallyWon',
+                params: ({ event }) => ({
+                  game: event.game,
+                  winner: event.winner,
+                }),
+              },
+            ],
+          },
+          {
+            guard: {
+              type: 'needsSecondTeamFirstServer',
+              params: ({ event }) => ({
+                game: event.game,
+                winner: event.winner,
+              }),
+            },
+            target: 'gettingSecondTeamFirstServer',
             actions: [
               {
                 type: 'rallyWon',
@@ -138,6 +194,23 @@ export const squashGameMachine = setup({
           ],
         },
         LET: {},
+      },
+    },
+    gettingSecondTeamFirstServer: {
+      on: {
+        SECOND_TEAM_FIRST_SERVER_SET: {
+          target: 'active',
+          actions: [
+            {
+              type: 'setSecondTeamFirstServer',
+              params: ({ event }) => ({
+                game: event.game,
+                team: event.team,
+                firstServer: event.firstServer,
+              }),
+            },
+          ],
+        },
       },
     },
     awaitingConfirmation: {

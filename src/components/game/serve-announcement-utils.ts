@@ -224,7 +224,7 @@ export const generateServeAnnouncement = (
 
   // Very first serve of the match
   if (isVeryFirstServe) {
-    return 'Love All'
+    return '"Love All"'
   }
 
   const sideName = game.currentServerSide === 'R' ? 'Right' : 'Left'
