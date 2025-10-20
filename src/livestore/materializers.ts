@@ -639,12 +639,12 @@ const squashMaterializers = {
       // 2. They are NOT the first serving team (first serving team's first server is set at game start)
       const shouldClearTeamA =
         !teamAHasServed &&
-        game?.teamAFirstServer !== null &&
-        game?.firstServingTeam !== 'A'
+        game.teamAFirstServer !== null &&
+        game.firstServingTeam !== 'A'
       const shouldClearTeamB =
         !teamBHasServed &&
-        game?.teamBFirstServer !== null &&
-        game?.firstServingTeam !== 'B'
+        game.teamBFirstServer !== null &&
+        game.firstServingTeam !== 'B'
 
       return [
         // Soft delete the rally
