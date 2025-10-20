@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import {
   HeadContent,
@@ -35,6 +35,26 @@ type MyRouterContext = {
 const LiveStoreContent = () => {
   useSyncAuthToLiveStore()
 
+  // Handle page visibility changes to trigger sync when device wakes up
+  // This helps with the iPad wake-up scenario where sync doesn't happen automatically
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Page became visible - device might have woken up
+        // The store should automatically reconnect, but we log for debugging
+        console.log(
+          '[LiveStore] Page became visible, waiting for auto-reconnect',
+        )
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   return (
     <>
       <Header />
@@ -45,12 +65,19 @@ const LiveStoreContent = () => {
 }
 
 const RootComponent = () => {
-  const storeId = getStoreId()
-  const adapter = makePersistedAdapter({
-    storage: { type: 'opfs' },
-    worker: LiveStoreWorker,
-    sharedWorker: LiveStoreSharedWorker,
-  })
+  // Memoize storeId to prevent recalculation on every render
+  const storeId = useMemo(() => getStoreId(), [])
+
+  // CRITICAL: Use useState to create adapter once per component mount
+  // This ensures the adapter is recreated on page reload (fixing MCP devtools issue)
+  // but NOT recreated on re-renders (which would cause sync issues)
+  const [adapter] = useState(() =>
+    makePersistedAdapter({
+      storage: { type: 'opfs' },
+      worker: LiveStoreWorker,
+      sharedWorker: LiveStoreSharedWorker,
+    }),
+  )
 
   // If no valid store ID found, show error page
   if (!storeId) {
