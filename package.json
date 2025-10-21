@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@netlify/vite-plugin-tanstack-start": "^1.0.2",
+    "@tanstack/devtools-vite": "^0.3.9",
     "@tanstack/eslint-config": "^0.3.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/node": "^22.18.8",

@@ -6,7 +6,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
-
+import { devtools } from '@tanstack/devtools-vite'
 // Simple plugin to generate version.json in dist/client
 function versionPlugin(): Plugin {
   return {
@@ -33,6 +33,7 @@ const config = defineConfig({
     exclude: ['@livestore/wa-sqlite'],
   },
   plugins: [
+    devtools(),
     // CRITICAL: TanStack Start MUST be first, then React
     // https://tanstack.com/router/latest/docs/framework/react/start/getting-started
     tanstackStart(),
