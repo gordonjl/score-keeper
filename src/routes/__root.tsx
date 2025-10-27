@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import {
   HeadContent,
@@ -26,6 +26,7 @@ import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 
 type MyRouterContext = {
   queryClient: QueryClient
@@ -65,37 +66,20 @@ const LiveStoreContent = () => {
 }
 
 const RootComponent = () => {
-  // Memoize storeId to prevent recalculation on every render
-  const storeId = useMemo(() => getStoreId(), [])
-
-  // CRITICAL: Use useState to create adapter once per component mount
-  // This ensures the adapter is recreated on page reload (fixing MCP devtools issue)
-  // but NOT recreated on re-renders (which would cause sync issues)
-  const [adapter] = useState(() =>
-    makePersistedAdapter({
-      storage: { type: 'opfs' },
-      worker: LiveStoreWorker,
-      sharedWorker: LiveStoreSharedWorker,
-    }),
-  )
+  const storeId = getStoreId()
+  const adapter = makePersistedAdapter({
+    storage: { type: 'opfs' },
+    worker: LiveStoreWorker,
+    sharedWorker: LiveStoreSharedWorker,
+  })
 
   // If no valid store ID found, show error page
   if (!storeId) {
     return (
-      <RootDocument>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center max-w-md px-4">
-            <h1 className="text-4xl font-bold mb-4">Address Not Found</h1>
-            <p className="text-lg mb-6">
-              Sorry, we couldn't find the address you were looking for.
-            </p>
-            <p className="text-sm text-gray-600">
-              Please check the URL and try again. Make sure you're accessing the
-              site with a valid subdomain.
-            </p>
-          </div>
-        </div>
-      </RootDocument>
+      <ErrorPage
+        title="Address Not Found"
+        message="Sorry, we couldn't find the address you were looking for. Please check the URL and try again. Make sure you're accessing the site with a valid subdomain."
+      />
     )
   }
 
@@ -109,17 +93,10 @@ const RootComponent = () => {
       'Auth0 configuration missing. Please set environment variables.',
     )
     return (
-      <RootDocument>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center max-w-md px-4">
-            <h1 className="text-4xl font-bold mb-4">Configuration Error</h1>
-            <p className="text-lg mb-6">
-              Auth0 is not configured. Please set VITE_AUTH0_DOMAIN and
-              VITE_AUTH0_CLIENT_ID environment variables.
-            </p>
-          </div>
-        </div>
-      </RootDocument>
+      <ErrorPage
+        title="Configuration Error"
+        message="Auth0 is not configured. Please set VITE_AUTH0_DOMAIN and VITE_AUTH0_CLIENT_ID environment variables."
+      />
     )
   }
 
@@ -161,8 +138,7 @@ const RootComponent = () => {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
-  // Apply theme based on system preferences
+const useTheme = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -177,6 +153,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     mq.addEventListener('change', apply)
     return () => mq.removeEventListener('change', apply)
   }, [])
+}
+
+const RootDocument = ({ children }: { children: ReactNode }) => {
+  useTheme()
 
   return (
     <html lang="en">
@@ -207,6 +187,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+
+const ErrorPage = ({ title, message }: { title: string; message: string }) => (
+  <RootDocument>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center max-w-md px-4">
+        <h1 className="text-4xl font-bold mb-4">{title}</h1>
+        <p className="text-lg mb-6">{message}</p>
+      </div>
+    </div>
+  </RootDocument>
+)
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
